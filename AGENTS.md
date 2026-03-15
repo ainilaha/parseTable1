@@ -35,6 +35,9 @@ This is a **research-oriented parsing system**, not just a PDF table extractor.
 # Architectural Principles
 
 Agents must follow these design principles.
+Do not vendor third-party libraries.
+Do not generate large output files.
+Do not commit sample outputs, logs, or PDFs unless explicitly requested.
 
 ### Separation of responsibilities
 
