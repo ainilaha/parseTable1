@@ -1,0 +1,4740 @@
+[
+  {
+    "table_id": "cobaltpaper-p3-t0",
+    "source_pdf": "testpapers/cobaltpaper.pdf",
+    "page_num": 3,
+    "title": "Table1",
+    "caption": "Table1 Demographiccharacteristicsbyquintilebloodcobaltlevelsamongtheparticipants.",
+    "n_rows": 24,
+    "n_cols": 9,
+    "cells": [
+      {
+        "row_idx": 0,
+        "col_idx": 0,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 2,
+        "text": "Q1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 3,
+        "text": "Q2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 4,
+        "text": "Q3",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 5,
+        "text": "Q4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 0,
+        "text": "Cobaltquartiles(mg/l)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 1,
+        "text": "All",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 2,
+        "text": "(cid:1)0.12",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 3,
+        "text": "0.13-0.14",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 4,
+        "text": "0.15-0.18",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 5,
+        "text": "\u22650.19",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 6,
+        "text": "Pvalue",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 7,
+        "text": "Pfortrend",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 0,
+        "text": "Number",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 1,
+        "text": "6866",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 2,
+        "text": "1931",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 3,
+        "text": "1418",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 4,
+        "text": "1792",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 5,
+        "text": "1725",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 0,
+        "text": "Age(yrs),mean\u00b1SD",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 1,
+        "text": "60.3\u00b112.0",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 2,
+        "text": "58.1\u00b111.2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 3,
+        "text": "60.0\u00b111.4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 4,
+        "text": "61.4\u00b111.6",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 5,
+        "text": "61.7\u00b113.2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 7,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 0,
+        "text": "Male,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 1,
+        "text": "3333(48.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 2,
+        "text": "1202(62.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 3,
+        "text": "749(52.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 4,
+        "text": "788(44.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 5,
+        "text": "594(34.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 7,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 0,
+        "text": "BMI,mean\u00b1SD",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 1,
+        "text": "30.0\u00b16.9",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 2,
+        "text": "30.3\u00b16.7",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 3,
+        "text": "30.1\u00b16.8",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 4,
+        "text": "29.8\u00b16.9",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 5,
+        "text": "29.7\u00b17.2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 6,
+        "text": ".015",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 7,
+        "text": ".002",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 0,
+        "text": "Educationlevel,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 6,
+        "text": ".046",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 7,
+        "text": ".414",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 0,
+        "text": "<Highschool",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 1,
+        "text": "849(12.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 2,
+        "text": "220(11.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 3,
+        "text": "182(12.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 4,
+        "text": "248(13.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 5,
+        "text": "199(11.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 0,
+        "text": "Highschool",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 1,
+        "text": "2364(34.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 2,
+        "text": "706(36.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 3,
+        "text": "467(33.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 4,
+        "text": "618(34.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 5,
+        "text": "573(33.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 0,
+        "text": ">Highschool",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 1,
+        "text": "3640(53.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 2,
+        "text": "1002(52.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 3,
+        "text": "765(54.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 4,
+        "text": "921(51.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 5,
+        "text": "952(55.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 0,
+        "text": "Race,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 7,
+        "text": ".284",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 0,
+        "text": "Non-HispanicWhite",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 1,
+        "text": "2442(35.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 2,
+        "text": "646(33.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 3,
+        "text": "492(34.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 4,
+        "text": "618(34.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 5,
+        "text": "686(39.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 0,
+        "text": "Hispanic/Mexican",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 1,
+        "text": "1822(26.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 2,
+        "text": "553(28.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 3,
+        "text": "379(26.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 4,
+        "text": "476(26.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 5,
+        "text": "414(24.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 0,
+        "text": "Non-HispanicBlack",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 1,
+        "text": "1491(21.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 2,
+        "text": "480(24.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 3,
+        "text": "302(21.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 4,
+        "text": "352(19.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 5,
+        "text": "357(20.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 0,
+        "text": "Other",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 1,
+        "text": "1111(16.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 2,
+        "text": "252(13.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 3,
+        "text": "245(17.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 4,
+        "text": "346(19.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 5,
+        "text": "268(15.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 0,
+        "text": "Familypoverty-incomeratio,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 6,
+        "text": ".510",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 7,
+        "text": ".574",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 0,
+        "text": "<1.0",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 1,
+        "text": "1144(18.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 2,
+        "text": "325(18.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 3,
+        "text": "234(18.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 4,
+        "text": "282(18.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 5,
+        "text": "303(20.1%1021)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 0,
+        "text": "1-4.99",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 1,
+        "text": "3781(62.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 2,
+        "text": "1087(63.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 3,
+        "text": "762(61.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 4,
+        "text": "994(63.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 5,
+        "text": "938(62.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 0,
+        "text": "\u22655",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 1,
+        "text": "1118(18.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 2,
+        "text": "307(17.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 3,
+        "text": "250(20.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 4,
+        "text": "295(18.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 5,
+        "text": "266(17.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 0,
+        "text": "Smoking,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 6,
+        "text": ".439",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 7,
+        "text": ".085",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 0,
+        "text": "Non-smoker",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 1,
+        "text": "3744(54.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 2,
+        "text": "1021(52.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 3,
+        "text": "762(53.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 4,
+        "text": "1015(56.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 5,
+        "text": "946(54.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 0,
+        "text": "Ex-smoker",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 1,
+        "text": "1950(28.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 2,
+        "text": "564(29.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 3,
+        "text": "406(28.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 4,
+        "text": "491(27.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 5,
+        "text": "489(28.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 0,
+        "text": "Current-smoker",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 1,
+        "text": "1165(17.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 2,
+        "text": "344(17.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 3,
+        "text": "247(17.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 4,
+        "text": "286(16.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 5,
+        "text": "288(16.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 0,
+        "text": "BMI=bodymassindex,SD=standarddeviation.",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 8,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      }
+    ],
+    "extraction_backend": "pdfplumber",
+    "metadata": {
+      "is_rectangular": true,
+      "layout_source": "text_positions",
+      "signals": {
+        "caption_match": true,
+        "first_column_text_ratio": 0.8696,
+        "later_column_numeric_ratio": 0.9727,
+        "rectangular": true
+      },
+      "bbox": [
+        51.02353459999995,
+        60.231700000000046,
+        556.16763742,
+        333.8440792
+      ],
+      "candidate_score": 1.0
+    }
+  },
+  {
+    "table_id": "cobaltpaper-p3-t1",
+    "source_pdf": "testpapers/cobaltpaper.pdf",
+    "page_num": 3,
+    "title": "Table2",
+    "caption": "Table2 Clinicalcharacteristicsbyquintilebloodcobaltconcentrationcategoriesamongtheparticipants.",
+    "n_rows": 38,
+    "n_cols": 8,
+    "cells": [
+      {
+        "row_idx": 0,
+        "col_idx": 0,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 1,
+        "text": "Q1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 2,
+        "text": "Q2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 3,
+        "text": "Q3",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 4,
+        "text": "Q4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 0,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 0,
+        "text": "Cobaltquartiles(mg/l) All",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 1,
+        "text": "(cid:1)0.12",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 2,
+        "text": "0.13-0.14",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 3,
+        "text": "0.15-0.18",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 4,
+        "text": "\u22650.19",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 5,
+        "text": "Pvalue",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 6,
+        "text": "Pfortrend",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 1,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 0,
+        "text": "Number 6866",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 1,
+        "text": "1931",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 2,
+        "text": "1418",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 3,
+        "text": "1792",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 4,
+        "text": "1725",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 2,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 0,
+        "text": "SBP(mmHg),mean\u00b1SD 131.0\u00b119.7",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 1,
+        "text": "129.4\u00b118.1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 2,
+        "text": "131.2\u00b119.0",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 3,
+        "text": "132.1\u00b120.2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 4,
+        "text": "131.3\u00b121.3",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 6,
+        "text": ".002",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 3,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 0,
+        "text": "DBP(mmHg),mean\u00b1SD 72.3\u00b112.1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 1,
+        "text": "73.0\u00b111.8",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 2,
+        "text": "73.1\u00b112.1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 3,
+        "text": "72.3\u00b112.1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 4,
+        "text": "70.7\u00b112.2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 4,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 0,
+        "text": "TC(mg/dl),mean\u00b1SD 192.8\u00b142.4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 1,
+        "text": "194.2\u00b142.2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 2,
+        "text": "195.2\u00b141.4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 3,
+        "text": "194.6\u00b142.5",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 4,
+        "text": "187.3.3\u00b143.0",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 5,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 0,
+        "text": "LDL-C(mg/dl),mean\u00b1SD 110.2\u00b137.0",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 1,
+        "text": "113.5\u00b136.4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 2,
+        "text": "112.5\u00b135.8",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 3,
+        "text": "111.0\u00b137.1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 4,
+        "text": "104.2\u00b137.9",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 6,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 0,
+        "text": "HDL-C(mg/dl),mean\u00b1SD 54.2\u00b117.2",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 1,
+        "text": "51.8\u00b116.1",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 2,
+        "text": "53.2\u00b116.8",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 3,
+        "text": "54.7\u00b117.4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 4,
+        "text": "57.1\u00b117.8",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 7,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 0,
+        "text": "TGs(mg/dl),mean\u00b1SD 142.07\u00b1111.0",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 1,
+        "text": "137.9\u00b193.4",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 2,
+        "text": "148.6\u00b1129.7",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 3,
+        "text": "150.2\u00b1108.3",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 4,
+        "text": "131.5\u00b1111.5",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 6,
+        "text": ".219",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 8,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 0,
+        "text": "Hypertension,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 9,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 0,
+        "text": "Yes 3871(57.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 1,
+        "text": "1024(53.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 2,
+        "text": "789(56.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 3,
+        "text": "1055(60.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 4,
+        "text": "1003(59.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 10,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 0,
+        "text": "No 2868(42.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 1,
+        "text": "877(46.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 2,
+        "text": "607(43.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 3,
+        "text": "698(39.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 4,
+        "text": "686(40.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 11,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 0,
+        "text": "Diabetes,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 5,
+        "text": ".270",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 6,
+        "text": ".135",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 12,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 0,
+        "text": "Yes 2263(33.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 1,
+        "text": "667(34.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 2,
+        "text": "468(33.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 3,
+        "text": "565(31.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 4,
+        "text": "563(32.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 13,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 0,
+        "text": "No 4602(67.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 1,
+        "text": "1264(65.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 2,
+        "text": "950(67.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 3,
+        "text": "1227(68.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 4,
+        "text": "1161(67.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 14,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 0,
+        "text": "ElevatedTC,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 15,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 0,
+        "text": "Yes 2770(40.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 1,
+        "text": "802(41.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 2,
+        "text": "630(44.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 3,
+        "text": "743(41.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 4,
+        "text": "595(34.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 16,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 0,
+        "text": "No 4093(59.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 1,
+        "text": "1129(58.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 2,
+        "text": "786(55.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 3,
+        "text": "1048(58.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 4,
+        "text": "1130(65.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 17,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 0,
+        "text": "ElevatedLDL-C,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 6,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 18,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 0,
+        "text": "Yes 1315(27.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 1,
+        "text": "335(29.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 2,
+        "text": "315(30.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 3,
+        "text": "386(27.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 4,
+        "text": "279(22.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 19,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 0,
+        "text": "No 3531(72.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 1,
+        "text": "818(70.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 2,
+        "text": "710(69.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 3,
+        "text": "1014(72.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 4,
+        "text": "989(78.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 20,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 0,
+        "text": "LowHDL-C,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 5,
+        "text": ".095",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 6,
+        "text": ".020",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 21,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 0,
+        "text": "Yes 2056(30.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 1,
+        "text": "602(31.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 2,
+        "text": "440(31.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 3,
+        "text": "536(29.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 4,
+        "text": "478(27.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 22,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 0,
+        "text": "No 4807(70.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 1,
+        "text": "1329(68.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 2,
+        "text": "976(68.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 3,
+        "text": "1255(70.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 4,
+        "text": "1247(72.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 23,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 0,
+        "text": "ElevatedTGs,n(%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 5,
+        "text": "<.001",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 6,
+        "text": ".018",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 24,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 0,
+        "text": "Yes 1591(32.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 1,
+        "text": "371(31.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 2,
+        "text": "363(34.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 3,
+        "text": "522(36.2%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 4,
+        "text": "335(26.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 25,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 0,
+        "text": "No 3376(68.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 1,
+        "text": "811(68.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 2,
+        "text": "694(65.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 3,
+        "text": "919(63.8%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 4,
+        "text": "952(74.0%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 26,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 0,
+        "text": "Antihypertensivedrugs",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 5,
+        "text": ".021",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 6,
+        "text": ".034",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 27,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 0,
+        "text": "Yes 2771(40.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 1,
+        "text": "732(37.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 2,
+        "text": "571(40.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 3,
+        "text": "769(42.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 4,
+        "text": "699(40.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 28,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 0,
+        "text": "No 4095(59.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 1,
+        "text": "1199(62.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 2,
+        "text": "847(59.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 3,
+        "text": "1023(57.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 4,
+        "text": "1026(59.5%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 29,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 0,
+        "text": "Hypoglycemicdrugs",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 5,
+        "text": ".366",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 6,
+        "text": ".137",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 30,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 0,
+        "text": "Yes 1187(17.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 1,
+        "text": "345(17.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 2,
+        "text": "261(18.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 3,
+        "text": "298(16.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 4,
+        "text": "283(16.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 31,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 0,
+        "text": "No 5679(82.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 1,
+        "text": "1586(82.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 2,
+        "text": "1157(81.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 3,
+        "text": "1494(83.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 4,
+        "text": "1442(83.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 32,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 0,
+        "text": "Lipidloweringdrugs",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 5,
+        "text": ".035",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 6,
+        "text": ".024",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 33,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 0,
+        "text": "Yes 2037(29.7%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 1,
+        "text": "523(27.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 2,
+        "text": "438(30.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 3,
+        "text": "549(30.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 4,
+        "text": "527(30.6%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 34,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 0,
+        "text": "No 4829(70.3%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 1,
+        "text": "1408(72.9%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 2,
+        "text": "980(69.1%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 3,
+        "text": "1243(69.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 4,
+        "text": "1198(69.4%)",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 35,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 0,
+        "text": "DBP=diastolicbloodpressure,HDL-C=high-densitylipoproteincholesterol,LDL-C=low-densitylipoproteincholesterol,SBP=systolicbloodpressure,SD=standarddeviation,TC=totalcholesterol.",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 2,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 36,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 0,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 1,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 2,
+        "text": "3",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 3,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 4,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 5,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 6,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      },
+      {
+        "row_idx": 37,
+        "col_idx": 7,
+        "text": "",
+        "page_num": 3,
+        "bbox": null,
+        "extractor_name": "pdfplumber",
+        "confidence": 1.0
+      }
+    ],
+    "extraction_backend": "pdfplumber",
+    "metadata": {
+      "is_rectangular": true,
+      "layout_source": "text_positions",
+      "signals": {
+        "caption_match": true,
+        "first_column_text_ratio": 1.0,
+        "later_column_numeric_ratio": 0.9858,
+        "rectangular": true
+      },
+      "bbox": [
+        51.02194055999996,
+        364.3891,
+        556.16604338,
+        754.69861548
+      ],
+      "candidate_score": 1.0
+    }
+  }
+]

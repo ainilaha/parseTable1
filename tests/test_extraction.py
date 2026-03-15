@@ -52,10 +52,12 @@ class FakePage:
         text: str,
         tables: list[FakeTable],
         cropped_text: str | None = None,
+        words: list[dict[str, object]] | None = None,
     ) -> None:
         self._text = text
         self._tables = tables
         self._cropped_text = cropped_text or text
+        self._words = words or []
 
     def extract_text(self) -> str:
         """Return page text."""
@@ -68,6 +70,10 @@ class FakePage:
     def crop(self, _: tuple[float, float, float, float]) -> FakeCroppedPage:
         """Return a cropped page region."""
         return FakeCroppedPage(self._cropped_text)
+
+    def extract_words(self, **_: object) -> list[dict[str, object]]:
+        """Return positioned words for text-layout fallback extraction."""
+        return self._words
 
 
 class FakePDF:
@@ -190,3 +196,47 @@ def test_cli_extract_outputs_json(tmp_path, monkeypatch, capsys) -> None:
     assert exit_code == 0
     assert payload[0]["page_num"] == 1
     assert payload[0]["cells"][0]["text"] == "Variable"
+
+
+def test_text_layout_fallback_detects_unruled_table(tmp_path, monkeypatch) -> None:
+    """The detector should reconstruct a table from positioned words when no grid is found."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    words = [
+        {"text": "Table1", "x0": 50.0, "x1": 90.0, "top": 60.0, "bottom": 68.0},
+        {"text": "Baselinecharacteristics", "x0": 50.0, "x1": 220.0, "top": 72.0, "bottom": 80.0},
+        {"text": "Q1", "x0": 240.0, "x1": 250.0, "top": 86.0, "bottom": 94.0},
+        {"text": "Q2", "x0": 300.0, "x1": 310.0, "top": 86.0, "bottom": 94.0},
+        {"text": "Variable", "x0": 50.0, "x1": 110.0, "top": 96.0, "bottom": 104.0},
+        {"text": "All", "x0": 180.0, "x1": 195.0, "top": 96.0, "bottom": 104.0},
+        {"text": "0.12", "x0": 240.0, "x1": 260.0, "top": 96.0, "bottom": 104.0},
+        {"text": "0.13-0.14", "x0": 300.0, "x1": 340.0, "top": 96.0, "bottom": 104.0},
+        {"text": "Age", "x0": 50.0, "x1": 70.0, "top": 110.0, "bottom": 118.0},
+        {"text": "52.1", "x0": 180.0, "x1": 200.0, "top": 110.0, "bottom": 118.0},
+        {"text": "49.8", "x0": 240.0, "x1": 260.0, "top": 110.0, "bottom": 118.0},
+        {"text": "53.7", "x0": 300.0, "x1": 320.0, "top": 110.0, "bottom": 118.0},
+    ]
+    fake_pdf = FakePDF(
+        pages=[
+            FakePage(
+                text="Table1\nBaselinecharacteristics\nQ1 Q2",
+                cropped_text="Table1\nBaselinecharacteristics",
+                tables=[],
+                words=words,
+            )
+        ]
+    )
+    _install_fake_pdfplumber(monkeypatch, fake_pdf)
+
+    extractor = PDFPlumberExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    tables = extractor.extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].title == "Table1"
+    assert tables[0].caption == "Table1 Baselinecharacteristics"
+    assert tables[0].n_rows == 3
+    assert tables[0].n_cols == 4
+    cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}
+    assert cell_map[(0, 1)] == "Q1"
+    assert cell_map[(0, 2)] == "Q2"
+    assert tables[0].metadata["layout_source"] == "text_positions"

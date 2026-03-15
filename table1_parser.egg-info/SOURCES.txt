@@ -10,6 +10,19 @@ table1_parser.egg-info/dependency_links.txt
 table1_parser.egg-info/entry_points.txt
 table1_parser.egg-info/requires.txt
 table1_parser.egg-info/top_level.txt
+table1_parser/extract/__init__.py
+table1_parser/extract/base.py
+table1_parser/extract/pdf_loader.py
+table1_parser/extract/pdfplumber_extractor.py
+table1_parser/extract/table_detector.py
+table1_parser/extract/table_selector.py
+table1_parser/normalize/__init__.py
+table1_parser/normalize/cleaner.py
+table1_parser/normalize/header_detector.py
+table1_parser/normalize/interpretation_view.py
+table1_parser/normalize/pipeline.py
+table1_parser/normalize/row_signature.py
+table1_parser/normalize/text_normalizer.py
 table1_parser/schemas/__init__.py
 table1_parser/schemas/extracted_table.py
 table1_parser/schemas/llm_contracts.py
@@ -17,4 +30,6 @@ table1_parser/schemas/normalized_table.py
 table1_parser/schemas/parsed_table.py
 tests/test_cli.py
 tests/test_config.py
+tests/test_extraction.py
+tests/test_normalization.py
 tests/test_schemas.py

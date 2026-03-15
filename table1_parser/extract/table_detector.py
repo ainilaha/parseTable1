@@ -9,8 +9,11 @@ from pydantic import BaseModel, Field
 
 
 TABLE_1_PATTERN = re.compile(r"\btable\s*1\b", re.IGNORECASE)
+TABLE_CAPTION_PATTERN = re.compile(r"\btable\s*\d+\b", re.IGNORECASE)
 NUMERIC_TOKEN_PATTERN = re.compile(r"\d")
 ALPHA_TOKEN_PATTERN = re.compile(r"[A-Za-z]")
+LINE_MERGE_TOLERANCE = 4.0
+COLUMN_CLUSTER_TOLERANCE = 18.0
 
 
 class DetectedTableCandidate(BaseModel):
@@ -110,6 +113,161 @@ def _safe_extract_text(page: Any) -> str:
         return ""
 
 
+def _safe_extract_words(page: Any) -> list[dict[str, Any]]:
+    """Extract positioned words while tolerating backend quirks."""
+    if not hasattr(page, "extract_words"):
+        return []
+    try:
+        return page.extract_words(use_text_flow=True, keep_blank_chars=False) or []
+    except Exception:
+        return []
+
+
+def _group_words_into_lines(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Group positioned words into reading-order lines."""
+    if not words:
+        return []
+
+    sorted_words = sorted(words, key=lambda word: (float(word["top"]), float(word["x0"])))
+    lines: list[dict[str, Any]] = []
+
+    for word in sorted_words:
+        top = float(word["top"])
+        bottom = float(word["bottom"])
+        if not lines or abs(top - float(lines[-1]["top"])) > LINE_MERGE_TOLERANCE:
+            lines.append({"top": top, "bottom": bottom, "words": [word]})
+            continue
+
+        lines[-1]["words"].append(word)
+        lines[-1]["bottom"] = max(float(lines[-1]["bottom"]), bottom)
+
+    for line in lines:
+        line["words"] = sorted(line["words"], key=lambda word: float(word["x0"]))
+        line["text"] = " ".join(str(word["text"]).strip() for word in line["words"]).strip()
+    return lines
+
+
+def _cluster_positions(positions: list[float], tolerance: float) -> list[float]:
+    """Cluster x positions into stable column anchors."""
+    if not positions:
+        return []
+
+    clusters: list[list[float]] = [[positions[0]]]
+    for position in positions[1:]:
+        if abs(position - clusters[-1][-1]) <= tolerance:
+            clusters[-1].append(position)
+        else:
+            clusters.append([position])
+    return [sum(cluster) / len(cluster) for cluster in clusters]
+
+
+def _is_numeric_like(text: str) -> bool:
+    """Return whether a token looks numeric enough to be a table value."""
+    return bool(NUMERIC_TOKEN_PATTERN.search(text))
+
+
+def _build_rows_from_line_segment(lines: list[dict[str, Any]]) -> list[list[str]]:
+    """Convert a line segment into a row-major grid using x-position anchors."""
+    numeric_positions = sorted(
+        float(word["x0"])
+        for line in lines
+        for word in line["words"]
+        if _is_numeric_like(str(word["text"]))
+    )
+    numeric_anchors = _cluster_positions(numeric_positions, COLUMN_CLUSTER_TOLERANCE)
+
+    if not numeric_anchors:
+        return []
+
+    boundaries = [
+        (numeric_anchors[index] + numeric_anchors[index + 1]) / 2.0
+        for index in range(len(numeric_anchors) - 1)
+    ]
+
+    rows: list[list[str]] = []
+    for line in lines:
+        row_cells = [""] * (len(numeric_anchors) + 1)
+        for word in line["words"]:
+            text = str(word["text"]).strip()
+            x0 = float(word["x0"])
+            column_index = 0
+            while column_index < len(boundaries) and x0 >= boundaries[column_index]:
+                column_index += 1
+            if row_cells[column_index]:
+                row_cells[column_index] = f"{row_cells[column_index]} {text}"
+            else:
+                row_cells[column_index] = text
+        rows.append([cell.strip() for cell in row_cells])
+    return _normalize_rows(rows)
+
+
+def _segment_lines_into_tables(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Split page lines into table-like segments starting at caption lines."""
+    caption_indices = [
+        index for index, line in enumerate(lines) if TABLE_CAPTION_PATTERN.search(str(line["text"]))
+    ]
+    if not caption_indices:
+        return []
+
+    segments: list[dict[str, Any]] = []
+    for segment_index, start_index in enumerate(caption_indices):
+        end_index = caption_indices[segment_index + 1] if segment_index + 1 < len(caption_indices) else len(lines)
+        segment_lines = lines[start_index:end_index]
+        if len(segment_lines) < 3:
+            continue
+
+        caption_parts = [str(segment_lines[0]["text"]).strip()]
+        content_start = 1
+        if len(segment_lines) > 1:
+            second_line_text = str(segment_lines[1]["text"]).strip()
+            second_line_word_count = len(segment_lines[1]["words"])
+            if second_line_text and second_line_word_count <= 2 and not _is_numeric_like(second_line_text):
+                caption_parts.append(second_line_text)
+                content_start = 2
+
+        content_lines = segment_lines[content_start:]
+        rows = _build_rows_from_line_segment(content_lines)
+        if not rows:
+            continue
+
+        left = min(float(word["x0"]) for line in content_lines for word in line["words"])
+        right = max(float(word["x1"]) for line in content_lines for word in line["words"])
+        top = float(segment_lines[0]["top"])
+        bottom = max(float(line["bottom"]) for line in content_lines)
+        segments.append(
+            {
+                "caption": "\n".join(caption_parts),
+                "rows": rows,
+                "bbox": (left, top, right, bottom),
+            }
+        )
+    return segments
+
+
+def _fallback_text_layout_candidates(page: Any, page_num: int, page_text: str) -> list[DetectedTableCandidate]:
+    """Build fallback candidates from word positions when grid detection fails."""
+    lines = _group_words_into_lines(_safe_extract_words(page))
+    segments = _segment_lines_into_tables(lines)
+    candidates: list[DetectedTableCandidate] = []
+
+    for table_index, segment in enumerate(segments):
+        raw_rows = segment["rows"]
+        candidate = DetectedTableCandidate(
+            page_num=page_num,
+            table_index=table_index,
+            bbox=segment["bbox"],
+            raw_rows=raw_rows,
+            caption=segment["caption"],
+            page_text=page_text,
+            metadata={
+                "is_rectangular": _is_rectangular(raw_rows),
+                "layout_source": "text_positions",
+            },
+        )
+        candidates.append(score_candidate(candidate))
+    return candidates
+
+
 def score_candidate(candidate: DetectedTableCandidate) -> DetectedTableCandidate:
     """Assign a Table 1 likelihood score to an extracted table candidate."""
     first_column = [row[0] for row in candidate.raw_rows if row]
@@ -183,7 +341,10 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
                 metadata={"is_rectangular": _is_rectangular(raw_rows)},
             )
             candidates.append(score_candidate(candidate))
-    return candidates
+    if candidates:
+        return candidates
+
+    return _fallback_text_layout_candidates(page=page, page_num=page_num, page_text=page_text)
 
 
 def detect_table_candidates(pdf: Any) -> list[DetectedTableCandidate]:

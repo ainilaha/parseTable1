@@ -1,5 +1,6 @@
 pydantic<3,>=2
 pydantic-settings<3,>=2
+pdfplumber<1,>=0.11
 
 [dev]
 pytest<9,>=8

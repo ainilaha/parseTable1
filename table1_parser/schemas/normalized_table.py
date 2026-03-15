@@ -28,8 +28,8 @@ class RowView(BaseModel):
     nonempty_cell_count: int = Field(ge=0)
     numeric_cell_count: int = Field(ge=0)
     has_trailing_values: bool
-    indent_level: int = Field(ge=0)
-    likely_role: RowRole = "unknown"
+    indent_level: int | None = Field(default=None, ge=0)
+    likely_role: RowRole | None = None
 
 
 class NormalizedTable(BaseModel):
