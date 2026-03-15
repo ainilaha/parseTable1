@@ -35,9 +35,16 @@ This is a **research-oriented parsing system**, not just a PDF table extractor.
 # Architectural Principles
 
 Agents must follow these design principles.
-Do not vendor third-party libraries.
-Do not generate large output files.
-Do not commit sample outputs, logs, or PDFs unless explicitly requested.
+Never skip phases.
+Extraction, normalization, heuristics, LLM interpretation, and validation must remain separate modules.
+
+## Repository size limits
+
+Agents must not vendor third-party libraries.
+External dependencies must be installed via pyproject.toml.
+Do not generate large files (>1 MB) in the repository.
+Do not generate large example datasets or logs.
+Target repository size after Phase 2 should be < 5,000 lines of code.
 
 ### Separation of responsibilities
 
