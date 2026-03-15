@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: table1-parser
+Version: 0.1.0
+Summary: Research-oriented parser for Table 1 epidemiology tables.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic<3,>=2
+Requires-Dist: pydantic-settings<3,>=2
+Provides-Extra: dev
+Requires-Dist: pytest<9,>=8; extra == "dev"
+
+# parseTable1
