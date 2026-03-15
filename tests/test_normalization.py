@@ -19,6 +19,9 @@ def test_clean_text_collapses_whitespace_and_normalizes_dashes() -> None:
 def test_label_normalization_preserves_alphanumerics() -> None:
     """Normalized label text should retain letters and digits while dropping punctuation."""
     assert normalize_label_text("High school") == "High school"
+    assert normalize_label_text("Family poverty-income ratio") == "Family poverty income ratio"
+    assert normalize_label_text("Non-hispanic white") == "Non hispanic white"
+    assert normalize_label_text("Hispanic/Mexican") == "Hispanic Mexican"
     assert normalize_label_text("More than high school") == "More than high school"
     assert normalize_label_text("Age, years") == "Age years"
     assert normalize_label_text("BMI, kg/m2") == "BMI kg m2"
@@ -28,6 +31,9 @@ def test_label_normalization_preserves_alphanumerics() -> None:
 def test_alpha_only_conversion_drops_symbols_and_digits() -> None:
     """Alpha-only text should preserve only alphabetic tokens."""
     assert alpha_only_text("High school") == "High school"
+    assert alpha_only_text("Family poverty-income ratio") == "Family poverty income ratio"
+    assert alpha_only_text("Non-hispanic white") == "Non hispanic white"
+    assert alpha_only_text("Hispanic/Mexican") == "Hispanic Mexican"
     assert alpha_only_text("More than high school") == "More than high school"
     assert alpha_only_text("Age, years") == "Age years"
     assert alpha_only_text("<HS") == "HS"
@@ -59,6 +65,20 @@ def test_row_signature_generation_keeps_raw_and_normalized_forms() -> None:
     assert row_view.has_trailing_values is True
     assert row_view.indent_level == 2
     assert row_view.likely_role is None
+
+
+def test_row_signature_prefers_bbox_indent_when_available() -> None:
+    """Bounding-box indentation should override literal leading spaces when present."""
+    row_view = build_row_signature(
+        1,
+        ["  Hispanic/Mexican", "34"],
+        first_cell_bbox=(18.0, 0.0, 30.0, 10.0),
+        base_x0=10.0,
+    )
+
+    assert row_view.first_cell_raw == "  Hispanic/Mexican"
+    assert row_view.first_cell_normalized == "Hispanic Mexican"
+    assert row_view.indent_level == 8
 
 
 def test_row_signature_preserves_raw_text_word_boundaries() -> None:

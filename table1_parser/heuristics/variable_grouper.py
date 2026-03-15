@@ -5,7 +5,46 @@ from __future__ import annotations
 from table1_parser.heuristics.level_detector import detect_level_row_indices
 from table1_parser.heuristics.models import RowClassification, VariableBlock
 from table1_parser.heuristics.row_classifier import classify_rows
-from table1_parser.schemas import NormalizedTable
+from table1_parser.schemas import NormalizedTable, RowView
+
+
+def _count_more_indented_levels(
+    parent_row_view: RowView,
+    level_rows: list[int],
+    row_views_by_idx: dict[int, RowView],
+) -> int:
+    """Count attached levels that are visibly more indented than the parent."""
+    return sum(
+        1
+        for row_idx in level_rows
+        if row_views_by_idx[row_idx].indent_level is not None
+        and parent_row_view.indent_level is not None
+        and row_views_by_idx[row_idx].indent_level > parent_row_view.indent_level
+    )
+
+
+def _promote_categorical_parents(
+    row_order: list[int],
+    classifications_by_row: dict[int, str],
+    row_views_by_idx: dict[int, RowView],
+) -> dict[int, str]:
+    """Promote misclassified continuous rows that clearly own multiple levels."""
+    adjusted = dict(classifications_by_row)
+    for row_idx in row_order:
+        if adjusted.get(row_idx) != "continuous_variable_row":
+            continue
+        row_view = row_views_by_idx[row_idx]
+        if sum(bool(cell) for cell in row_view.raw_cells[1:]) > 1:
+            continue
+        level_rows = detect_level_row_indices(
+            parent_row_idx=row_idx,
+            row_order=row_order,
+            classifications_by_row=adjusted,
+        )
+        more_indented_levels = _count_more_indented_levels(row_view, level_rows, row_views_by_idx)
+        if len(level_rows) >= 2 and (more_indented_levels >= 1 or sum(bool(cell) for cell in row_view.raw_cells[1:]) <= 1):
+            adjusted[row_idx] = "variable_header"
+    return adjusted
 
 
 def group_variable_blocks(
@@ -19,16 +58,21 @@ def group_variable_blocks(
     }
     row_views_by_idx = {row_view.row_idx: row_view for row_view in table.row_views}
     row_order = [row_view.row_idx for row_view in table.row_views]
+    classifications_by_row = _promote_categorical_parents(
+        row_order,
+        classifications_by_row,
+        row_views_by_idx,
+    )
     blocks: list[VariableBlock] = []
     consumed_rows: set[int] = set()
 
-    for classification in classifications:
-        row_idx = classification.row_idx
+    for row_idx in row_order:
         if row_idx in consumed_rows:
             continue
 
         row_view = row_views_by_idx[row_idx]
-        if classification.classification == "continuous_variable_row":
+        classification = classifications_by_row.get(row_idx, "unknown")
+        if classification == "continuous_variable_row":
             blocks.append(
                 VariableBlock(
                     variable_row_idx=row_idx,
@@ -42,7 +86,7 @@ def group_variable_blocks(
             consumed_rows.add(row_idx)
             continue
 
-        if classification.classification == "variable_header":
+        if classification == "variable_header":
             level_rows = detect_level_row_indices(
                 parent_row_idx=row_idx,
                 row_order=row_order,

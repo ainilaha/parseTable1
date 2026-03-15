@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from table1_parser.heuristics.column_role_detector import detect_column_roles
 from table1_parser.heuristics.level_detector import is_common_level_label, is_likely_level_row
+from table1_parser.heuristics.models import RowClassification
 from table1_parser.heuristics.row_classifier import classify_rows
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.heuristics.variable_grouper import group_variable_blocks
@@ -14,6 +15,7 @@ def _build_row(
     row_idx: int,
     first_cell_raw: str,
     trailing: list[str],
+    indent_level: int | None = None,
 ) -> RowView:
     """Create a compact RowView for heuristic tests."""
     raw_cells = [first_cell_raw, *trailing]
@@ -26,7 +28,7 @@ def _build_row(
         nonempty_cell_count=sum(bool(cell) for cell in raw_cells),
         numeric_cell_count=sum(any(char.isdigit() for char in cell) for cell in raw_cells),
         has_trailing_values=any(bool(cell) for cell in trailing),
-        indent_level=None,
+        indent_level=indent_level,
         likely_role=None,
     )
 
@@ -85,10 +87,297 @@ def test_row_classifier_keeps_negative_cases_unknown_or_section_header() -> None
     assert classifications[2] == "unknown"
 
 
+def test_row_with_n_percent_and_multiple_children_is_variable_header() -> None:
+    """Categorical parent cues plus child levels should force a parent classification."""
+    table = NormalizedTable(
+        table_id="tbl-n-percent",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Education, n (%)", ["0.120"]),
+            _build_row(2, "<HS", ["50 (10.2)", "33 (12.1)"]),
+            _build_row(3, "High school", ["200 (40.8)", "101 (37.1)"]),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+
+
+def test_mean_sd_row_without_children_stays_continuous() -> None:
+    """Rows with continuous cues and no child levels should remain one-line continuous variables."""
+    table = NormalizedTable(
+        table_id="tbl-mean-sd",
+        header_rows=[0],
+        body_rows=[1],
+        row_views=[_build_row(1, "Age, mean (SD)", ["52.3 (14.1)", "51.2 (13.0)"])],
+        n_rows=2,
+        n_cols=3,
+    )
+
+    classifications = classify_rows(table)
+
+    assert classifications[0].classification == "continuous_variable_row"
+    blocks = group_variable_blocks(table, classifications=classifications)
+    assert len(blocks) == 1
+    assert blocks[0].variable_kind == "continuous"
+    assert blocks[0].level_row_indices == []
+
+
+def test_parent_with_multiple_plausible_levels_is_upgraded_to_variable_header() -> None:
+    """Forward lookahead should upgrade a would-be continuous parent into a categorical header."""
+    table = NormalizedTable(
+        table_id="tbl-lookahead",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Family poverty-income ratio", ["0.210"]),
+            _build_row(2, "<1.30", ["100 (20.0)", "50 (18.0)"]),
+            _build_row(3, ">=1.30", ["400 (80.0)", "230 (82.0)"]),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+
+
+def test_level_rows_do_not_attach_to_continuous_variables() -> None:
+    """Grouping must keep explicit continuous rows as one-row blocks."""
+    table = NormalizedTable(
+        table_id="tbl-group-upgrade",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "BMI, mean ± SD", ["28.4 (6.1)", "27.0 (5.8)"]),
+            _build_row(2, "Male", ["412 (48.2)", "201 (44.0)"]),
+            _build_row(3, "Female", ["442 (51.8)", "255 (56.0)"]),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert len(blocks) == 1
+    assert classifications[1] == "continuous_variable_row"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert blocks[0].variable_label == "BMI, mean ± SD"
+    assert blocks[0].variable_kind == "continuous"
+    assert blocks[0].level_row_indices == []
+
+
+def test_unknown_rows_do_not_force_impossible_grouping() -> None:
+    """Unknown rows may be skipped without attaching levels to a continuous variable."""
+    table = NormalizedTable(
+        table_id="tbl-unknown-layout",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Age, years", ["52.3 (14.1)", "51.2 (13.0)"]),
+            _build_row(2, "Random note", ["see text"]),
+            _build_row(3, "Male", ["412 (48.2)", "201 (44.0)"]),
+            _build_row(4, "Female", ["442 (51.8)", "255 (56.0)"]),
+        ],
+        n_rows=5,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "continuous_variable_row"
+    assert classifications[2] == "unknown"
+    assert len(blocks) == 1
+    assert blocks[0].variable_label == "Age, years"
+    assert blocks[0].level_row_indices == []
+
+
+def test_number_with_integer_values_forms_one_row_variable_block() -> None:
+    """Short scalar-count rows should behave as one-row variables."""
+    table = NormalizedTable(
+        table_id="tbl-number",
+        header_rows=[0],
+        body_rows=[1],
+        row_views=[_build_row(1, "Number", ["123", "456"])],
+        n_rows=2,
+        n_cols=3,
+    )
+
+    classifications = classify_rows(table)
+    blocks = group_variable_blocks(table, classifications=classifications)
+
+    assert classifications[0].classification == "continuous_variable_row"
+    assert len(blocks) == 1
+    assert blocks[0].variable_label == "Number"
+    assert blocks[0].variable_kind == "continuous"
+    assert blocks[0].level_row_indices == []
+
+
+def test_hispanic_mexican_is_level_row_after_categorical_parent() -> None:
+    """Slash-separated category labels should still be treated as level rows."""
+    table = NormalizedTable(
+        table_id="tbl-slash-level",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Ethnicity", []),
+            _build_row(2, "White", ["220 (55.0)", "110 (56.0)"]),
+            _build_row(3, "Hispanic/Mexican", ["120 (30.0)", "55 (28.0)"]),
+            _build_row(4, "Other", ["40 (10.0)", "18 (9.0)"]),
+        ],
+        n_rows=5,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "level_row"
+
+
+def test_indented_row_gets_stronger_level_signal_below_parent() -> None:
+    """Indentation should strengthen, but not require, level-row interpretation."""
+    table = NormalizedTable(
+        table_id="tbl-indent-level",
+        header_rows=[0],
+        body_rows=[1, 2],
+        row_views=[
+            _build_row(1, "Ethnicity", [], indent_level=0),
+            _build_row(2, "Hispanic/Mexican", ["120 (30.0)", "55 (28.0)"], indent_level=4),
+        ],
+        n_rows=3,
+        n_cols=3,
+    )
+
+    classifications = classify_rows(table)
+
+    assert classifications[0].classification == "variable_header"
+    assert classifications[1].classification == "level_row"
+    assert classifications[1].confidence > 0.9
+
+
+def test_more_indented_following_rows_strengthen_parent_as_variable_header() -> None:
+    """Multiple more-indented child rows should support a categorical parent interpretation."""
+    table = NormalizedTable(
+        table_id="tbl-indent-parent",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Group", [], indent_level=0),
+            _build_row(2, "Unknown", ["10 (5.0)", "3 (2.0)"], indent_level=3),
+            _build_row(3, "Other", ["20 (10.0)", "6 (4.0)"], indent_level=3),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item for item in classify_rows(table)}
+
+    assert classifications[1].classification == "variable_header"
+    assert classifications[1].confidence >= 0.88
+    assert classifications[2].classification == "level_row"
+    assert classifications[3].classification == "level_row"
+
+
+def test_continuous_row_is_not_misclassified_from_whitespace_noise() -> None:
+    """Indent-like whitespace alone should not override a one-row continuous summary."""
+    table = NormalizedTable(
+        table_id="tbl-indent-noise",
+        header_rows=[0],
+        body_rows=[1],
+        row_views=[_build_row(1, "  Age, mean (SD)", ["52.3 (14.1)", "51.2 (13.0)"], indent_level=2)],
+        n_rows=2,
+        n_cols=3,
+    )
+
+    classifications = classify_rows(table)
+
+    assert classifications[0].classification == "continuous_variable_row"
+
+
+def test_existing_logic_still_works_without_indentation() -> None:
+    """Absent indentation metadata should fall back to the existing structural logic."""
+    table = NormalizedTable(
+        table_id="tbl-no-indent",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Ethnicity", []),
+            _build_row(2, "White", ["220 (55.0)", "110 (56.0)"]),
+            _build_row(3, "Hispanic/Mexican", ["120 (30.0)", "55 (28.0)"]),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+
+
+def test_indented_slash_label_can_be_level_row() -> None:
+    """Indentation should support slash-containing labels without making it mandatory."""
+    table = NormalizedTable(
+        table_id="tbl-indent-slash",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Race", [], indent_level=0),
+            _build_row(2, "White", ["220 (55.0)", "110 (56.0)"], indent_level=2),
+            _build_row(3, "Hispanic/Mexican", ["120 (30.0)", "55 (28.0)"], indent_level=2),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+
+
+def test_other_is_plausible_level_row_after_categorical_parent() -> None:
+    """Generic residual category labels should be recognized under a categorical parent."""
+    table = NormalizedTable(
+        table_id="tbl-other-level",
+        header_rows=[0],
+        body_rows=[1, 2],
+        row_views=[
+            _build_row(1, "Group", []),
+            _build_row(2, "Other", ["25 (12.5)", "10 (8.0)"]),
+        ],
+        n_rows=3,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+
+
 def test_level_detector_required_examples() -> None:
     """Common categorical levels should be detected conservatively."""
     assert is_common_level_label("Male") is True
     assert is_common_level_label("Female") is True
+    assert is_common_level_label("Other") is True
     assert is_common_level_label("<HS") is True
     assert is_common_level_label("High school") is True
     assert is_common_level_label(">High school") is True
@@ -99,7 +388,8 @@ def test_level_detector_required_examples() -> None:
     assert is_common_level_label("BMI, kg/m2") is False
 
     assert is_likely_level_row(_build_row(1, "Current", ["50 (20.1)"])) is True
-    assert is_likely_level_row(_build_row(2, "Age, years", ["52.3 (14.1)"])) is False
+    assert is_likely_level_row(_build_row(2, "Hispanic/Mexican", ["30 (15.0)"])) is True
+    assert is_likely_level_row(_build_row(3, "Age, years", ["52.3 (14.1)"])) is False
 
 
 def test_variable_grouper_builds_continuous_and_categorical_blocks() -> None:
@@ -130,6 +420,34 @@ def test_variable_grouper_builds_continuous_and_categorical_blocks() -> None:
     assert blocks[1].level_row_indices == [3, 4]
     assert blocks[2].variable_label == "Smoking status"
     assert blocks[2].level_row_indices == [6, 7]
+
+
+def test_categorical_parent_with_empty_trailing_cells_groups_levels() -> None:
+    """A sparse parent row should own contiguous level rows below it."""
+    table = NormalizedTable(
+        table_id="tbl-parent-empty",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Education level", []),
+            _build_row(2, "<HS", ["50 (10.2)", "33 (12.1)"]),
+            _build_row(3, "High school", ["200 (40.8)", "101 (37.1)"]),
+            _build_row(4, ">High school", ["240 (49.0)", "139 (50.8)"]),
+        ],
+        n_rows=5,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "level_row"
+    assert len(blocks) == 1
+    assert blocks[0].variable_kind == "categorical"
+    assert blocks[0].level_row_indices == [2, 3, 4]
 
 
 def test_column_role_detector_handles_required_headers() -> None:

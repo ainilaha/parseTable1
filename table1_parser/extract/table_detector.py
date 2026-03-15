@@ -14,6 +14,7 @@ NUMERIC_TOKEN_PATTERN = re.compile(r"\d")
 ALPHA_TOKEN_PATTERN = re.compile(r"[A-Za-z]")
 LINE_MERGE_TOLERANCE = 4.0
 COLUMN_CLUSTER_TOLERANCE = 18.0
+COLLAPSED_LABEL_PATTERN = re.compile(r"[a-z][A-Z]|[A-Za-z-]{10,}")
 
 
 class DetectedTableCandidate(BaseModel):
@@ -123,6 +124,64 @@ def _safe_extract_words(page: Any) -> list[dict[str, Any]]:
         return []
 
 
+def _safe_extract_chars(page: Any) -> list[dict[str, Any]]:
+    """Extract positioned chars while tolerating backend quirks."""
+    try:
+        return getattr(page, "chars", []) or []
+    except Exception:
+        return []
+
+
+def _vertical_overlap(top_a: float, bottom_a: float, top_b: float, bottom_b: float) -> bool:
+    """Return whether two vertical spans overlap meaningfully."""
+    return min(bottom_a, bottom_b) >= max(top_a, top_b)
+
+
+def _restore_text_from_chars(chars: list[dict[str, Any]]) -> str:
+    """Rebuild text from positioned chars, re-inserting spaces for visible glyph gaps."""
+    if not chars:
+        return ""
+
+    ordered_chars = sorted(chars, key=lambda char: float(char["x0"]))
+    pieces: list[str] = []
+    previous_char: dict[str, Any] | None = None
+
+    for char in ordered_chars:
+        text = str(char.get("text", ""))
+        if not text:
+            continue
+        if previous_char is not None:
+            gap = float(char["x0"]) - float(previous_char["x1"])
+            previous_width = float(previous_char["x1"]) - float(previous_char["x0"])
+            current_width = float(char["x1"]) - float(char["x0"])
+            gap_threshold = max(1.5, min(previous_width, current_width) * 0.6)
+            if gap > gap_threshold:
+                pieces.append(" ")
+        pieces.append(text)
+        previous_char = char
+    return "".join(pieces).strip()
+
+
+def _restore_word_text(word: dict[str, Any], page_chars: list[dict[str, Any]]) -> str:
+    """Restore intra-word spaces from underlying chars when possible."""
+    if not page_chars:
+        return str(word["text"]).strip()
+
+    x0 = float(word["x0"])
+    x1 = float(word["x1"])
+    top = float(word["top"])
+    bottom = float(word["bottom"])
+    chars_in_word = [
+        char
+        for char in page_chars
+        if float(char["x0"]) >= x0 - 0.5
+        and float(char["x1"]) <= x1 + 0.5
+        and _vertical_overlap(top, bottom, float(char["top"]), float(char["bottom"]))
+    ]
+    restored = _restore_text_from_chars(chars_in_word)
+    return restored or str(word["text"]).strip()
+
+
 def _group_words_into_lines(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Group positioned words into reading-order lines."""
     if not words:
@@ -166,7 +225,15 @@ def _is_numeric_like(text: str) -> bool:
     return bool(NUMERIC_TOKEN_PATTERN.search(text))
 
 
-def _build_rows_from_line_segment(lines: list[dict[str, Any]]) -> list[list[str]]:
+def _looks_like_collapsed_label_token(text: str) -> bool:
+    """Return whether a first-column token likely lost visible word boundaries."""
+    return bool(COLLAPSED_LABEL_PATTERN.search(text))
+
+
+def _build_rows_from_line_segment(
+    lines: list[dict[str, Any]],
+    page_chars: list[dict[str, Any]] | None = None,
+) -> list[list[str]]:
     """Convert a line segment into a row-major grid using x-position anchors."""
     numeric_positions = sorted(
         float(word["x0"])
@@ -193,6 +260,14 @@ def _build_rows_from_line_segment(lines: list[dict[str, Any]]) -> list[list[str]
             column_index = 0
             while column_index < len(boundaries) and x0 >= boundaries[column_index]:
                 column_index += 1
+            if (
+                column_index == 0
+                and " " not in text
+                and ALPHA_TOKEN_PATTERN.search(text)
+                and not NUMERIC_TOKEN_PATTERN.search(text)
+                and _looks_like_collapsed_label_token(text)
+            ):
+                text = _restore_word_text(word, page_chars or [])
             if row_cells[column_index]:
                 row_cells[column_index] = f"{row_cells[column_index]} {text}"
             else:
@@ -238,6 +313,7 @@ def _segment_lines_into_tables(lines: list[dict[str, Any]]) -> list[dict[str, An
             {
                 "caption": "\n".join(caption_parts),
                 "rows": rows,
+                "content_lines": content_lines,
                 "bbox": (left, top, right, bottom),
             }
         )
@@ -247,11 +323,12 @@ def _segment_lines_into_tables(lines: list[dict[str, Any]]) -> list[dict[str, An
 def _fallback_text_layout_candidates(page: Any, page_num: int, page_text: str) -> list[DetectedTableCandidate]:
     """Build fallback candidates from word positions when grid detection fails."""
     lines = _group_words_into_lines(_safe_extract_words(page))
+    page_chars = _safe_extract_chars(page)
     segments = _segment_lines_into_tables(lines)
     candidates: list[DetectedTableCandidate] = []
 
     for table_index, segment in enumerate(segments):
-        raw_rows = segment["rows"]
+        raw_rows = _build_rows_from_line_segment(segment["content_lines"], page_chars=page_chars)
         candidate = DetectedTableCandidate(
             page_num=page_num,
             table_index=table_index,

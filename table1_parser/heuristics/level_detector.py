@@ -10,6 +10,7 @@ from table1_parser.schemas import RowView
 COMMON_LEVEL_LABELS = {
     "male",
     "female",
+    "other",
     "yes",
     "no",
     "never",
@@ -23,8 +24,8 @@ COMMON_LEVEL_LABELS = {
     "less than high school",
     "hs",
 }
-VARIABLE_LIKE_PATTERN = re.compile(
-    r"\b(age|bmi|education|status|race|sex|smoking|income|pressure|cholesterol)\b",
+SUMMARY_LABEL_PATTERN = re.compile(
+    r"\b(mean|sd|median|iqr|range|min|max)\b",
     re.IGNORECASE,
 )
 
@@ -48,14 +49,13 @@ def is_likely_level_row(row_view: RowView) -> bool:
     return (
         bool(label)
         and row_view.has_trailing_values
-        and not bool(VARIABLE_LIKE_PATTERN.search(label))
+        and not bool(SUMMARY_LABEL_PATTERN.search(row_view.first_cell_raw))
         and (
             is_common_level_label(label)
             or (
-                word_count <= 3
-                and len(label) <= 24
+                word_count <= 4
+                and len(label) <= 32
                 and "," not in row_view.first_cell_raw
-                and "/" not in row_view.first_cell_raw
                 and row_view.numeric_cell_count > 0
             )
         )
@@ -79,8 +79,8 @@ def detect_level_row_indices(
         if classification == "level_row":
             level_rows.append(row_idx)
             continue
-        if classification == "unknown" and level_rows:
-            break
+        if classification == "unknown":
+            continue
         if classification != "level_row":
             break
     return level_rows

@@ -13,15 +13,28 @@ NUMERIC_PATTERN = re.compile(r"\d")
 LEADING_SPACE_PATTERN = re.compile(r"^(\s+)")
 
 
-def infer_indent_level(first_cell_raw: str) -> int | None:
-    """Infer indent level from leading whitespace when preserved by extraction."""
+def infer_indent_level(
+    first_cell_raw: str,
+    first_cell_bbox: tuple[float, float, float, float] | None = None,
+    base_x0: float | None = None,
+) -> int | None:
+    """Infer indent level from bbox position when available, else leading whitespace."""
+    if first_cell_bbox is not None and base_x0 is not None:
+        x0 = first_cell_bbox[0]
+        if x0 >= base_x0:
+            return int(round(x0 - base_x0))
     match = LEADING_SPACE_PATTERN.match(first_cell_raw)
     if not match:
         return None
     return len(match.group(1))
 
 
-def build_row_signature(row_idx: int, raw_cells: list[str]) -> RowView:
+def build_row_signature(
+    row_idx: int,
+    raw_cells: list[str],
+    first_cell_bbox: tuple[float, float, float, float] | None = None,
+    base_x0: float | None = None,
+) -> RowView:
     """Build a normalized row signature from raw cell content."""
     cleaned_cells = [clean_text(cell) for cell in raw_cells]
     first_cell_raw = raw_cells[0] if raw_cells else ""
@@ -39,6 +52,10 @@ def build_row_signature(row_idx: int, raw_cells: list[str]) -> RowView:
         nonempty_cell_count=nonempty_cell_count,
         numeric_cell_count=numeric_cell_count,
         has_trailing_values=has_trailing_values,
-        indent_level=infer_indent_level(first_cell_raw),
+        indent_level=infer_indent_level(
+            first_cell_raw,
+            first_cell_bbox=first_cell_bbox,
+            base_x0=base_x0,
+        ),
         likely_role=None,
     )
