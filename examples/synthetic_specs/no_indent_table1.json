@@ -1,0 +1,30 @@
+{
+  "document_title": "Synthetic RA baseline document",
+  "paragraphs": [
+    "This version keeps categorical levels flush-left."
+  ],
+  "table_caption": "Table 1. Baseline characteristics by RA status",
+  "columns": ["Characteristics", "Overall", "Non-RA", "RA", "p-value"],
+  "rows": [
+    {
+      "type": "continuous",
+      "label": "n",
+      "values": ["5490", "5171", "319", ""]
+    },
+    {
+      "type": "categorical",
+      "label": "Education level",
+      "levels": [
+        {"label": "<HS", "values": ["521 (9.5)", "490 (9.5)", "31 (9.7)", ""]},
+        {"label": "High school", "values": ["2120 (38.6)", "2001 (38.7)", "119 (37.3)", ""]},
+        {"label": ">High school", "values": ["2849 (51.9)", "2680 (51.8)", "169 (53.0)", "0.81"]}
+      ]
+    }
+  ],
+  "layout": {
+    "indent_levels": false,
+    "horizontal_rules": true,
+    "parent_rows_with_values": false,
+    "wrapped_labels": false
+  }
+}

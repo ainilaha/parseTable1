@@ -1,0 +1,35 @@
+{
+  "document_title": "Synthetic inline-category document",
+  "paragraphs": [
+    "This fixture mixes scalar count rows and inline category summaries."
+  ],
+  "table_caption": "Table 1. Inline category stress test",
+  "columns": ["Characteristics", "Overall", "Non-RA", "RA", "p-value"],
+  "rows": [
+    {
+      "type": "continuous",
+      "label": "N",
+      "values": ["5490", "5171", "319", ""]
+    },
+    {
+      "type": "categorical_inline",
+      "label": "Gender = Female (%)",
+      "values": ["2793 (50.9)", "2603 (50.3)", "190 (59.6)", "0.002"]
+    },
+    {
+      "type": "section_header",
+      "label": "Demographic characteristics"
+    },
+    {
+      "type": "continuous",
+      "label": "Family poverty-income ratio, mean ± SD",
+      "values": ["2.3 (1.1)", "2.4 (1.1)", "1.8 (1.0)", "0.01"]
+    }
+  ],
+  "layout": {
+    "indent_levels": true,
+    "horizontal_rules": false,
+    "parent_rows_with_values": false,
+    "wrapped_labels": true
+  }
+}

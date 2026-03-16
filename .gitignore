@@ -20,3 +20,4 @@ dist/
 debug_*.txt
 test-results/
 trace_output/
+outputs/

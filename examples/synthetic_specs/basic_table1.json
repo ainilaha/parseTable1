@@ -1,0 +1,31 @@
+{
+  "document_title": "Synthetic RA baseline document",
+  "subtitle": "Benchmark fixture",
+  "paragraphs": [
+    "This synthetic document is generated for parser benchmarking."
+  ],
+  "table_caption": "Table 1. Baseline characteristics by RA status",
+  "columns": ["Characteristics", "Overall", "Non-RA", "RA", "p-value"],
+  "rows": [
+    {
+      "type": "continuous",
+      "label": "Age (yrs)",
+      "values": ["53.2 (12.1)", "52.7 (11.9)", "61.0 (13.0)", "<0.001"]
+    },
+    {
+      "type": "categorical",
+      "label": "Sex",
+      "levels": [
+        {"label": "Male", "values": ["2697 (49.1)", "2568 (49.7)", "129 (40.4)", ""]},
+        {"label": "Female", "values": ["2793 (50.9)", "2603 (50.3)", "190 (59.6)", "0.002"]}
+      ]
+    }
+  ],
+  "footnotes": ["Values are synthetic and for parser testing only."],
+  "layout": {
+    "indent_levels": true,
+    "horizontal_rules": true,
+    "parent_rows_with_values": false,
+    "wrapped_labels": false
+  }
+}
