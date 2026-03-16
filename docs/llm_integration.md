@@ -1,10 +1,20 @@
 # LLM Integration
 
-Phase 5 can call a real LLM provider through the provider abstraction in `table1_parser.llm`.
+Phase 5 refines the deterministic heuristic interpretation through the provider abstraction in `table1_parser.llm`.
+
+## Current provider path
+
+The repository currently supports:
+
+- `LLM_PROVIDER=openai`
+
+The configured client uses:
+
+- environment variables for credentials and model selection
+- the official OpenAI Python SDK
+- structured output parsed into the existing Phase 5 Pydantic models
 
 ## Environment variables
-
-Set these before using the configured client:
 
 ```bash
 export LLM_PROVIDER=openai
@@ -16,7 +26,7 @@ export LLM_MAX_RETRIES=2
 export LLM_DEBUG=false
 ```
 
-Required when `LLM_PROVIDER=openai`:
+Required for OpenAI:
 
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
@@ -31,21 +41,36 @@ from table1_parser.normalize import normalize_extracted_table
 extractor = build_extractor("pdfplumber")
 table = extractor.extract("testpapers/cobaltpaper.pdf")[0]
 normalized = normalize_extracted_table(table)
-result = parse_table_with_configured_llm(normalized, trace_dir="trace_output/cobaltpaper/table_0")
+result = parse_table_with_configured_llm(
+    normalized,
+    trace_dir="trace_output/cobaltpaper/table_0",
+)
 ```
 
-## Debug trace script
+## Trace script
 
-The trace script can call the configured provider directly:
+Live provider call:
 
 ```bash
 python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --use-configured-client
 ```
 
-That writes:
+Explicit canned response:
+
+```bash
+python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --response-json path/to/response.json
+```
+
+If neither a configured client nor `--response-json` is provided, the script now fails loudly instead of silently faking an LLM run.
+
+## Trace artifacts
+
+The Phase 5 trace path writes:
 
 - `heuristics.json`
 - `llm_input.json`
 - `llm_output.json`
 - `final_interpretation.json`
 - `diff.txt`
+
+These are intended for inspection and should not be committed. `trace_output/` is ignored by Git.
