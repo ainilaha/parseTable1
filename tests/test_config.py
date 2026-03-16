@@ -16,7 +16,7 @@ def test_settings_defaults(monkeypatch) -> None:
     monkeypatch.delenv("LLM_DEBUG", raising=False)
     settings = Settings()
 
-    assert settings.default_extraction_backend == "pdfplumber"
+    assert settings.default_extraction_backend == "pymupdf4llm"
     assert settings.use_ocr_fallback is False
     assert settings.llm_enabled is False
     assert settings.llm_provider == "openai"

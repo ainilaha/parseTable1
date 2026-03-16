@@ -1,0 +1,233 @@
+# PDF Extraction Strategy
+
+## Purpose
+
+This document defines the PDF extraction strategy for the Table 1 parsing project.
+
+The key design principle is:
+
+**Choose the primary extracted representation based on downstream use.**
+
+This project has three different downstream needs:
+- document text for RAG
+- tables for structured parsing
+- figures for visual extraction
+
+These should not be forced into one representation.
+
+---
+
+# Primary Design Decision
+
+## Narrative document text
+Primary representation: **Markdown**
+
+Use Markdown for:
+- titles
+- abstract
+- section text
+- chunking
+- embedding
+- RAG
+
+Reason:
+Markdown is well suited for narrative text and preserves useful section/document structure for retrieval workflows.
+
+## Tables
+Primary representation: **JSON / structured table objects**
+
+Use JSON for:
+- row / column structure
+- cells
+- headers
+- variable rows
+- categorical levels
+- diagnostics
+- validation
+
+Reason:
+Tables are structured objects. JSON preserves structure far better than Markdown for parsing workflows.
+
+Markdown may still be generated for table debugging or human inspection, but it is **not** the primary internal representation for tables.
+
+## Figures
+Primary representation: **images**
+- PNG preferred
+- PDF region outputs acceptable if already supported
+
+Reason:
+Figures are visual artifacts and should be handled as images, not reduced to Markdown.
+
+---
+
+# Extractor Choice
+
+The default extractor should be:
+
+**PyMuPDF4LLM**
+
+Keep `pdfplumber` as a fallback extractor.
+
+PyMuPDF4LLM supports:
+- Markdown output
+- JSON output
+- layout-aware extraction
+- image and vector extraction
+- structured output useful for LLM/RAG workflows
+
+---
+
+# Extraction Strategy by Content Type
+
+## 1. Narrative text extraction
+Preferred path:
+
+PDF
+→ `pymupdf4llm.to_markdown(...)`
+→ Markdown narrative output
+→ chunking / embedding / RAG
+
+This is the default for document body extraction.
+
+## 2. Table extraction
+Preferred path:
+
+PDF
+→ structured extraction / JSON
+→ normalization
+→ heuristics
+→ optional LLM table refinement
+→ validation
+
+If PyMuPDF4LLM JSON output is useful for table-sensitive extraction or layout debugging, use it.
+If existing table code already operates on JSON, preserve that architecture.
+
+Do not change the table pipeline to Markdown-first.
+
+## 3. Figure extraction
+Preferred path:
+
+PDF
+→ extracted image / vector region
+→ PNG (preferred)
+→ optional metadata JSON
+
+If the extraction layer supports figure metadata, keep it lightweight.
+
+---
+
+# Extractor Priority Order
+
+Use extractors in this order:
+
+1. **Primary:** PyMuPDF4LLM
+2. **Fallback:** pdfplumber and other existing extractors
+
+Fallback should only be used if:
+- PyMuPDF4LLM fails
+- PyMuPDF4LLM output is unusable for the requested artifact
+- the primary extractor is explicitly disabled by configuration
+
+Do not treat the fallback as co-equal with the primary path.
+
+---
+
+# Content-Type-Aware Output Policy
+
+The extraction layer should expose or preserve different output types depending on what is being extracted.
+
+## Narrative content output
+- Markdown
+
+## Table content output
+- JSON / structured table representation
+
+## Figure content output
+- PNG or equivalent image artifact
+- optional lightweight metadata
+
+This distinction is intentional and should be preserved in code.
+
+---
+
+# Debugging and Diagnostics
+
+Diagnostics should make it clear:
+- which extractor ran
+- whether fallback was used
+- what artifact was produced:
+  - Markdown
+  - JSON
+  - image output
+
+For debugging extraction problems it should be possible to inspect:
+- narrative Markdown
+- table JSON
+- figure artifacts
+- extractor choice
+- fallback status
+
+Do not silently change extraction mode without surfacing it.
+
+---
+
+# Header / Footer Handling
+
+If repeated page headers/footers should be removed, apply that logic primarily to the **narrative Markdown path**.
+
+Do not assume table extraction should be cleaned the same way as narrative text.
+Narrative cleanup and table structure preservation are different concerns.
+
+---
+
+# Implementation Guidance
+
+Keep extraction modular.
+
+Recommended shape:
+- one extraction interface
+- one default PyMuPDF4LLM implementation
+- one or more fallback implementations
+- downstream code depends on extraction interfaces and content-type-specific outputs
+
+Do not spread extractor-specific logic through unrelated parsing modules.
+
+---
+
+# Testing Guidance
+
+Add or maintain tests that confirm:
+
+1. PyMuPDF4LLM is the default extractor
+2. pdfplumber is only used as fallback
+3. narrative extraction produces Markdown
+4. table extraction preserves JSON / structured output
+5. figure extraction produces image artifacts when applicable
+6. diagnostics record extractor choice and output type
+
+Keep fixtures small.
+Do not add large generated artifacts to the repository.
+
+---
+
+# Non-Goals
+
+This strategy does not require:
+- converting tables to Markdown as the primary internal representation
+- converting figures into Markdown
+- replacing all downstream parser logic
+- removing all fallback extractors
+- redesigning the entire project
+
+---
+
+# Summary
+
+The extraction strategy is:
+
+- **PyMuPDF4LLM is the default extractor**
+- **pdfplumber remains as fallback**
+- **Markdown is primary for narrative text**
+- **JSON is primary for tables**
+- **PNG/image artifacts are primary for figures**
+- **the representation is chosen by downstream purpose, not forced globally**

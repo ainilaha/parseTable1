@@ -8,26 +8,69 @@ Requires-Dist: pydantic<3,>=2
 Requires-Dist: pydantic-settings<3,>=2
 Requires-Dist: openai<2,>=1.0
 Requires-Dist: pdfplumber<1,>=0.11
+Requires-Dist: pymupdf4llm<1,>=0.0.20
 Provides-Extra: dev
 Requires-Dist: pytest<9,>=8; extra == "dev"
 
 # parseTable1
 
-Research-oriented tooling for extracting and interpreting Table 1-style epidemiology tables from PDFs.
+Research-oriented tooling for extracting, normalizing, heuristically interpreting, and LLM-refining Table 1-style epidemiology tables from PDFs.
 
-## LLM Configuration
+## Current Components
 
-Phase 5 now supports a real provider-backed LLM client through environment-variable configuration.
+- PDF extraction into `ExtractedTable`
+- normalization into `NormalizedTable`
+- deterministic heuristics for row structure, variable blocks, column roles, and value patterns
+- parse-quality diagnostics
+- Phase 5 LLM refinement with provider-backed OpenAI integration
+- debug scripts for pipeline inspection and LLM tracing
+- a small R helper for human-readable table visualization from JSON
 
-Setup overview:
-
-1. Install dependencies:
+## Install
 
 ```bash
 python3 -m pip install -e '.[dev]'
 ```
 
-2. Set provider configuration:
+## Useful Debug Scripts
+
+Pipeline summary:
+
+```bash
+python3 scripts/debug_pipeline.py testpapers/OPEandRA.pdf
+```
+
+Diagnostics:
+
+```bash
+python3 scripts/debug_quality_report.py testpapers/OPEandRA.pdf
+```
+
+Phase 5 LLM trace with a real configured client:
+
+```bash
+python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --use-configured-client
+```
+
+The trace script writes:
+
+- `heuristics.json`
+- `llm_input.json`
+- `llm_output.json`
+- `final_interpretation.json`
+- `diff.txt`
+
+If you do not want to call a live provider, you must pass an explicit canned response:
+
+```bash
+python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --response-json path/to/response.json
+```
+
+## LLM Configuration
+
+Phase 5 uses environment-variable-based configuration and fails clearly if the provider is not configured.
+
+Minimum OpenAI setup:
 
 ```bash
 export LLM_PROVIDER=openai
@@ -39,10 +82,27 @@ export LLM_MAX_RETRIES=2
 export LLM_DEBUG=false
 ```
 
-3. Run the Phase 5 trace script with the configured client:
+More detail:
+
+- [`docs/llm_integration.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/llm_integration.md)
+- [`docs/llm_setup.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/llm_setup.md)
+
+## R Visualization
+
+The repository includes a small base-R helper for visual inspection of one parser JSON file:
 
 ```bash
-python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --use-configured-client
+Rscript R/visualize_table_from_json.R trace_output/cobaltpaper/table_0/llm_input.json
 ```
 
-More detail is in [`docs/llm_integration.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/llm_integration.md).
+From an interactive R session:
+
+```r
+source("R/visualize_table_from_json.R")
+options(width = 200)
+visualize_table_from_json("trace_output/cobaltpaper/table_0/llm_input.json")
+```
+
+More detail:
+
+- [`docs/r_visualization.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/r_visualization.md)

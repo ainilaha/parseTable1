@@ -55,7 +55,7 @@ except ModuleNotFoundError:
 class Settings(BaseSettings):
     """Runtime configuration for the Table 1 parser."""
 
-    default_extraction_backend: str = Field(default="pdfplumber")
+    default_extraction_backend: str = Field(default="pymupdf4llm")
     use_ocr_fallback: bool = Field(default=False)
     llm_enabled: bool = Field(default=False)
     llm_provider: str = Field(default="openai", validation_alias="LLM_PROVIDER")

@@ -15,6 +15,7 @@ table1_parser/extract/__init__.py
 table1_parser/extract/base.py
 table1_parser/extract/pdf_loader.py
 table1_parser/extract/pdfplumber_extractor.py
+table1_parser/extract/pymupdf4llm_extractor.py
 table1_parser/extract/table_detector.py
 table1_parser/extract/table_selector.py
 table1_parser/heuristics/__init__.py
@@ -41,6 +42,12 @@ table1_parser/schemas/extracted_table.py
 table1_parser/schemas/llm_contracts.py
 table1_parser/schemas/normalized_table.py
 table1_parser/schemas/parsed_table.py
+table1_parser/synthetic/__init__.py
+table1_parser/synthetic/generator.py
+table1_parser/synthetic/html_renderer.py
+table1_parser/synthetic/pdf_renderer.py
+table1_parser/synthetic/spec_models.py
+table1_parser/synthetic/truth_writer.py
 tests/test_cli.py
 tests/test_config.py
 tests/test_diagnostics.py
@@ -51,3 +58,4 @@ tests/test_llm_client.py
 tests/test_llm_trace_script.py
 tests/test_normalization.py
 tests/test_schemas.py
+tests/test_synthetic_generator.py

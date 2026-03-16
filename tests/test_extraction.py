@@ -7,7 +7,9 @@ import sys
 from types import ModuleType
 
 from table1_parser import cli
+from table1_parser.extract import build_extractor
 from table1_parser.extract.pdfplumber_extractor import PDFPlumberExtractor
+from table1_parser.extract.pymupdf4llm_extractor import PyMuPDF4LLMExtractor
 from table1_parser.extract.table_detector import (
     DetectedTableCandidate,
     _build_rows_from_line_segment,
@@ -102,6 +104,16 @@ def _install_fake_pdfplumber(monkeypatch, pdf: FakePDF) -> None:
     monkeypatch.setitem(sys.modules, "pdfplumber", module)
 
 
+def _install_fake_pymupdf4llm(monkeypatch, payload: dict[str, object], *, fail: bool = False) -> None:
+    """Install a minimal fake pymupdf4llm module for a test case."""
+    module = ModuleType("pymupdf4llm")
+    if fail:
+        module.to_json = lambda _: (_ for _ in ()).throw(RuntimeError("primary failed"))
+    else:
+        module.to_json = lambda _: json.dumps(payload)
+    monkeypatch.setitem(sys.modules, "pymupdf4llm", module)
+
+
 def test_score_candidate_prefers_table1_like_layout() -> None:
     """Detection should reward Table 1 captions and text-first layouts."""
     candidate = DetectedTableCandidate(
@@ -121,6 +133,104 @@ def test_score_candidate_prefers_table1_like_layout() -> None:
 
     assert scored.score >= 0.9
     assert scored.metadata["signals"]["caption_match"] is True
+
+
+def test_build_extractor_defaults_to_pymupdf4llm() -> None:
+    extractor = build_extractor()
+
+    assert isinstance(extractor, PyMuPDF4LLMExtractor)
+
+
+def test_pymupdf4llm_extractor_returns_structured_tables(tmp_path, monkeypatch) -> None:
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 8,
+                    "boxes": [
+                        {
+                            "bbox": [100, 100, 420, 116],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 1. Baseline characteristics"}]}],
+                        },
+                        {
+                            "bbox": [120, 124, 486, 200],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [120, 124, 486, 200],
+                                "row_count": 4,
+                                "col_count": 6,
+                                "cells": [
+                                    [[120, 124, 250, 135], [250, 124, 310, 135], [310, 124, 369, 135], [369, 124, 428, 135], [428, 124, 462, 135], [462, 124, 486, 135]],
+                                    [[120, 135, 250, 147], [250, 135, 310, 147], [310, 135, 369, 147], [369, 135, 428, 147], [428, 135, 462, 147], [462, 135, 486, 147]],
+                                    [[120, 147, 250, 157], [250, 147, 310, 157], [310, 147, 369, 157], [369, 147, 428, 157], [428, 147, 462, 157], [462, 147, 486, 157]],
+                                    [[120, 157, 250, 167], [250, 157, 310, 167], [310, 157, 369, 167], [369, 157, 428, 167], [428, 157, 462, 167], [462, 157, 486, 167]],
+                                ],
+                                "extract": [
+                                    ["Characteristics", "Overall", "Non-RA", "RA", "p", "test"],
+                                    ["n", "5490", "5171", "319", "", ""],
+                                    ["Other race", "779 (14.2)", "730 (14.1)", "49 (15.4)", "", ""],
+                                    ["Mexican American", "754 (13.7)", "705 (13.6)", "49 (15.4)", "", ""],
+                                ],
+                                "markdown": "|Characteristics|Overall|Non-RA|RA|p|test|",
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
+    )
+
+    extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    tables = extractor.extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].extraction_backend == "pymupdf4llm"
+    assert tables[0].page_num == 8
+    assert tables[0].title == "Table 1. Baseline characteristics"
+    assert tables[0].metadata["layout_source"] == "pymupdf4llm_json"
+    assert tables[0].metadata["primary_representation"] == "json"
+    assert tables[0].metadata["fallback_used"] is False
+    assert tables[0].metadata["row_bounds"] == [
+        (124.0, 135.0),
+        (135.0, 147.0),
+        (147.0, 157.0),
+        (157.0, 167.0),
+    ]
+    assert tables[0].metadata["horizontal_rules"] == [124.0, 135.0, 147.0, 157.0, 167.0]
+    cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}
+    assert cell_map[(2, 0)] == "Other race"
+    assert cell_map[(3, 0)] == "Mexican American"
+    assert tables[0].cells[0].bbox == (120.0, 124.0, 250.0, 135.0)
+
+
+def test_pymupdf4llm_extractor_falls_back_to_pdfplumber_on_primary_failure(tmp_path, monkeypatch) -> None:
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(monkeypatch, {}, fail=True)
+    fake_pdf = FakePDF(
+        pages=[
+            FakePage(
+                text="Table 1. Baseline characteristics",
+                cropped_text="Table 1. Baseline characteristics",
+                tables=[FakeTable([["Variable", "Overall"], ["Age", "52.1"]])],
+            )
+        ]
+    )
+    _install_fake_pdfplumber(monkeypatch, fake_pdf)
+
+    extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    tables = extractor.extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].extraction_backend == "pdfplumber"
+    assert tables[0].metadata["fallback_used"] is True
+    assert tables[0].metadata["fallback_backend"] == "pdfplumber"
+    assert tables[0].metadata["fallback_reason"] == "primary_error"
+    assert tables[0].metadata["extractor_used"] == "pymupdf4llm"
 
 
 def test_detect_table_candidates_scores_tables_on_a_page() -> None:
