@@ -14,7 +14,7 @@ NUMERIC_TOKEN_PATTERN = re.compile(r"\d")
 ALPHA_TOKEN_PATTERN = re.compile(r"[A-Za-z]")
 LINE_MERGE_TOLERANCE = 4.0
 COLUMN_CLUSTER_TOLERANCE = 18.0
-COLLAPSED_LABEL_PATTERN = re.compile(r"[a-z][A-Z]|[A-Za-z-]{10,}")
+COLLAPSED_LABEL_PATTERN = re.compile(r"[a-z][A-Z]|[A-Za-z-]{8,}")
 
 
 class DetectedTableCandidate(BaseModel):
@@ -132,9 +132,52 @@ def _safe_extract_chars(page: Any) -> list[dict[str, Any]]:
         return []
 
 
+def _safe_page_lines(page: Any) -> list[dict[str, Any]]:
+    """Return raw page line geometry when available."""
+    try:
+        return getattr(page, "lines", []) or []
+    except Exception:
+        return []
+
+
 def _vertical_overlap(top_a: float, bottom_a: float, top_b: float, bottom_b: float) -> bool:
     """Return whether two vertical spans overlap meaningfully."""
     return min(bottom_a, bottom_b) >= max(top_a, top_b)
+
+
+def _detect_horizontal_rules(
+    page: Any,
+    bbox: tuple[float, float, float, float] | None,
+) -> list[float]:
+    """Detect wide horizontal rules spanning most of the candidate table width."""
+    if bbox is None:
+        return []
+
+    left, top, right, bottom = bbox
+    table_width = max(1.0, float(right) - float(left))
+    rule_positions: list[float] = []
+    for line in _safe_page_lines(page):
+        x0 = float(line.get("x0", 0.0))
+        x1 = float(line.get("x1", 0.0))
+        y0 = float(line.get("y0", 0.0))
+        y1 = float(line.get("y1", y0))
+        if abs(y1 - y0) > 1.5:
+            continue
+        if y0 < top - 12.0 or y0 > bottom + 12.0:
+            continue
+        overlap_left = max(float(left), min(x0, x1))
+        overlap_right = min(float(right), max(x0, x1))
+        if overlap_right <= overlap_left:
+            continue
+        if (overlap_right - overlap_left) / table_width < 0.8:
+            continue
+        rule_positions.append(y0)
+
+    deduped: list[float] = []
+    for value in sorted(rule_positions):
+        if not deduped or abs(value - deduped[-1]) > 3.0:
+            deduped.append(value)
+    return deduped
 
 
 def _restore_text_from_chars(chars: list[dict[str, Any]]) -> str:
@@ -155,6 +198,14 @@ def _restore_text_from_chars(chars: list[dict[str, Any]]) -> str:
             previous_width = float(previous_char["x1"]) - float(previous_char["x0"])
             current_width = float(char["x1"]) - float(char["x0"])
             gap_threshold = max(1.5, min(previous_width, current_width) * 0.6)
+            previous_text = str(previous_char.get("text", ""))
+            current_text = str(char.get("text", ""))
+            if (
+                previous_text.isalpha()
+                and current_text.isalpha()
+                and (previous_text.islower() or current_text.isupper())
+            ):
+                gap_threshold = min(gap_threshold, max(1.2, min(previous_width, current_width) * 0.45))
             if gap > gap_threshold:
                 pieces.append(" ")
         pieces.append(text)
@@ -261,7 +312,7 @@ def _build_rows_from_line_segment(
             while column_index < len(boundaries) and x0 >= boundaries[column_index]:
                 column_index += 1
             if (
-                column_index == 0
+                column_index <= 1
                 and " " not in text
                 and ALPHA_TOKEN_PATTERN.search(text)
                 and not NUMERIC_TOKEN_PATTERN.search(text)
@@ -314,6 +365,7 @@ def _segment_lines_into_tables(lines: list[dict[str, Any]]) -> list[dict[str, An
                 "caption": "\n".join(caption_parts),
                 "rows": rows,
                 "content_lines": content_lines,
+                "row_bounds": [(float(line["top"]), float(line["bottom"])) for line in content_lines],
                 "bbox": (left, top, right, bottom),
             }
         )
@@ -329,16 +381,19 @@ def _fallback_text_layout_candidates(page: Any, page_num: int, page_text: str) -
 
     for table_index, segment in enumerate(segments):
         raw_rows = _build_rows_from_line_segment(segment["content_lines"], page_chars=page_chars)
+        bbox = segment["bbox"]
         candidate = DetectedTableCandidate(
             page_num=page_num,
             table_index=table_index,
-            bbox=segment["bbox"],
+            bbox=bbox,
             raw_rows=raw_rows,
             caption=segment["caption"],
             page_text=page_text,
             metadata={
                 "is_rectangular": _is_rectangular(raw_rows),
                 "layout_source": "text_positions",
+                "row_bounds": segment["row_bounds"],
+                "horizontal_rules": _detect_horizontal_rules(page, bbox),
             },
         )
         candidates.append(score_candidate(candidate))
@@ -400,7 +455,10 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
                 raw_rows=normalized_rows,
                 caption=_extract_nearby_caption(page, getattr(table, "bbox", None)),
                 page_text=page_text,
-                metadata={"is_rectangular": _is_rectangular(raw_rows)},
+                metadata={
+                    "is_rectangular": _is_rectangular(raw_rows),
+                    "horizontal_rules": _detect_horizontal_rules(page, getattr(table, "bbox", None)),
+                },
             )
             candidates.append(score_candidate(candidate))
         return candidates

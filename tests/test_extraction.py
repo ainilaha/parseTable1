@@ -10,6 +10,8 @@ from table1_parser import cli
 from table1_parser.extract.pdfplumber_extractor import PDFPlumberExtractor
 from table1_parser.extract.table_detector import (
     DetectedTableCandidate,
+    _build_rows_from_line_segment,
+    _restore_word_text,
     detect_table_candidates,
     score_candidate,
 )
@@ -310,3 +312,131 @@ def test_text_layout_fallback_restores_spaces_in_collapsed_first_column_tokens(
 
     cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}
     assert cell_map[(1, 0)].startswith("Family poverty-income ratio, n (%)")
+
+
+def test_text_layout_fallback_restores_short_collapsed_category_labels() -> None:
+    """Fallback extraction should restore spaces in shorter first-column category labels."""
+    other_word = {"text": "Otherrace", "x0": 50.0, "x1": 96.0, "top": 98.0, "bottom": 106.0}
+    mexican_word = {"text": "MexicanAmerican", "x0": 50.0, "x1": 122.0, "top": 112.0, "bottom": 120.0}
+    chars = [
+        {"text": "O", "x0": 50.0, "x1": 54.0, "top": 98.0, "bottom": 106.0},
+        {"text": "t", "x0": 54.0, "x1": 56.0, "top": 98.0, "bottom": 106.0},
+        {"text": "h", "x0": 56.0, "x1": 60.0, "top": 98.0, "bottom": 106.0},
+        {"text": "e", "x0": 60.0, "x1": 64.0, "top": 98.0, "bottom": 106.0},
+        {"text": "r", "x0": 64.0, "x1": 67.0, "top": 98.0, "bottom": 106.0},
+        {"text": "r", "x0": 70.0, "x1": 73.0, "top": 98.0, "bottom": 106.0},
+        {"text": "a", "x0": 73.0, "x1": 77.0, "top": 98.0, "bottom": 106.0},
+        {"text": "c", "x0": 77.0, "x1": 81.0, "top": 98.0, "bottom": 106.0},
+        {"text": "e", "x0": 81.0, "x1": 85.0, "top": 98.0, "bottom": 106.0},
+        {"text": "M", "x0": 50.0, "x1": 56.0, "top": 112.0, "bottom": 120.0},
+        {"text": "e", "x0": 56.0, "x1": 60.0, "top": 112.0, "bottom": 120.0},
+        {"text": "x", "x0": 60.0, "x1": 64.0, "top": 112.0, "bottom": 120.0},
+        {"text": "i", "x0": 64.0, "x1": 66.0, "top": 112.0, "bottom": 120.0},
+        {"text": "c", "x0": 66.0, "x1": 70.0, "top": 112.0, "bottom": 120.0},
+        {"text": "a", "x0": 70.0, "x1": 74.0, "top": 112.0, "bottom": 120.0},
+        {"text": "n", "x0": 74.0, "x1": 78.0, "top": 112.0, "bottom": 120.0},
+        {"text": "A", "x0": 81.0, "x1": 87.0, "top": 112.0, "bottom": 120.0},
+        {"text": "m", "x0": 87.0, "x1": 93.0, "top": 112.0, "bottom": 120.0},
+        {"text": "e", "x0": 93.0, "x1": 97.0, "top": 112.0, "bottom": 120.0},
+        {"text": "r", "x0": 97.0, "x1": 100.0, "top": 112.0, "bottom": 120.0},
+        {"text": "i", "x0": 100.0, "x1": 102.0, "top": 112.0, "bottom": 120.0},
+        {"text": "c", "x0": 102.0, "x1": 106.0, "top": 112.0, "bottom": 120.0},
+        {"text": "a", "x0": 106.0, "x1": 110.0, "top": 112.0, "bottom": 120.0},
+        {"text": "n", "x0": 110.0, "x1": 114.0, "top": 112.0, "bottom": 120.0},
+    ]
+    lines = [
+        {
+            "top": 84.0,
+            "bottom": 92.0,
+            "words": [
+                {"text": "Race", "x0": 50.0, "x1": 90.0, "top": 84.0, "bottom": 92.0},
+                {"text": "Overall", "x0": 220.0, "x1": 260.0, "top": 84.0, "bottom": 92.0},
+            ],
+        },
+        {
+            "top": 98.0,
+            "bottom": 106.0,
+            "words": [
+                other_word,
+                {"text": "10", "x0": 220.0, "x1": 232.0, "top": 98.0, "bottom": 106.0},
+            ],
+        },
+        {
+            "top": 112.0,
+            "bottom": 120.0,
+            "words": [
+                mexican_word,
+                {"text": "12", "x0": 220.0, "x1": 232.0, "top": 112.0, "bottom": 120.0},
+            ],
+        },
+    ]
+
+    rows = _build_rows_from_line_segment(lines, page_chars=chars)
+
+    assert _restore_word_text(other_word, chars) == "Other race"
+    assert _restore_word_text(mexican_word, chars) == "Mexican American"
+    assert rows[1][0].startswith("Other race")
+    assert rows[2][0].startswith("Mexican American")
+
+
+def test_text_layout_fallback_restores_shifted_label_column_tokens() -> None:
+    """Collapsed labels should still be restored when extraction shifts the row-label column right by one."""
+    lines = [
+        {
+            "top": 84.0,
+            "bottom": 92.0,
+            "words": [
+                {"text": "Overall", "x0": 220.0, "x1": 260.0, "top": 84.0, "bottom": 92.0},
+                {"text": "Cases", "x0": 300.0, "x1": 340.0, "top": 84.0, "bottom": 92.0},
+            ],
+        },
+        {
+            "top": 98.0,
+            "bottom": 106.0,
+            "words": [
+                {"text": "Otherrace", "x0": 132.0, "x1": 178.0, "top": 98.0, "bottom": 106.0},
+                {"text": "10", "x0": 220.0, "x1": 232.0, "top": 98.0, "bottom": 106.0},
+                {"text": "11", "x0": 300.0, "x1": 312.0, "top": 98.0, "bottom": 106.0},
+            ],
+        },
+        {
+            "top": 112.0,
+            "bottom": 120.0,
+            "words": [
+                {"text": "MexicanAmerican", "x0": 132.0, "x1": 204.0, "top": 112.0, "bottom": 120.0},
+                {"text": "12", "x0": 220.0, "x1": 232.0, "top": 112.0, "bottom": 120.0},
+                {"text": "13", "x0": 300.0, "x1": 312.0, "top": 112.0, "bottom": 120.0},
+            ],
+        },
+    ]
+    chars = [
+        {"text": "O", "x0": 132.0, "x1": 136.0, "top": 98.0, "bottom": 106.0},
+        {"text": "t", "x0": 136.0, "x1": 138.0, "top": 98.0, "bottom": 106.0},
+        {"text": "h", "x0": 138.0, "x1": 142.0, "top": 98.0, "bottom": 106.0},
+        {"text": "e", "x0": 142.0, "x1": 146.0, "top": 98.0, "bottom": 106.0},
+        {"text": "r", "x0": 146.0, "x1": 149.0, "top": 98.0, "bottom": 106.0},
+        {"text": "r", "x0": 152.0, "x1": 155.0, "top": 98.0, "bottom": 106.0},
+        {"text": "a", "x0": 155.0, "x1": 159.0, "top": 98.0, "bottom": 106.0},
+        {"text": "c", "x0": 159.0, "x1": 163.0, "top": 98.0, "bottom": 106.0},
+        {"text": "e", "x0": 163.0, "x1": 167.0, "top": 98.0, "bottom": 106.0},
+        {"text": "M", "x0": 132.0, "x1": 138.0, "top": 112.0, "bottom": 120.0},
+        {"text": "e", "x0": 138.0, "x1": 142.0, "top": 112.0, "bottom": 120.0},
+        {"text": "x", "x0": 142.0, "x1": 146.0, "top": 112.0, "bottom": 120.0},
+        {"text": "i", "x0": 146.0, "x1": 148.0, "top": 112.0, "bottom": 120.0},
+        {"text": "c", "x0": 148.0, "x1": 152.0, "top": 112.0, "bottom": 120.0},
+        {"text": "a", "x0": 152.0, "x1": 156.0, "top": 112.0, "bottom": 120.0},
+        {"text": "n", "x0": 156.0, "x1": 160.0, "top": 112.0, "bottom": 120.0},
+        {"text": "A", "x0": 163.0, "x1": 169.0, "top": 112.0, "bottom": 120.0},
+        {"text": "m", "x0": 169.0, "x1": 175.0, "top": 112.0, "bottom": 120.0},
+        {"text": "e", "x0": 175.0, "x1": 179.0, "top": 112.0, "bottom": 120.0},
+        {"text": "r", "x0": 179.0, "x1": 182.0, "top": 112.0, "bottom": 120.0},
+        {"text": "i", "x0": 182.0, "x1": 184.0, "top": 112.0, "bottom": 120.0},
+        {"text": "c", "x0": 184.0, "x1": 188.0, "top": 112.0, "bottom": 120.0},
+        {"text": "a", "x0": 188.0, "x1": 192.0, "top": 112.0, "bottom": 120.0},
+        {"text": "n", "x0": 192.0, "x1": 196.0, "top": 112.0, "bottom": 120.0},
+    ]
+
+    rows = _build_rows_from_line_segment(lines, page_chars=chars)
+
+    assert rows[1][0].startswith("Other race")
+    assert rows[2][0].startswith("Mexican American")

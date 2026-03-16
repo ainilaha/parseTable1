@@ -5,7 +5,7 @@ from __future__ import annotations
 from table1_parser.heuristics.column_role_detector import detect_column_roles
 from table1_parser.heuristics.level_detector import is_common_level_label, is_likely_level_row
 from table1_parser.heuristics.models import RowClassification
-from table1_parser.heuristics.row_classifier import classify_rows
+from table1_parser.heuristics.row_classifier import classify_rows, indentation_is_informative
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.heuristics.variable_grouper import group_variable_blocks
 from table1_parser.schemas import NormalizedTable, RowView
@@ -225,6 +225,116 @@ def test_number_with_integer_values_forms_one_row_variable_block() -> None:
     assert blocks[0].level_row_indices == []
 
 
+def test_lowercase_n_with_integer_values_forms_one_row_variable_block() -> None:
+    """A compact n row with integer counts should be treated as a one-row variable."""
+    table = NormalizedTable(
+        table_id="tbl-lower-n",
+        header_rows=[0],
+        body_rows=[1],
+        row_views=[_build_row(1, "n", ["5490", "5171", "319"])],
+        n_rows=2,
+        n_cols=4,
+    )
+
+    classifications = classify_rows(table)
+    blocks = group_variable_blocks(table, classifications=classifications)
+
+    assert classifications[0].classification == "continuous_variable_row"
+    assert len(blocks) == 1
+    assert blocks[0].variable_label == "n"
+    assert blocks[0].level_row_indices == []
+
+
+def test_uppercase_n_with_integer_values_forms_one_row_variable_block() -> None:
+    """An uppercase N row with integer counts should be treated as a one-row variable."""
+    table = NormalizedTable(
+        table_id="tbl-upper-n",
+        header_rows=[0],
+        body_rows=[1],
+        row_views=[_build_row(1, "N", ["5490", "5171", "319"])],
+        n_rows=2,
+        n_cols=4,
+    )
+
+    classifications = classify_rows(table)
+    blocks = group_variable_blocks(table, classifications=classifications)
+
+    assert classifications[0].classification == "continuous_variable_row"
+    assert len(blocks) == 1
+    assert blocks[0].variable_label == "N"
+    assert blocks[0].level_row_indices == []
+
+
+def test_gender_female_percent_row_becomes_one_row_summary_block() -> None:
+    """Inline female summary rows should behave as complete one-row variables when they own no levels."""
+    table = NormalizedTable(
+        table_id="tbl-gender-female",
+        header_rows=[0],
+        body_rows=[1, 2],
+        row_views=[
+            _build_row(1, "Gender = Female (%)", ["2793 (50.9)", "2603 (50.3)", "190 (59.6)", "0.002"]),
+            _build_row(2, "Age, years", ["48.35 (17.47)", "47.60 (17.42)", "60.51 (13.27)", "<0.001"]),
+        ],
+        n_rows=3,
+        n_cols=5,
+    )
+
+    classifications = classify_rows(table)
+    blocks = group_variable_blocks(table, classifications=classifications)
+
+    assert classifications[0].classification == "continuous_variable_row"
+    assert blocks[0].variable_label == "Gender = Female (%)"
+    assert blocks[0].row_start == blocks[0].row_end == 1
+
+
+def test_female_percent_row_becomes_one_row_summary_block() -> None:
+    """Standalone female-percent rows should behave as complete one-row variables when isolated."""
+    table = NormalizedTable(
+        table_id="tbl-female-only",
+        header_rows=[0],
+        body_rows=[1, 2],
+        row_views=[
+            _build_row(1, "Female (%)", ["2793 (50.9)", "2603 (50.3)", "190 (59.6)", "0.002"]),
+            _build_row(2, "BMI, mean ± SD", ["28.4 (6.1)", "27.0 (5.8)", "29.9 (7.1)", "0.040"]),
+        ],
+        n_rows=3,
+        n_cols=5,
+    )
+
+    classifications = classify_rows(table)
+    blocks = group_variable_blocks(table, classifications=classifications)
+
+    assert classifications[0].classification == "continuous_variable_row"
+    assert blocks[0].variable_label == "Female (%)"
+    assert blocks[0].row_start == blocks[0].row_end == 1
+
+
+def test_true_categorical_parent_with_child_levels_is_not_collapsed_to_one_row_summary() -> None:
+    """A real parent-plus-level block should stay categorical, even when one child mentions Female."""
+    table = NormalizedTable(
+        table_id="tbl-sex-parent",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Sex", []),
+            _build_row(2, "Male (%)", ["412 (48.2)", "201 (44.0)"]),
+            _build_row(3, "Female (%)", ["442 (51.8)", "255 (56.0)"]),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert len(blocks) == 1
+    assert blocks[0].variable_kind == "categorical"
+    assert blocks[0].level_row_indices == [2, 3]
+
+
 def test_hispanic_mexican_is_level_row_after_categorical_parent() -> None:
     """Slash-separated category labels should still be treated as level rows."""
     table = NormalizedTable(
@@ -254,12 +364,13 @@ def test_indented_row_gets_stronger_level_signal_below_parent() -> None:
     table = NormalizedTable(
         table_id="tbl-indent-level",
         header_rows=[0],
-        body_rows=[1, 2],
+        body_rows=[1, 2, 3],
         row_views=[
             _build_row(1, "Ethnicity", [], indent_level=0),
             _build_row(2, "Hispanic/Mexican", ["120 (30.0)", "55 (28.0)"], indent_level=4),
+            _build_row(3, "Other", ["40 (10.0)", "18 (9.0)"], indent_level=4),
         ],
-        n_rows=3,
+        n_rows=4,
         n_cols=3,
     )
 
@@ -268,6 +379,30 @@ def test_indented_row_gets_stronger_level_signal_below_parent() -> None:
     assert classifications[0].classification == "variable_header"
     assert classifications[1].classification == "level_row"
     assert classifications[1].confidence > 0.9
+
+
+def test_flush_left_table_marks_indentation_uninformative_but_still_classifies_levels() -> None:
+    """Flush-left tables should ignore indentation while preserving non-indentation level logic."""
+    table = NormalizedTable(
+        table_id="tbl-indent-flat",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Ethnicity", [], indent_level=0),
+            _build_row(2, "White", ["220 (55.0)", "110 (56.0)"], indent_level=0),
+            _build_row(3, "Hispanic/Mexican", ["120 (30.0)", "55 (28.0)"], indent_level=0),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item for item in classify_rows(table)}
+
+    assert indentation_is_informative(table) is False
+    assert classifications[1].classification == "variable_header"
+    assert classifications[2].classification == "level_row"
+    assert classifications[3].classification == "level_row"
+    assert classifications[2].confidence == 0.78
 
 
 def test_more_indented_following_rows_strengthen_parent_as_variable_header() -> None:
@@ -293,6 +428,24 @@ def test_more_indented_following_rows_strengthen_parent_as_variable_header() -> 
     assert classifications[3].classification == "level_row"
 
 
+def test_clear_indent_differences_mark_indentation_informative() -> None:
+    """Repeated meaningful indent shifts should count as informative table-level structure."""
+    table = NormalizedTable(
+        table_id="tbl-indent-informative",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Group", [], indent_level=0),
+            _build_row(2, "Unknown", ["10 (5.0)", "3 (2.0)"], indent_level=3),
+            _build_row(3, "Other", ["20 (10.0)", "6 (4.0)"], indent_level=3),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    assert indentation_is_informative(table) is True
+
+
 def test_continuous_row_is_not_misclassified_from_whitespace_noise() -> None:
     """Indent-like whitespace alone should not override a one-row continuous summary."""
     table = NormalizedTable(
@@ -307,6 +460,24 @@ def test_continuous_row_is_not_misclassified_from_whitespace_noise() -> None:
     classifications = classify_rows(table)
 
     assert classifications[0].classification == "continuous_variable_row"
+
+
+def test_tiny_indent_noise_is_not_treated_as_meaningful_structure() -> None:
+    """One-space jitter should not make indentation informative."""
+    table = NormalizedTable(
+        table_id="tbl-indent-jitter",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Group", [], indent_level=0),
+            _build_row(2, "White", ["220 (55.0)", "110 (56.0)"], indent_level=1),
+            _build_row(3, "Other", ["20 (10.0)", "6 (4.0)"], indent_level=0),
+        ],
+        n_rows=4,
+        n_cols=3,
+    )
+
+    assert indentation_is_informative(table) is False
 
 
 def test_existing_logic_still_works_without_indentation() -> None:

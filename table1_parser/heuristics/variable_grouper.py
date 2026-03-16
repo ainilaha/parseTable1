@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from table1_parser.heuristics.level_detector import detect_level_row_indices
 from table1_parser.heuristics.models import RowClassification, VariableBlock
-from table1_parser.heuristics.row_classifier import classify_rows
+from table1_parser.heuristics.row_classifier import classify_rows, indentation_is_informative
 from table1_parser.schemas import NormalizedTable, RowView
 
 
@@ -27,6 +27,8 @@ def _promote_categorical_parents(
     row_order: list[int],
     classifications_by_row: dict[int, str],
     row_views_by_idx: dict[int, RowView],
+    *,
+    indentation_informative: bool,
 ) -> dict[int, str]:
     """Promote misclassified continuous rows that clearly own multiple levels."""
     adjusted = dict(classifications_by_row)
@@ -41,8 +43,15 @@ def _promote_categorical_parents(
             row_order=row_order,
             classifications_by_row=adjusted,
         )
-        more_indented_levels = _count_more_indented_levels(row_view, level_rows, row_views_by_idx)
-        if len(level_rows) >= 2 and (more_indented_levels >= 1 or sum(bool(cell) for cell in row_view.raw_cells[1:]) <= 1):
+        more_indented_levels = (
+            _count_more_indented_levels(row_view, level_rows, row_views_by_idx)
+            if indentation_informative
+            else 0
+        )
+        if len(level_rows) >= 2 and (
+            (indentation_informative and more_indented_levels >= 1)
+            or sum(bool(cell) for cell in row_view.raw_cells[1:]) <= 1
+        ):
             adjusted[row_idx] = "variable_header"
     return adjusted
 
@@ -58,10 +67,12 @@ def group_variable_blocks(
     }
     row_views_by_idx = {row_view.row_idx: row_view for row_view in table.row_views}
     row_order = [row_view.row_idx for row_view in table.row_views]
+    use_indentation = indentation_is_informative(table)
     classifications_by_row = _promote_categorical_parents(
         row_order,
         classifications_by_row,
         row_views_by_idx,
+        indentation_informative=use_indentation,
     )
     blocks: list[VariableBlock] = []
     consumed_rows: set[int] = set()

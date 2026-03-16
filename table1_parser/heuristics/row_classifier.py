@@ -14,6 +14,8 @@ CATEGORICAL_PARENT_CUE_PATTERN = re.compile(
     r"(?:n\s*\(%\)|no\.\s*\(%\)|\bpercent\b|\bcategory\b|\blevel\b)",
     re.IGNORECASE,
 )
+COUNT_LABEL_PATTERN = re.compile(r"^(?:n|number|no\.?)$", re.IGNORECASE)
+INLINE_CATEGORY_SUMMARY_PATTERN = re.compile(r"\b(?:male|female)\b", re.IGNORECASE)
 CONTINUOUS_TEXT_CUE_PATTERN = re.compile(
     r"(?:\bmean\b|\bsd\b|\bmedian\b|\biqr\b|mean\s*[±+-]\s*sd|mean\s*\(\s*sd\s*\))",
     re.IGNORECASE,
@@ -22,6 +24,7 @@ DECIMAL_SUMMARY_PATTERN = re.compile(
     r"^\s*[<>]?\d+\.\d+\s*(?:\(\s*[<>]?\d+(?:\.\d+)?(?:\s*[,/-]\s*[<>]?\d+(?:\.\d+)?)?\s*\))?\s*$"
 )
 INTEGER_VALUE_PATTERN = re.compile(r"^\s*\d+\s*$")
+COUNT_LIKE_VALUE_PATTERN = re.compile(r"^\s*\d[\d,]*\s*$")
 
 
 def _trailing_cells(row_view: RowView) -> list[str]:
@@ -54,6 +57,11 @@ def _integer_only_trailing_count(trailing_cells: Sequence[str]) -> int:
     return sum(bool(INTEGER_VALUE_PATTERN.match(cell)) for cell in trailing_cells)
 
 
+def _count_like_trailing_count(trailing_cells: Sequence[str]) -> int:
+    """Count trailing cells that look like plain integer-like counts."""
+    return sum(bool(COUNT_LIKE_VALUE_PATTERN.match(cell)) for cell in trailing_cells)
+
+
 def _has_continuous_cue(row_view: RowView) -> bool:
     """Return whether the row text or values resemble a continuous summary."""
     trailing_cells = _trailing_cells(row_view)
@@ -75,6 +83,45 @@ def _has_strong_continuous_layout(row_view: RowView) -> bool:
     return _has_strong_continuous_cue(row_view) or _summary_like_trailing_count(_trailing_cells(row_view)) >= 2
 
 
+def _looks_n_count_row(
+    row_view: RowView,
+    child_level_count: int = 0,
+    has_categorical_parent_cue: bool = False,
+) -> bool:
+    """Return whether a compact n/N row should behave as a one-row count summary."""
+    label = row_view.first_cell_normalized.strip()
+    trailing_cells = _trailing_cells(row_view)
+    count_like_cells = _count_like_trailing_count(trailing_cells)
+    return (
+        row_view.has_trailing_values
+        and bool(trailing_cells)
+        and COUNT_LABEL_PATTERN.fullmatch(label) is not None
+        and count_like_cells >= max(1, len(trailing_cells) - 1)
+        and child_level_count <= 1
+        and not has_categorical_parent_cue
+        and not _has_strong_continuous_layout(row_view)
+    )
+
+
+def _looks_inline_category_summary(
+    row_view: RowView,
+    previous_classification: str | None,
+    child_level_count: int = 0,
+) -> bool:
+    """Return whether a row is a complete inline category summary, not a parent block."""
+    raw_label = row_view.first_cell_raw
+    trailing_cells = _trailing_cells(row_view)
+    return (
+        row_view.has_trailing_values
+        and bool(trailing_cells)
+        and INLINE_CATEGORY_SUMMARY_PATTERN.search(raw_label) is not None
+        and ("%" in raw_label or "=" in raw_label)
+        and child_level_count == 0
+        and previous_classification not in {"variable_header", "level_row"}
+        and not _has_strong_continuous_layout(row_view)
+    )
+
+
 def _trailing_is_sparse(row_view: RowView) -> bool:
     """Return whether the row leaves most trailing cells empty."""
     return _nonempty_trailing_count(row_view) <= 1
@@ -88,6 +135,26 @@ def _is_more_indented(row_view: RowView, reference_row: RowView | None) -> bool:
         and reference_row.indent_level is not None
         and row_view.indent_level > reference_row.indent_level
     )
+
+
+def _indentation_is_informative_from_rows(row_views: Sequence[RowView]) -> bool:
+    """Return whether indentation varies enough to be useful for this table."""
+    indent_levels = [row_view.indent_level for row_view in row_views if row_view.indent_level is not None]
+    if len(indent_levels) < 3:
+        return False
+    baseline = min(indent_levels)
+    meaningful_offsets = [level - baseline for level in indent_levels if level - baseline >= 2]
+    if len(meaningful_offsets) < 2:
+        return False
+    return len(set(indent_levels)) >= 2
+
+
+def indentation_is_informative(table: NormalizedTable) -> bool:
+    """Return whether indentation should influence heuristics for this table."""
+    configured = table.metadata.get("indentation_informative")
+    if isinstance(configured, bool):
+        return configured
+    return _indentation_is_informative_from_rows(table.row_views)
 
 
 def _is_strong_variable_boundary(row_view: RowView) -> bool:
@@ -202,6 +269,7 @@ def classify_row(
     previous_row_view: RowView | None = None,
     next_row_view: RowView | None = None,
     following_row_views: Sequence[RowView] | None = None,
+    indentation_informative: bool = True,
 ) -> RowClassification:
     """Classify a normalized body row conservatively."""
     label = row_view.first_cell_normalized
@@ -211,10 +279,14 @@ def classify_row(
     next_is_level_like = bool(next_row_view and is_likely_level_row(next_row_view))
     categorical_parent_cue = _has_categorical_parent_cue(row_view)
     child_level_count = _count_plausible_child_levels(following_row_views or [])
-    indented_child_level_count = _count_more_indented_child_levels(row_view, following_row_views or [])
+    indented_child_level_count = (
+        _count_more_indented_child_levels(row_view, following_row_views or [])
+        if indentation_informative
+        else 0
+    )
     strong_continuous_layout = _has_strong_continuous_layout(row_view)
     sparse_trailing = _trailing_is_sparse(row_view)
-    more_indented_than_previous = _is_more_indented(row_view, previous_row_view)
+    more_indented_than_previous = indentation_informative and _is_more_indented(row_view, previous_row_view)
 
     if (
         previous_classification in {"variable_header", "level_row"}
@@ -236,6 +308,28 @@ def classify_row(
             row_idx=row_view.row_idx,
             classification="continuous_variable_row",
             confidence=0.92,
+        )
+
+    if _looks_n_count_row(
+        row_view,
+        child_level_count=child_level_count,
+        has_categorical_parent_cue=categorical_parent_cue,
+    ):
+        return RowClassification(
+            row_idx=row_view.row_idx,
+            classification="continuous_variable_row",
+            confidence=0.84,
+        )
+
+    if _looks_inline_category_summary(
+        row_view,
+        previous_classification=previous_classification,
+        child_level_count=child_level_count,
+    ):
+        return RowClassification(
+            row_idx=row_view.row_idx,
+            classification="continuous_variable_row",
+            confidence=0.82,
         )
 
     if is_common_level_label(label) and row_view.has_trailing_values:
@@ -323,6 +417,7 @@ def classify_row(
 def classify_rows(table: NormalizedTable) -> list[RowClassification]:
     """Classify all normalized body rows in order."""
     classifications: list[RowClassification] = []
+    indentation_informative = indentation_is_informative(table)
     for index, row_view in enumerate(table.row_views):
         previous = classifications[-1].classification if classifications else None
         previous_row = table.row_views[index - 1] if index > 0 else None
@@ -334,6 +429,7 @@ def classify_rows(table: NormalizedTable) -> list[RowClassification]:
                 previous_row_view=previous_row,
                 next_row_view=next_row,
                 following_row_views=table.row_views[index + 1 :],
+                indentation_informative=indentation_informative,
             )
         )
     return classifications
