@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableLLMPayload",
+  "type": "object",
+  "required": ["header_rows", "body_rows"],
+  "properties": {
+    "title": {
+      "type": ["string", "null"]
+    },
+    "caption": {
+      "type": ["string", "null"]
+    },
+    "header_rows": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "body_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["row_idx", "cells"],
+        "properties": {
+          "row_idx": {
+            "type": "integer"
+          },
+          "cells": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "heuristic_type": {
+            "type": ["string", "null"]
+          },
+          "numeric_cell_count": {
+            "type": ["integer", "null"]
+          },
+          "has_trailing_values": {
+            "type": ["boolean", "null"]
+          },
+          "indent_level": {
+            "type": ["integer", "null"]
+          }
+        }
+      }
+    },
+    "heuristics": {
+      "type": "object",
+      "properties": {
+        "variable_blocks": {
+          "type": "array"
+        },
+        "column_roles": {
+          "type": "array"
+        }
+      }
+    }
+  }
+}

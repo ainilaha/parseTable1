@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,10 +30,25 @@ except ModuleNotFoundError:
                 prefix = str(config.get("env_prefix", ""))
 
             values: dict[str, object] = {}
-            for field_name in cls.model_fields:
-                env_name = f"{prefix}{field_name}".upper()
-                if env_name in os.environ:
-                    values[field_name] = os.environ[env_name]
+            for field_name, field in cls.model_fields.items():
+                candidate_names: list[str] = []
+                validation_alias = getattr(field, "validation_alias", None)
+                if isinstance(validation_alias, str):
+                    candidate_names.append(validation_alias)
+                elif validation_alias is not None:
+                    candidate_names.extend(
+                        str(choice)
+                        for choice in getattr(validation_alias, "choices", [])
+                        if isinstance(choice, str)
+                    )
+                alias = getattr(field, "alias", None)
+                if isinstance(alias, str):
+                    candidate_names.append(alias)
+                candidate_names.append(f"{prefix}{field_name}".upper())
+                for env_name in candidate_names:
+                    if env_name in os.environ:
+                        values[field_name] = os.environ[env_name]
+                        break
             return values
 
 
@@ -43,11 +58,22 @@ class Settings(BaseSettings):
     default_extraction_backend: str = Field(default="pdfplumber")
     use_ocr_fallback: bool = Field(default=False)
     llm_enabled: bool = Field(default=False)
-    llm_model: str | None = Field(default=None)
+    llm_provider: str = Field(default="openai", validation_alias="LLM_PROVIDER")
+    llm_model: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("LLM_MODEL", "OPENAI_MODEL"),
+    )
+    openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY", repr=False)
+    openai_model: str | None = Field(default=None, validation_alias="OPENAI_MODEL")
+    llm_temperature: float = Field(default=0.0, validation_alias="LLM_TEMPERATURE")
+    llm_timeout_seconds: float = Field(default=60.0, validation_alias="LLM_TIMEOUT_SECONDS", gt=0.0)
+    llm_max_retries: int = Field(default=2, validation_alias="LLM_MAX_RETRIES", ge=0)
+    llm_debug: bool = Field(default=False, validation_alias="LLM_DEBUG")
     max_table_candidates: int = Field(default=10, ge=1)
     heuristic_confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
 
     model_config = SettingsConfigDict(
         env_prefix="TABLE1_PARSER_",
         extra="ignore",
+        populate_by_name=True,
     )

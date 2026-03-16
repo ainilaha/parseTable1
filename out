@@ -1,0 +1,10 @@
+table_id=OPEandRA-p8-t0
+trace_dir=trace_output/OPEandRA/table_0
+response_source=configured provider client
+variables=15 columns=5 notes=3
+artifacts:
+  trace_output/OPEandRA/table_0/heuristics.json
+  trace_output/OPEandRA/table_0/llm_input.json
+  trace_output/OPEandRA/table_0/llm_output.json
+  trace_output/OPEandRA/table_0/final_interpretation.json
+  trace_output/OPEandRA/table_0/diff.txt

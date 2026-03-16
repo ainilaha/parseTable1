@@ -1,0 +1,45 @@
+{
+  "title": "Table 1. Baseline Characteristics",
+  "caption": "Characteristics by RA status",
+  "header_rows": [
+    ["Characteristics", "Overall", "Non-RA", "RA", "p-value"]
+  ],
+  "body_rows": [
+    {
+      "row_idx": 0,
+      "cells": ["n", "5490", "5171", "319", ""],
+      "heuristic_type": "continuous_variable_row",
+      "numeric_cell_count": 3,
+      "has_trailing_values": true,
+      "indent_level": 0
+    },
+    {
+      "row_idx": 1,
+      "cells": ["Age (yrs)", "53.2 (12.1)", "52.7 (11.9)", "61.0 (13.0)", "<0.001"],
+      "heuristic_type": "continuous_variable_row",
+      "numeric_cell_count": 3,
+      "has_trailing_values": true,
+      "indent_level": 0
+    },
+    {
+      "row_idx": 2,
+      "cells": ["Sex", "", "", "", ""],
+      "heuristic_type": "variable_header",
+      "numeric_cell_count": 0,
+      "has_trailing_values": false,
+      "indent_level": 0
+    },
+    {
+      "row_idx": 3,
+      "cells": ["Male", "2697 (49.1)", "2568 (49.7)", "129 (40.4)", ""],
+      "heuristic_type": "level_row",
+      "numeric_cell_count": 3,
+      "has_trailing_values": true,
+      "indent_level": 1
+    }
+  ],
+  "heuristics": {
+    "variable_blocks": [],
+    "column_roles": []
+  }
+}
