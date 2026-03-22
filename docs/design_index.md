@@ -26,6 +26,9 @@ Then use the documents below as needed.
 - `docs/table_definition_schema.md`
   Proposed Pydantic schema design for `TableDefinition` and related models.
 
+- `docs/table_definition_implementation_plan.md`
+  Implementation plan for the SQL-query-oriented `TableDefinition` phase, including row-variable, categorical-level, and column-definition goals.
+
 ## Supporting References
 
 - `docs/llm_integration.md`
@@ -40,7 +43,7 @@ Then use the documents below as needed.
   read `docs/codex_build_spec.md` and `docs/parsing_output_design.md`.
 
 - If you are working on the new value-free semantic stage for database matching:
-  read `docs/table_definition_scope.md` and `docs/table_definition_schema.md`.
+  read `docs/table_definition_scope.md`, `docs/table_definition_schema.md`, and `docs/table_definition_implementation_plan.md`.
 
 - If you are updating user-facing explanations of the pipeline:
   read `docs/parsing_process.md`.
