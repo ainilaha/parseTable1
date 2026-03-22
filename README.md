@@ -5,8 +5,10 @@ Research-oriented tooling for extracting, normalizing, heuristically interpretin
 ## Current Status
 
 - The extraction workflow is available now through the `table1-parser` CLI.
+- Normalized tables can now also be written through the `table1-parser normalize` CLI.
+- The next planned stage is `TableDefinition`, a value-free semantic representation of the table structure.
 - The full `parse` command is not implemented yet.
-- The repository also contains normalization, heuristic interpretation, diagnostics, and LLM-oriented developer tooling.
+- The repository also contains heuristic interpretation, diagnostics, and LLM-oriented developer tooling.
 
 ## Basic Idea
 
@@ -27,12 +29,19 @@ Each stage has a different purpose:
   A cleaned and organized version of the extracted table. This separates header rows from body rows, preserves row structure, and computes row-level signals that help later interpretation.
 
 - `TableDefinition`
-  A planned value-free semantic stage. This is meant to capture which variables appear in the rows, which ones are categorical, what their levels are, and how the columns were constructed, without including the table's printed values.
+  The next planned value-free semantic stage. This is meant to capture which variables appear in the rows, which ones are categorical, what their levels are, and how the columns were constructed, without including the table's printed values.
 
 - `ParsedTable`
   The final semantic output. This combines variable definitions, column meanings, and parsed table values into a structured format.
 
 This separation is intentional. It keeps extraction, normalization, semantic interpretation, and final value output distinct, which makes the system easier to debug and safer to extend.
+
+At the moment, the repository can persist:
+
+- `ExtractedTable`
+- `NormalizedTable`
+
+`TableDefinition` is the next intended persisted intermediate.
 
 ## Install
 
