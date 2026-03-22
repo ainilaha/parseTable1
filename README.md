@@ -174,6 +174,17 @@ More detail:
 - [`docs/r_visualization.md`](docs/r_visualization.md)
 - [`docs/parsing_output_design.md`](docs/parsing_output_design.md)
 
+For paper-level inspection there is also:
+
+```r
+source("R/inspect_paper_outputs.R")
+compare_table_definitions("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+show_llm_evidence("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+```
+
+These helpers are meant to make it easier to compare deterministic syntax-first semantics with LLM semantics and to inspect the retrieved supporting passages.
+
 ## Output Layout
 
 The default root output directory is:
@@ -200,6 +211,96 @@ parseTable1.out/
 
 This keeps outputs for each paper in a separate directory and leaves room for later semantic-definition, parsed, and interpretation-stage outputs.
 The `parse` command is intended to populate this directory with every available stage output from a single pipeline run.
+
+## How To Read The Outputs
+
+The easiest way to inspect one paper is:
+
+1. start with `normalized_tables.json` to see the cleaned table structure
+2. read `table_definitions.json` to see the deterministic row and column interpretation
+3. read `table_definitions_llm.json` when present to see the context-aware semantic interpretation
+4. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
+
+In practice:
+
+- `extracted_tables.json`
+  best for raw PDF recovery, page numbers, and extracted captions
+- `normalized_tables.json`
+  best for stable row and column indices
+- `table_definitions.json`
+  best for the syntax-first semantic baseline
+- `table_definitions_llm.json`
+  best for the paper-context-aware semantic view
+
+## Syntax vs Semantics
+
+The repository keeps syntax and semantics separate.
+
+- syntax
+  what rows and columns physically exist in the table
+  main files: `extracted_tables.json`, `normalized_tables.json`
+- semantics
+  what those rows and columns mean
+  main files: `table_definitions.json`, `table_definitions_llm.json`
+
+The deterministic and LLM semantic files both refer back to the same `table_id`, `row_idx`, and `col_idx` space. That makes them directly comparable.
+
+## Finding Captions And Supporting Context
+
+If you want to find the table caption or where the paper refers to a table:
+
+- `extracted_tables.json`
+  contains the extracted `title`, `caption`, and source `page_num`
+- `table_definitions.json`
+  carries `title` and `caption` forward into the value-free semantic layer
+- `table_contexts/table_<n>_context.json`
+  carries:
+  - `table_label`
+  - `title`
+  - `caption`
+  - retrieved `passages`
+
+The most useful passages for table references are usually those with:
+
+- `match_type = "table_reference"`
+
+Each retrieved passage includes:
+
+- `passage_id`
+- `section_id`
+- `heading`
+- `text`
+
+You can use `section_id` to find the broader section in `paper_sections.json`.
+
+Current limitation:
+
+- the context files currently provide section IDs, headings, and passage text
+- they do not yet provide page anchors or line numbers inside the paper markdown
+
+## How To Judge The LLM Output
+
+The LLM output should be treated as an additional semantic interpreter, not hidden ground truth.
+
+To evaluate it:
+
+1. compare `table_definitions.json` with `table_definitions_llm.json`
+2. check whether they point to the same rows and columns
+3. inspect the `evidence_passage_ids` in the LLM file
+4. look up those passage IDs in the matching `table_contexts/table_<n>_context.json`
+5. read the surrounding section in `paper_sections.json` when needed
+
+Helpful signals already present in the LLM output:
+
+- `evidence_passage_ids`
+  which retrieved passages support a semantic claim
+- `disagrees_with_deterministic`
+  whether the LLM is explicitly challenging the deterministic interpretation
+
+Current limitation:
+
+- there is not yet an adjudicated merged output
+- for now, users compare `table_definitions.json` and `table_definitions_llm.json` directly
 
 ## LLM Configuration
 

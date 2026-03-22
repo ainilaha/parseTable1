@@ -5,7 +5,9 @@ The repository includes small base-R helpers for visually inspecting parser JSON
 File:
 
 - [`R/visualize_table_from_json.R`](../R/visualize_table_from_json.R)
+- [`R/inspect_paper_outputs.R`](../R/inspect_paper_outputs.R)
 - [`R/extract_variables_from_final_interpretation.R`](../R/extract_variables_from_final_interpretation.R)
+- manual pages in [`man/`](../man)
 
 ## Table Display Helper
 
@@ -72,6 +74,46 @@ x <- extract_variables_from_output_dir("trace_output/cobaltpaper/table_0")
 print_variable_structure(x)
 ```
 
+## Paper Output Inspection Helper
+
+The paper-output inspection helper is for comparing deterministic and LLM semantics and reading the supporting paper context.
+
+Public functions:
+
+- `load_paper_outputs(paper_dir)`
+- `compare_table_definitions(paper_dir, table_index = 0L)`
+- `show_table_context(paper_dir, table_index = 0L, match_type = NULL)`
+- `show_llm_evidence(paper_dir, table_index = 0L)`
+
+These helpers use the same per-paper output directory already written by `table1-parser parse`.
+
+### Interactive usage
+
+From the repo root:
+
+```r
+source("R/inspect_paper_outputs.R")
+
+x <- load_paper_outputs("parseTable1.out/papers/cobaltpaper")
+compare_table_definitions("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L, match_type = "table_reference")
+show_llm_evidence("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+```
+
+What these are for:
+
+- `compare_table_definitions(...)`
+  compare deterministic syntax-first semantics with the LLM semantic interpretation
+- `show_table_context(...)`
+  inspect the retrieved passages for one table
+- `show_llm_evidence(...)`
+  resolve `evidence_passage_ids` in the LLM output back to the actual retrieved passages
+
+Current limitation:
+
+- the context helpers currently expose `section_id`, `heading`, `passage_id`, and passage text
+- they do not yet expose page-number or line-number anchors
+
 Example output:
 
 ```text
@@ -135,6 +177,7 @@ print_variable_structure(x)
 ## Notes
 
 - Both helpers use base R only.
+- The inspection helpers are documented with small future-compatible `.Rd` files under `man/`.
 - It requires the `jsonlite` package.
 - Level rows are indented for readability when that structure is present.
 - Increasing `options(width = ...)` can make wide tables easier to inspect in the console.
