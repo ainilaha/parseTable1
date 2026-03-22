@@ -34,6 +34,12 @@ Then use the documents below as needed.
 - `docs/llm_integration.md`
   Current LLM integration and trace-artifact behavior.
 
+- `docs/llm_semantic_inference_phase.md`
+  Design for the next LLM phase: markdown-based paper retrieval, semantic interpretation, and adjudication.
+
+- `docs/llm_semantic_inference_steps.md`
+  Brief implementation checklist for the LLM semantic inference phase.
+
 - `docs/r_visualization.md`
   How current JSON outputs are inspected in R.
 

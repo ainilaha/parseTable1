@@ -45,6 +45,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | Extraction | `ExtractedTable` | Written now as `extracted_tables.json` by `extract` and `parse` | Preserve raw table grid and cell provenance |
 | Normalization | `NormalizedTable` | Written now as `normalized_tables.json` by `normalize` and `parse` | Clean rows, detect headers, derive row features |
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
+| Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles |
 | Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
 | LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
@@ -266,7 +267,64 @@ Design intent:
 - keep row and column references tied to the normalized table index space
 - provide a deterministic baseline before optional LLM refinement is introduced
 
-## 4. `heuristics.json`
+## 4. Paper Context Artifacts
+
+Current status:
+
+- written by the `parse` CLI command
+- derived from `pymupdf4llm` markdown, not from the table grid itself
+
+Current CLI paths:
+
+```text
+parseTable1.out/papers/<paper_stem>/paper_markdown.md
+parseTable1.out/papers/<paper_stem>/paper_sections.json
+parseTable1.out/papers/<paper_stem>/table_contexts/table_<n>_context.json
+```
+
+Canonical models:
+
+- `PaperSection`
+- `TableContext`
+- child model: `RetrievedPassage`
+
+Design components:
+
+- `paper_markdown.md`
+  raw markdown extracted from the full paper
+- `paper_sections.json`
+  markdown-derived sections with heading level and simple role hints
+- `table_contexts/*.json`
+  per-table retrieval bundles keyed by `table_id` and `table_index`
+
+`TableContext` design components:
+
+- `table_id`, `table_index`, `table_label`
+- `title`, `caption`
+- `row_terms`
+- `column_terms`
+- `grouping_terms`
+- `methods_like_section_ids`
+- `results_like_section_ids`
+- `passages`
+
+`RetrievedPassage` design components:
+
+- `passage_id`
+- `section_id`
+- `heading`
+- `text`
+- `match_type`
+- `score`
+
+Design intent:
+
+- keep paper-level context in the same per-paper output directory
+- support future LLM semantic interpretation with compact retrieved evidence
+- avoid tying retrieval to exact section names like `Methods`
+- preserve a JSON-first, inspectable context path alongside the table path
+
+## 5. `heuristics.json`
 
 Current status:
 
@@ -323,7 +381,7 @@ Design intent:
 - keep it small and row-referenced
 - do not treat this as the final exported table format
 
-## 5. `llm_input.json`
+## 6. `llm_input.json`
 
 Current status:
 
@@ -381,7 +439,7 @@ Current source-of-truth files for this contract:
 - `tests/data/sample_table_llm_payload.json`
 - `tests/test_llm.py`
 
-## 6. `llm_output.json`
+## 7. `llm_output.json`
 
 Current status:
 
@@ -406,7 +464,7 @@ Design intent:
 - separate raw output from validated interpretation
 - do not use this file as a stable downstream interface
 
-## 7. `final_interpretation.json`
+## 8. `final_interpretation.json`
 
 Current status:
 
@@ -466,7 +524,7 @@ Important limits of this artifact:
 
 This file is useful for inspection, R helpers, and LLM tracing, but it is not yet the final normalized export format for downstream analysis.
 
-## 8. `ParsedTable` JSON
+## 9. `ParsedTable` JSON
 
 Current status:
 

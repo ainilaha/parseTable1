@@ -8,6 +8,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from table1_parser.config import Settings
+from table1_parser.context import (
+    build_table_contexts,
+    extract_paper_markdown,
+    paper_sections_to_payload,
+    parse_markdown_sections,
+)
 from table1_parser.extract import build_extractor
 from table1_parser.heuristics.table_definition_builder import build_table_definitions, table_definitions_to_payload
 from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
@@ -85,13 +91,18 @@ def _extract_payload(tables: list[object]) -> list[dict[str, object]]:
     return [table.model_dump(mode="json") for table in tables]
 
 
-def _run_available_parse_stages(pdf_path: str) -> tuple[list[object], list[object], list[object]]:
+def _run_available_parse_stages(
+    pdf_path: str,
+) -> tuple[list[object], list[object], list[object], str, list[object], list[object]]:
     """Run the currently implemented parse stages once and return their typed outputs."""
     extractor = _build_default_extractor()
     extracted_tables = extractor.extract(pdf_path)
     normalized_tables = normalize_extracted_tables(extracted_tables)
     table_definitions = build_table_definitions(normalized_tables)
-    return extracted_tables, normalized_tables, table_definitions
+    paper_markdown = extract_paper_markdown(pdf_path)
+    paper_sections = parse_markdown_sections(paper_markdown)
+    table_contexts = build_table_contexts(paper_sections, table_definitions)
+    return extracted_tables, normalized_tables, table_definitions, paper_markdown, paper_sections, table_contexts
 
 
 def _handle_extract(args: argparse.Namespace) -> int:
@@ -125,7 +136,8 @@ def _handle_normalize(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        _, normalized_tables, _ = _run_available_parse_stages(args.pdf_path)
+        extractor = _build_default_extractor()
+        normalized_tables = normalize_extracted_tables(extractor.extract(args.pdf_path))
     except Exception as exc:
         print(_error_payload(str(exc)))
         return 1
@@ -148,7 +160,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        extracted_tables, normalized_tables, table_definitions = _run_available_parse_stages(args.pdf_path)
+        extracted_tables, normalized_tables, table_definitions, paper_markdown, paper_sections, table_contexts = _run_available_parse_stages(args.pdf_path)
     except Exception as exc:
         print(_error_payload(str(exc)))
         return 1
@@ -156,7 +168,11 @@ def _handle_parse(args: argparse.Namespace) -> int:
     extract_output_path = _extract_output_path(args.pdf_path, args.outdir)
     normalize_output_path = _normalize_output_path(args.pdf_path, args.outdir)
     table_definition_output_path = _table_definition_output_path(args.pdf_path, args.outdir)
+    paper_markdown_output_path = _paper_markdown_output_path(args.pdf_path, args.outdir)
+    paper_sections_output_path = _paper_sections_output_path(args.pdf_path, args.outdir)
+    table_context_output_dir = _table_context_output_dir(args.pdf_path, args.outdir)
     extract_output_path.parent.mkdir(parents=True, exist_ok=True)
+    table_context_output_dir.mkdir(parents=True, exist_ok=True)
 
     extract_output_path.write_text(
         json.dumps(_extract_payload(extracted_tables), indent=2),
@@ -167,10 +183,23 @@ def _handle_parse(args: argparse.Namespace) -> int:
         json.dumps(table_definitions_to_payload(table_definitions), indent=2) + "\n",
         encoding="utf-8",
     )
+    paper_markdown_output_path.write_text(paper_markdown, encoding="utf-8")
+    paper_sections_output_path.write_text(
+        json.dumps(paper_sections_to_payload(paper_sections), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    for table_context in table_contexts:
+        _table_context_output_path(table_context_output_dir, table_context.table_index).write_text(
+            json.dumps(table_context.model_dump(mode="json"), indent=2) + "\n",
+            encoding="utf-8",
+        )
 
     print(f"Wrote {extract_output_path}")
     print(f"Wrote {normalize_output_path}")
     print(f"Wrote {table_definition_output_path}")
+    print(f"Wrote {paper_markdown_output_path}")
+    print(f"Wrote {paper_sections_output_path}")
+    print(f"Wrote {table_context_output_dir}")
     print("Final parsed tables are not implemented yet.")
     return 0
 
@@ -191,6 +220,29 @@ def _table_definition_output_path(pdf_path: str, outdir: str) -> Path:
     """Return the default table-definition JSON path for one paper."""
     paper_stem = Path(pdf_path).stem
     return Path(outdir) / "papers" / paper_stem / "table_definitions.json"
+
+
+def _paper_markdown_output_path(pdf_path: str, outdir: str) -> Path:
+    """Return the default paper-markdown path for one paper."""
+    paper_stem = Path(pdf_path).stem
+    return Path(outdir) / "papers" / paper_stem / "paper_markdown.md"
+
+
+def _paper_sections_output_path(pdf_path: str, outdir: str) -> Path:
+    """Return the default paper-sections JSON path for one paper."""
+    paper_stem = Path(pdf_path).stem
+    return Path(outdir) / "papers" / paper_stem / "paper_sections.json"
+
+
+def _table_context_output_dir(pdf_path: str, outdir: str) -> Path:
+    """Return the default per-table context directory for one paper."""
+    paper_stem = Path(pdf_path).stem
+    return Path(outdir) / "papers" / paper_stem / "table_contexts"
+
+
+def _table_context_output_path(output_dir: Path, table_index: int) -> Path:
+    """Return one per-table context JSON path."""
+    return output_dir / f"table_{table_index}_context.json"
 
 
 def main(argv: Sequence[str] | None = None) -> int:

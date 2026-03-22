@@ -52,6 +52,7 @@ But it does not yet fully decide:
 Later stages use the `NormalizedTable` to make progressively stronger interpretations:
 
 - deterministic heuristics build a `TableDefinition`
+- paper markdown is chunked into sections and table-focused retrieval bundles
 - optional LLM interpretation can later refine ambiguous structure
 - validation checks that the interpretation is consistent with the real table
 - final assembly produces a `ParsedTable`
@@ -70,10 +71,11 @@ This separation keeps the parser safer and easier to debug.
 
 If you are looking at parser outputs:
 
-- `table1-parser parse path/to/paper.pdf` is the main entry point and currently writes `extracted_tables.json`, `normalized_tables.json`, and `table_definitions.json`
+- `table1-parser parse path/to/paper.pdf` is the main entry point and currently writes `extracted_tables.json`, `normalized_tables.json`, `table_definitions.json`, `paper_markdown.md`, `paper_sections.json`, and per-table context JSON files
 - `extract` and `normalize` remain useful for inspecting a single stage in isolation
 
 - raw extraction output answers: "What table did the PDF extractor recover?"
 - normalized output answers: "What cleaned table structure will the parser reason over?"
 - table-definition output answers: "What row variables, levels, and columns did the deterministic parser infer?"
+- paper-context output answers: "What document sections and passages are relevant to this table?"
 - parsed output answers: "What variables, levels, columns, and values did the system finally infer?"

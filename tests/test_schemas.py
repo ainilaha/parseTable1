@@ -14,12 +14,15 @@ from table1_parser.schemas import (
     LLMTableContext,
     LLMTableParseResponse,
     NormalizedTable,
+    PaperSection,
     ParsedColumn,
     ParsedLevel,
     ParsedTable,
     ParsedVariable,
+    RetrievedPassage,
     RowView,
     TableCell,
+    TableContext,
     TableDefinition,
     ValueRecord,
 )
@@ -203,6 +206,42 @@ def test_llm_contract_models_create_without_llm_logic() -> None:
 
     assert context.row_views[0].likely_role == "header"
     assert response.model_dump()["referenced_row_indices"] == [0]
+
+
+def test_document_context_schemas_create_without_llm_logic() -> None:
+    """Document-context schemas should serialize cleanly."""
+    section = PaperSection(
+        section_id="section_0",
+        order=0,
+        heading="Methods",
+        level=1,
+        role_hint="methods_like",
+        content="Study population and covariates.",
+    )
+    context = TableContext(
+        table_id="tbl-1",
+        table_index=0,
+        table_label="Table 2",
+        title="Table 2",
+        caption="Baseline characteristics by DKD status",
+        row_terms=["Age"],
+        column_terms=["Non-DKD", "DKD"],
+        grouping_terms=["DKD status"],
+        methods_like_section_ids=["section_0"],
+        passages=[
+            RetrievedPassage(
+                passage_id="section_0_p0",
+                section_id="section_0",
+                heading="Methods",
+                text="Age and DKD status were collected.",
+                match_type="methods_term_match",
+                score=0.8,
+            )
+        ],
+    )
+
+    assert section.model_dump()["role_hint"] == "methods_like"
+    assert context.model_dump(mode="json")["passages"][0]["match_type"] == "methods_term_match"
 
 
 def test_schema_validation_rejects_invalid_confidence() -> None:

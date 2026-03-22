@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from table1_parser import cli
+from table1_parser.schemas import PaperSection, TableContext
 from table1_parser.schemas import ExtractedTable, TableCell
 
 
@@ -56,6 +57,26 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
             return [_build_extracted_table()]
 
     monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
+    monkeypatch.setattr(cli, "extract_paper_markdown", lambda _: "# Methods\nExample study population.")
+    monkeypatch.setattr(
+        cli,
+        "parse_markdown_sections",
+        lambda _: [PaperSection(section_id="section_0", order=0, heading="Methods", level=1, role_hint="methods_like", content="Example study population.")],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_table_contexts",
+        lambda sections, definitions: [
+            TableContext(
+                table_id=definitions[0].table_id,
+                table_index=0,
+                table_label="Table 1",
+                title=definitions[0].title,
+                caption=definitions[0].caption,
+                methods_like_section_ids=[sections[0].section_id],
+            )
+        ],
+    )
 
     exit_code = cli.main(["parse", str(pdf_path)])
 
@@ -63,18 +84,30 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     extracted_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "extracted_tables.json"
     normalized_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "normalized_tables.json"
     table_definition_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions.json"
+    paper_markdown_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "paper_markdown.md"
+    paper_sections_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "paper_sections.json"
+    table_context_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_contexts" / "table_0_context.json"
 
     assert exit_code == 0
     assert calls["extract"] == 1
     assert extracted_path.exists()
     assert normalized_path.exists()
     assert table_definition_path.exists()
+    assert paper_markdown_path.exists()
+    assert paper_sections_path.exists()
+    assert table_context_path.exists()
     assert json.loads(extracted_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(normalized_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(table_definition_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
+    assert json.loads(paper_sections_path.read_text(encoding="utf-8"))[0]["section_id"] == "section_0"
+    assert json.loads(table_context_path.read_text(encoding="utf-8"))["table_id"] == "tbl-1"
     assert "Wrote parseTable1.out/papers/paper/extracted_tables.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/normalized_tables.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/table_definitions.json" in captured.out
+    assert "Wrote parseTable1.out/papers/paper/paper_markdown.md" in captured.out
+    assert "Wrote parseTable1.out/papers/paper/paper_sections.json" in captured.out
+    assert "Wrote parseTable1.out/papers/paper/table_contexts" in captured.out
     assert "Final parsed tables are not implemented yet." in captured.out
 
 

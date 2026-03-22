@@ -41,6 +41,7 @@ At the moment, the repository can persist:
 - `ExtractedTable`
 - `NormalizedTable`
 - `TableDefinition`
+- paper-level markdown context
 
 Today, a single call to `table1-parser parse` writes those artifacts from one extraction pass.
 
@@ -71,6 +72,9 @@ By default this writes:
 parseTable1.out/papers/<paper_stem>/extracted_tables.json
 parseTable1.out/papers/<paper_stem>/normalized_tables.json
 parseTable1.out/papers/<paper_stem>/table_definitions.json
+parseTable1.out/papers/<paper_stem>/paper_markdown.md
+parseTable1.out/papers/<paper_stem>/paper_sections.json
+parseTable1.out/papers/<paper_stem>/table_contexts/table_0_context.json
 ```
 
 For example:
@@ -79,7 +83,7 @@ For example:
 table1-parser parse testpapers/cobaltpaper.pdf
 ```
 
-This currently writes the extraction, normalization, and table-definition outputs in one run. As later stages are implemented, `parse` is intended to write those too.
+This currently writes the extraction, normalization, table-definition, and paper-context outputs in one run. As later stages are implemented, `parse` is intended to write those too.
 
 If you want just the raw extraction stage:
 
@@ -174,6 +178,10 @@ parseTable1.out/
       extracted_tables.json
       normalized_tables.json
       table_definitions.json
+      paper_markdown.md
+      paper_sections.json
+      table_contexts/
+        table_0_context.json
 ```
 
 This keeps outputs for each paper in a separate directory and leaves room for later semantic-definition, parsed, and interpretation-stage outputs.
