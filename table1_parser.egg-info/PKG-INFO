@@ -8,7 +8,7 @@ Requires-Dist: pydantic<3,>=2
 Requires-Dist: pydantic-settings<3,>=2
 Requires-Dist: openai<2,>=1.0
 Requires-Dist: pdfplumber<1,>=0.11
-Requires-Dist: pymupdf4llm<1,>=0.0.20
+Requires-Dist: pymupdf4llm<2,>=1.27
 Provides-Extra: dev
 Requires-Dist: pytest<9,>=8; extra == "dev"
 
@@ -89,10 +89,16 @@ More detail:
 
 ## R Visualization
 
-The repository includes a small base-R helper for visual inspection of one parser JSON file:
+The repository includes small base-R helpers for visual inspection of parser JSON files:
 
 ```bash
 Rscript R/visualize_table_from_json.R trace_output/cobaltpaper/table_0/llm_input.json
+```
+
+and for extracting variable structure from a Phase 5 `final_interpretation.json` directory:
+
+```bash
+Rscript -e 'source("R/extract_variables_from_final_interpretation.R"); x <- extract_variables_from_output_dir("trace_output/cobaltpaper/table_0"); print_variable_structure(x)'
 ```
 
 From an interactive R session:
@@ -101,8 +107,46 @@ From an interactive R session:
 source("R/visualize_table_from_json.R")
 options(width = 200)
 visualize_table_from_json("trace_output/cobaltpaper/table_0/llm_input.json")
+
+source("R/extract_variables_from_final_interpretation.R")
+x <- extract_variables_from_output_dir("trace_output/cobaltpaper/table_0")
+print_variable_structure(x)
 ```
 
 More detail:
 
 - [`docs/r_visualization.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/r_visualization.md)
+
+## Example Workflow
+
+From the repo root, a typical inspect-and-read workflow looks like this:
+
+1. Run the parser trace on one PDF and write JSON artifacts:
+
+```bash
+python3 scripts/debug_llm_trace.py testpapers/OPEandRA.pdf --use-configured-client
+```
+
+2. Visually inspect the table-oriented payload that was sent into the Phase 5 layer:
+
+```bash
+Rscript R/visualize_table_from_json.R trace_output/OPEandRA/table_0/llm_input.json
+```
+
+3. Extract the final interpreted variable structure for human review:
+
+```bash
+Rscript -e 'source("R/extract_variables_from_final_interpretation.R"); x <- extract_variables_from_output_dir("trace_output/OPEandRA/table_0"); print_variable_structure(x)'
+```
+
+4. If you prefer interactive R:
+
+```r
+source("R/visualize_table_from_json.R")
+source("R/extract_variables_from_final_interpretation.R")
+options(width = 200)
+
+visualize_table_from_json("trace_output/OPEandRA/table_0/llm_input.json")
+x <- extract_variables_from_output_dir("trace_output/OPEandRA/table_0")
+print_variable_structure(x)
+```

@@ -9,6 +9,7 @@ from types import ModuleType
 from table1_parser import cli
 from table1_parser.extract import build_extractor
 from table1_parser.extract.pdfplumber_extractor import PDFPlumberExtractor
+from table1_parser.extract import pymupdf4llm_extractor as pymupdf4llm_extractor_module
 from table1_parser.extract.pymupdf4llm_extractor import PyMuPDF4LLMExtractor
 from table1_parser.extract.table_detector import (
     DetectedTableCandidate,
@@ -94,6 +95,37 @@ class FakePDF:
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         """Exit the fake context manager."""
+        return None
+
+
+class FakePyMuPage:
+    """Simple PyMuPDF page test double."""
+
+    def __init__(
+        self,
+        *,
+        text: str,
+        words: list[dict[str, object]],
+        chars: list[dict[str, object]] | None = None,
+        rule_segments: list[tuple[float, float, float, float]] | None = None,
+    ) -> None:
+        self.text = text
+        self.words = words
+        self.chars = chars or []
+        self.rule_segments = rule_segments or []
+
+
+class FakePyMuDoc:
+    """Simple PyMuPDF document test double."""
+
+    def __init__(self, pages: list[FakePyMuPage]) -> None:
+        self._pages = pages
+        self.page_count = len(pages)
+
+    def load_page(self, index: int) -> FakePyMuPage:
+        return self._pages[index]
+
+    def close(self) -> None:
         return None
 
 
@@ -231,6 +263,95 @@ def test_pymupdf4llm_extractor_falls_back_to_pdfplumber_on_primary_failure(tmp_p
     assert tables[0].metadata["fallback_backend"] == "pdfplumber"
     assert tables[0].metadata["fallback_reason"] == "primary_error"
     assert tables[0].metadata["extractor_used"] == "pymupdf4llm"
+
+
+def test_pymupdf4llm_extractor_uses_text_layout_fallback_when_json_has_no_tables(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [50, 60, 220, 80],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table1"}, {"text": "Baselinecharacteristics"}]}],
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    fake_doc = FakePyMuDoc(
+        [
+            FakePyMuPage(
+                text="Table1\nBaselinecharacteristics\nQ1 Q2",
+                words=[
+                    {"text": "Table1", "x0": 50.0, "x1": 90.0, "top": 60.0, "bottom": 68.0},
+                    {"text": "Baselinecharacteristics", "x0": 50.0, "x1": 220.0, "top": 72.0, "bottom": 80.0},
+                    {"text": "Q1", "x0": 220.0, "x1": 235.0, "top": 96.0, "bottom": 104.0},
+                    {"text": "Q2", "x0": 280.0, "x1": 295.0, "top": 96.0, "bottom": 104.0},
+                    {"text": "Familypoverty-incomeratio,n(%)", "x0": 50.0, "x1": 150.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "100", "x0": 220.0, "x1": 235.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "120", "x0": 280.0, "x1": 295.0, "top": 110.0, "bottom": 118.0},
+                ],
+                chars=[
+                    {"text": "F", "x0": 50.0, "x1": 53.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "a", "x0": 53.0, "x1": 56.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "m", "x0": 56.0, "x1": 60.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "i", "x0": 60.0, "x1": 61.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "l", "x0": 61.5, "x1": 63.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "y", "x0": 63.0, "x1": 66.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "p", "x0": 69.0, "x1": 72.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "o", "x0": 72.0, "x1": 75.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "v", "x0": 75.0, "x1": 78.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "e", "x0": 78.0, "x1": 81.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "r", "x0": 81.0, "x1": 83.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "t", "x0": 83.0, "x1": 85.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "y", "x0": 85.0, "x1": 88.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "-", "x0": 88.0, "x1": 90.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "i", "x0": 90.0, "x1": 91.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "n", "x0": 91.5, "x1": 94.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "c", "x0": 94.5, "x1": 97.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "o", "x0": 97.5, "x1": 100.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "m", "x0": 100.5, "x1": 104.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "e", "x0": 104.5, "x1": 107.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "r", "x0": 110.5, "x1": 112.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "a", "x0": 112.5, "x1": 115.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "t", "x0": 115.5, "x1": 117.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "i", "x0": 117.5, "x1": 119.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "o", "x0": 119.0, "x1": 122.0, "top": 110.0, "bottom": 118.0},
+                    {"text": ",", "x0": 122.0, "x1": 123.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "n", "x0": 126.5, "x1": 129.5, "top": 110.0, "bottom": 118.0},
+                    {"text": "(", "x0": 132.5, "x1": 134.0, "top": 110.0, "bottom": 118.0},
+                    {"text": "%", "x0": 134.0, "x1": 138.0, "top": 110.0, "bottom": 118.0},
+                    {"text": ")", "x0": 138.0, "x1": 139.5, "top": 110.0, "bottom": 118.0},
+                ],
+                rule_segments=[(50.0, 94.0, 320.0, 94.0)],
+            )
+        ]
+    )
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "open_pymupdf_document", lambda _: fake_doc)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_text", lambda page: page.text)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_words", lambda page: page.words)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_chars", lambda page: page.chars)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_rule_segments", lambda page: page.rule_segments)
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].extraction_backend == "pymupdf4llm"
+    assert tables[0].metadata["layout_source"] == "pymupdf_text_positions"
+    assert tables[0].metadata["fallback_used"] is False
+    assert tables[0].metadata["horizontal_rules"] == [94.0]
+    cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}
+    assert cell_map[(1, 0)].startswith("Family poverty-income ratio, n (%)")
 
 
 def test_detect_table_candidates_scores_tables_on_a_page() -> None:

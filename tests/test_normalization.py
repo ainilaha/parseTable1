@@ -272,6 +272,41 @@ def test_normalization_uses_rule_metadata_for_header_boundary_when_available() -
     assert normalized.metadata["header_detection"]["rule_strength"] == "strong"
 
 
+def test_normalization_accepts_pymupdf_text_layout_rule_metadata() -> None:
+    """Normalization should treat PyMuPDF fallback geometry metadata like other extracted tables."""
+    extracted = ExtractedTable(
+        table_id="tbl-pymupdf-fallback",
+        source_pdf="paper.pdf",
+        page_num=1,
+        title="Table 1",
+        caption="Baseline characteristics",
+        n_rows=3,
+        n_cols=3,
+        cells=[
+            TableCell(row_idx=0, col_idx=0, text="Characteristic"),
+            TableCell(row_idx=0, col_idx=1, text="Overall"),
+            TableCell(row_idx=0, col_idx=2, text="P-value"),
+            TableCell(row_idx=1, col_idx=0, text="Age, years"),
+            TableCell(row_idx=1, col_idx=1, text="52.1"),
+            TableCell(row_idx=1, col_idx=2, text="0.03"),
+            TableCell(row_idx=2, col_idx=0, text="Male"),
+            TableCell(row_idx=2, col_idx=1, text="34"),
+            TableCell(row_idx=2, col_idx=2, text="0.10"),
+        ],
+        extraction_backend="pymupdf4llm",
+        metadata={
+            "layout_source": "pymupdf_text_positions",
+            "row_bounds": [(12.0, 20.0), (26.0, 34.0), (40.0, 48.0)],
+            "horizontal_rules": [6.0, 24.0],
+        },
+    )
+
+    normalized = normalize_extracted_table(extracted)
+
+    assert normalized.metadata["extraction_backend"] == "pymupdf4llm"
+    assert normalized.metadata["header_detection"]["source"] == "horizontal_rules"
+
+
 def test_mostly_empty_leading_column_gets_removed() -> None:
     """A mostly empty leading edge column should be dropped at the table level."""
     extracted = ExtractedTable(

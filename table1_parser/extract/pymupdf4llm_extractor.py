@@ -8,7 +8,15 @@ from typing import Any
 
 from table1_parser.config import Settings
 from table1_parser.extract.base import BaseExtractor
+from table1_parser.extract.layout_fallback import build_text_layout_candidates
 from table1_parser.extract.pdfplumber_extractor import PDFPlumberExtractor
+from table1_parser.extract.pymupdf_page_adapter import (
+    extract_page_chars,
+    extract_page_rule_segments,
+    extract_page_text,
+    extract_page_words,
+    open_pymupdf_document,
+)
 from table1_parser.extract.table_detector import DetectedTableCandidate, _normalize_rows, score_candidate
 from table1_parser.extract.table_selector import select_top_candidates
 from table1_parser.schemas import ExtractedTable, TableCell
@@ -74,12 +82,17 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
     def _detect_table_candidates(self, pdf_path: str) -> list[DetectedTableCandidate]:
         pymupdf4llm = _import_pymupdf4llm()
         payload = json.loads(pymupdf4llm.to_json(pdf_path))
-        pages = payload.get("pages", [])
+        pages = {
+            int(page.get("page_number", 0)): page
+            for page in payload.get("pages", [])
+            if isinstance(page, dict)
+        }
         candidates: list[DetectedTableCandidate] = []
-        for page in pages:
-            page_num = int(page.get("page_number", 0))
-            page_boxes = page.get("boxes", []) or []
+        explicit_page_nums: set[int] = set()
+        for page_num, payload_page in sorted(pages.items()):
+            page_boxes = payload_page.get("boxes", []) or []
             page_text = _collect_page_text(page_boxes)
+            page_candidates: list[DetectedTableCandidate] = []
             table_boxes = [box for box in page_boxes if isinstance(box, dict) and box.get("table")]
             for table_index, box in enumerate(table_boxes):
                 table = box.get("table") or {}
@@ -89,28 +102,71 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                 bbox = _as_bbox(table.get("bbox")) or _as_bbox(box.get("bbox"))
                 cell_bboxes = _coerce_cell_bboxes(table.get("cells") or [])
                 row_bounds, horizontal_rules = _derive_row_geometry(cell_bboxes, bbox)
-                caption = _find_nearby_caption(page_boxes=page_boxes, table_bbox=bbox)
-                candidate = DetectedTableCandidate(
-                    page_num=page_num,
-                    table_index=table_index,
-                    bbox=bbox,
-                    raw_rows=raw_rows,
-                    caption=caption,
-                    page_text=page_text,
-                    metadata={
-                        "layout_source": "pymupdf4llm_json",
-                        "primary_representation": "json",
-                        "extractor_used": self.backend_name,
-                        "fallback_used": False,
-                        "row_count": table.get("row_count"),
-                        "col_count": table.get("col_count"),
-                        "table_markdown": table.get("markdown"),
-                        "table_cells": table.get("cells"),
-                        "row_bounds": row_bounds,
-                        "horizontal_rules": horizontal_rules,
-                    },
+                page_candidates.append(
+                    score_candidate(
+                        DetectedTableCandidate(
+                            page_num=page_num,
+                            table_index=table_index,
+                            bbox=bbox,
+                            raw_rows=raw_rows,
+                            caption=_find_nearby_caption(page_boxes=page_boxes, table_bbox=bbox),
+                            page_text=page_text,
+                            metadata={
+                                "layout_source": "pymupdf4llm_json",
+                                "primary_representation": "json",
+                                "extractor_used": self.backend_name,
+                                "fallback_used": False,
+                                "row_count": table.get("row_count"),
+                                "col_count": table.get("col_count"),
+                                "table_markdown": table.get("markdown"),
+                                "table_cells": table.get("cells"),
+                                "row_bounds": row_bounds,
+                                "horizontal_rules": horizontal_rules,
+                            },
+                        )
+                    )
                 )
-                candidates.append(score_candidate(candidate))
+            if page_candidates:
+                explicit_page_nums.add(page_num)
+                candidates.extend(page_candidates)
+
+        if pages and len(explicit_page_nums) == len(pages):
+            return candidates
+
+        document = open_pymupdf_document(pdf_path)
+        try:
+            for page_index in range(getattr(document, "page_count", 0)):
+                page_num = page_index + 1
+                if page_num in explicit_page_nums:
+                    continue
+                page = document.load_page(page_index)
+                payload_page = pages.get(page_num, {})
+                page_boxes = payload_page.get("boxes", []) or []
+                page_text = _collect_page_text(page_boxes) or extract_page_text(page)
+                for candidate in build_text_layout_candidates(
+                    page_num=page_num,
+                    page_text=page_text,
+                    words=extract_page_words(page),
+                    chars=extract_page_chars(page),
+                    rule_segments=extract_page_rule_segments(page),
+                    layout_source="pymupdf_text_positions",
+                ):
+                    candidates.append(
+                        candidate.model_copy(
+                            update={
+                                "metadata": {
+                                    **candidate.metadata,
+                                    "primary_representation": "json",
+                                    "extractor_used": self.backend_name,
+                                    "fallback_used": False,
+                                }
+                            }
+                        )
+                    )
+        finally:
+            close = getattr(document, "close", None)
+            if callable(close):
+                close()
         return candidates
 
     def _build_extracted_table(

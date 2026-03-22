@@ -9,12 +9,8 @@ from pydantic import BaseModel, Field
 
 
 TABLE_1_PATTERN = re.compile(r"\btable\s*1\b", re.IGNORECASE)
-TABLE_CAPTION_PATTERN = re.compile(r"\btable\s*\d+\b", re.IGNORECASE)
 NUMERIC_TOKEN_PATTERN = re.compile(r"\d")
 ALPHA_TOKEN_PATTERN = re.compile(r"[A-Za-z]")
-LINE_MERGE_TOLERANCE = 4.0
-COLUMN_CLUSTER_TOLERANCE = 18.0
-COLLAPSED_LABEL_PATTERN = re.compile(r"[a-z][A-Z]|[A-Za-z-]{8,}")
 
 
 class DetectedTableCandidate(BaseModel):
@@ -32,23 +28,15 @@ class DetectedTableCandidate(BaseModel):
 
 def _normalize_cell(value: Any) -> str:
     """Normalize a raw table cell into stripped text."""
-    if value is None:
-        return ""
-    return str(value).strip()
+    return "" if value is None else str(value).strip()
 
 
 def _normalize_rows(raw_rows: list[list[Any]]) -> list[list[str]]:
     """Normalize a raw table grid and pad rows into a rectangle."""
     if not raw_rows:
         return []
-
     max_cols = max((len(row) for row in raw_rows), default=0)
-    normalized_rows: list[list[str]] = []
-    for row in raw_rows:
-        normalized_row = [_normalize_cell(cell) for cell in row]
-        normalized_row.extend([""] * (max_cols - len(normalized_row)))
-        normalized_rows.append(normalized_row)
-    return normalized_rows
+    return [[_normalize_cell(cell) for cell in row] + [""] * (max_cols - len(row)) for row in raw_rows]
 
 
 def _is_rectangular(raw_rows: list[list[Any]]) -> bool:
@@ -62,8 +50,7 @@ def _text_ratio(values: list[str]) -> float:
     populated = [value for value in values if value.strip()]
     if not populated:
         return 0.0
-    text_like = [value for value in populated if ALPHA_TOKEN_PATTERN.search(value)]
-    return len(text_like) / len(populated)
+    return sum(bool(ALPHA_TOKEN_PATTERN.search(value)) for value in populated) / len(populated)
 
 
 def _numeric_ratio(values: list[str]) -> float:
@@ -71,31 +58,12 @@ def _numeric_ratio(values: list[str]) -> float:
     populated = [value for value in values if value.strip()]
     if not populated:
         return 0.0
-    numeric_like = [value for value in populated if NUMERIC_TOKEN_PATTERN.search(value)]
-    return len(numeric_like) / len(populated)
+    return sum(bool(NUMERIC_TOKEN_PATTERN.search(value)) for value in populated) / len(populated)
 
 
 def _flatten_later_columns(raw_rows: list[list[str]]) -> list[str]:
     """Collect non-first-column cells across the table."""
     return [cell for row in raw_rows for cell in row[1:]]
-
-
-def _extract_nearby_caption(page: Any, bbox: tuple[float, float, float, float] | None) -> str | None:
-    """Extract nearby caption text from above the table when available."""
-    page_text = _safe_extract_text(page)
-    fallback = _find_table_line(page_text)
-    if bbox is None or not hasattr(page, "crop"):
-        return fallback
-
-    top = bbox[1]
-    page_width = float(getattr(page, "width", bbox[2]))
-    crop_bbox = (0.0, max(0.0, top - 90.0), page_width, top)
-    try:
-        cropped_page = page.crop(crop_bbox)
-        cropped_text = _safe_extract_text(cropped_page)
-    except Exception:
-        cropped_text = ""
-    return cropped_text or fallback
 
 
 def _find_table_line(page_text: str) -> str | None:
@@ -132,354 +100,124 @@ def _safe_extract_chars(page: Any) -> list[dict[str, Any]]:
         return []
 
 
-def _safe_page_lines(page: Any) -> list[dict[str, Any]]:
-    """Return raw page line geometry when available."""
+def _extract_nearby_caption(page: Any, bbox: tuple[float, float, float, float] | None) -> str | None:
+    """Extract nearby caption text from above the table when available."""
+    page_text = _safe_extract_text(page)
+    fallback = _find_table_line(page_text)
+    if bbox is None or not hasattr(page, "crop"):
+        return fallback
+    top = bbox[1]
+    crop_bbox = (0.0, max(0.0, top - 90.0), float(getattr(page, "width", bbox[2])), top)
     try:
-        return getattr(page, "lines", []) or []
+        cropped_text = _safe_extract_text(page.crop(crop_bbox))
+    except Exception:
+        cropped_text = ""
+    return cropped_text or fallback
+
+
+def _page_rule_segments(page: Any) -> list[tuple[float, float, float, float]]:
+    """Normalize raw page line geometry into generic segments."""
+    try:
+        raw_lines = getattr(page, "lines", []) or []
     except Exception:
         return []
-
-
-def _vertical_overlap(top_a: float, bottom_a: float, top_b: float, bottom_b: float) -> bool:
-    """Return whether two vertical spans overlap meaningfully."""
-    return min(bottom_a, bottom_b) >= max(top_a, top_b)
-
-
-def _detect_horizontal_rules(
-    page: Any,
-    bbox: tuple[float, float, float, float] | None,
-) -> list[float]:
-    """Detect wide horizontal rules spanning most of the candidate table width."""
-    if bbox is None:
-        return []
-
-    left, top, right, bottom = bbox
-    table_width = max(1.0, float(right) - float(left))
-    rule_positions: list[float] = []
-    for line in _safe_page_lines(page):
-        x0 = float(line.get("x0", 0.0))
-        x1 = float(line.get("x1", 0.0))
-        y0 = float(line.get("y0", 0.0))
-        y1 = float(line.get("y1", y0))
-        if abs(y1 - y0) > 1.5:
-            continue
-        if y0 < top - 12.0 or y0 > bottom + 12.0:
-            continue
-        overlap_left = max(float(left), min(x0, x1))
-        overlap_right = min(float(right), max(x0, x1))
-        if overlap_right <= overlap_left:
-            continue
-        if (overlap_right - overlap_left) / table_width < 0.8:
-            continue
-        rule_positions.append(y0)
-
-    deduped: list[float] = []
-    for value in sorted(rule_positions):
-        if not deduped or abs(value - deduped[-1]) > 3.0:
-            deduped.append(value)
-    return deduped
-
-
-def _restore_text_from_chars(chars: list[dict[str, Any]]) -> str:
-    """Rebuild text from positioned chars, re-inserting spaces for visible glyph gaps."""
-    if not chars:
-        return ""
-
-    ordered_chars = sorted(chars, key=lambda char: float(char["x0"]))
-    pieces: list[str] = []
-    previous_char: dict[str, Any] | None = None
-
-    for char in ordered_chars:
-        text = str(char.get("text", ""))
-        if not text:
-            continue
-        if previous_char is not None:
-            gap = float(char["x0"]) - float(previous_char["x1"])
-            previous_width = float(previous_char["x1"]) - float(previous_char["x0"])
-            current_width = float(char["x1"]) - float(char["x0"])
-            gap_threshold = max(1.5, min(previous_width, current_width) * 0.6)
-            previous_text = str(previous_char.get("text", ""))
-            current_text = str(char.get("text", ""))
-            if (
-                previous_text.isalpha()
-                and current_text.isalpha()
-                and (previous_text.islower() or current_text.isupper())
-            ):
-                gap_threshold = min(gap_threshold, max(1.2, min(previous_width, current_width) * 0.45))
-            if gap > gap_threshold:
-                pieces.append(" ")
-        pieces.append(text)
-        previous_char = char
-    return "".join(pieces).strip()
-
-
-def _restore_word_text(word: dict[str, Any], page_chars: list[dict[str, Any]]) -> str:
-    """Restore intra-word spaces from underlying chars when possible."""
-    if not page_chars:
-        return str(word["text"]).strip()
-
-    x0 = float(word["x0"])
-    x1 = float(word["x1"])
-    top = float(word["top"])
-    bottom = float(word["bottom"])
-    chars_in_word = [
-        char
-        for char in page_chars
-        if float(char["x0"]) >= x0 - 0.5
-        and float(char["x1"]) <= x1 + 0.5
-        and _vertical_overlap(top, bottom, float(char["top"]), float(char["bottom"]))
-    ]
-    restored = _restore_text_from_chars(chars_in_word)
-    return restored or str(word["text"]).strip()
-
-
-def _group_words_into_lines(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Group positioned words into reading-order lines."""
-    if not words:
-        return []
-
-    sorted_words = sorted(words, key=lambda word: (float(word["top"]), float(word["x0"])))
-    lines: list[dict[str, Any]] = []
-
-    for word in sorted_words:
-        top = float(word["top"])
-        bottom = float(word["bottom"])
-        if not lines or abs(top - float(lines[-1]["top"])) > LINE_MERGE_TOLERANCE:
-            lines.append({"top": top, "bottom": bottom, "words": [word]})
-            continue
-
-        lines[-1]["words"].append(word)
-        lines[-1]["bottom"] = max(float(lines[-1]["bottom"]), bottom)
-
-    for line in lines:
-        line["words"] = sorted(line["words"], key=lambda word: float(word["x0"]))
-        line["text"] = " ".join(str(word["text"]).strip() for word in line["words"]).strip()
-    return lines
-
-
-def _cluster_positions(positions: list[float], tolerance: float) -> list[float]:
-    """Cluster x positions into stable column anchors."""
-    if not positions:
-        return []
-
-    clusters: list[list[float]] = [[positions[0]]]
-    for position in positions[1:]:
-        if abs(position - clusters[-1][-1]) <= tolerance:
-            clusters[-1].append(position)
-        else:
-            clusters.append([position])
-    return [sum(cluster) / len(cluster) for cluster in clusters]
-
-
-def _is_numeric_like(text: str) -> bool:
-    """Return whether a token looks numeric enough to be a table value."""
-    return bool(NUMERIC_TOKEN_PATTERN.search(text))
-
-
-def _looks_like_collapsed_label_token(text: str) -> bool:
-    """Return whether a first-column token likely lost visible word boundaries."""
-    return bool(COLLAPSED_LABEL_PATTERN.search(text))
-
-
-def _build_rows_from_line_segment(
-    lines: list[dict[str, Any]],
-    page_chars: list[dict[str, Any]] | None = None,
-) -> list[list[str]]:
-    """Convert a line segment into a row-major grid using x-position anchors."""
-    numeric_positions = sorted(
-        float(word["x0"])
-        for line in lines
-        for word in line["words"]
-        if _is_numeric_like(str(word["text"]))
-    )
-    numeric_anchors = _cluster_positions(numeric_positions, COLUMN_CLUSTER_TOLERANCE)
-
-    if not numeric_anchors:
-        return []
-
-    boundaries = [
-        (numeric_anchors[index] + numeric_anchors[index + 1]) / 2.0
-        for index in range(len(numeric_anchors) - 1)
-    ]
-
-    rows: list[list[str]] = []
-    for line in lines:
-        row_cells = [""] * (len(numeric_anchors) + 1)
-        for word in line["words"]:
-            text = str(word["text"]).strip()
-            x0 = float(word["x0"])
-            column_index = 0
-            while column_index < len(boundaries) and x0 >= boundaries[column_index]:
-                column_index += 1
-            if (
-                column_index <= 1
-                and " " not in text
-                and ALPHA_TOKEN_PATTERN.search(text)
-                and not NUMERIC_TOKEN_PATTERN.search(text)
-                and _looks_like_collapsed_label_token(text)
-            ):
-                text = _restore_word_text(word, page_chars or [])
-            if row_cells[column_index]:
-                row_cells[column_index] = f"{row_cells[column_index]} {text}"
-            else:
-                row_cells[column_index] = text
-        rows.append([cell.strip() for cell in row_cells])
-    return _normalize_rows(rows)
-
-
-def _segment_lines_into_tables(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Split page lines into table-like segments starting at caption lines."""
-    caption_indices = [
-        index for index, line in enumerate(lines) if TABLE_CAPTION_PATTERN.search(str(line["text"]))
-    ]
-    if not caption_indices:
-        return []
-
-    segments: list[dict[str, Any]] = []
-    for segment_index, start_index in enumerate(caption_indices):
-        end_index = caption_indices[segment_index + 1] if segment_index + 1 < len(caption_indices) else len(lines)
-        segment_lines = lines[start_index:end_index]
-        if len(segment_lines) < 3:
-            continue
-
-        caption_parts = [str(segment_lines[0]["text"]).strip()]
-        content_start = 1
-        if len(segment_lines) > 1:
-            second_line_text = str(segment_lines[1]["text"]).strip()
-            second_line_word_count = len(segment_lines[1]["words"])
-            if second_line_text and second_line_word_count <= 2 and not _is_numeric_like(second_line_text):
-                caption_parts.append(second_line_text)
-                content_start = 2
-
-        content_lines = segment_lines[content_start:]
-        rows = _build_rows_from_line_segment(content_lines)
-        if not rows:
-            continue
-
-        left = min(float(word["x0"]) for line in content_lines for word in line["words"])
-        right = max(float(word["x1"]) for line in content_lines for word in line["words"])
-        top = float(segment_lines[0]["top"])
-        bottom = max(float(line["bottom"]) for line in content_lines)
+    segments: list[tuple[float, float, float, float]] = []
+    for line in raw_lines:
         segments.append(
-            {
-                "caption": "\n".join(caption_parts),
-                "rows": rows,
-                "content_lines": content_lines,
-                "row_bounds": [(float(line["top"]), float(line["bottom"])) for line in content_lines],
-                "bbox": (left, top, right, bottom),
-            }
+            (
+                float(line.get("x0", 0.0)),
+                float(line.get("y0", 0.0)),
+                float(line.get("x1", 0.0)),
+                float(line.get("y1", line.get("y0", 0.0))),
+            )
         )
     return segments
 
 
-def _fallback_text_layout_candidates(page: Any, page_num: int, page_text: str) -> list[DetectedTableCandidate]:
-    """Build fallback candidates from word positions when grid detection fails."""
-    lines = _group_words_into_lines(_safe_extract_words(page))
-    page_chars = _safe_extract_chars(page)
-    segments = _segment_lines_into_tables(lines)
-    candidates: list[DetectedTableCandidate] = []
-
-    for table_index, segment in enumerate(segments):
-        raw_rows = _build_rows_from_line_segment(segment["content_lines"], page_chars=page_chars)
-        bbox = segment["bbox"]
-        candidate = DetectedTableCandidate(
-            page_num=page_num,
-            table_index=table_index,
-            bbox=bbox,
-            raw_rows=raw_rows,
-            caption=segment["caption"],
-            page_text=page_text,
-            metadata={
-                "is_rectangular": _is_rectangular(raw_rows),
-                "layout_source": "text_positions",
-                "row_bounds": segment["row_bounds"],
-                "horizontal_rules": _detect_horizontal_rules(page, bbox),
-            },
-        )
-        candidates.append(score_candidate(candidate))
-    return candidates
-
-
 def score_candidate(candidate: DetectedTableCandidate) -> DetectedTableCandidate:
     """Assign a Table 1 likelihood score to an extracted table candidate."""
-    first_column = [row[0] for row in candidate.raw_rows if row]
-    later_columns = _flatten_later_columns(candidate.raw_rows)
-    nearby_text = " ".join(
-        part for part in [candidate.caption or "", candidate.page_text or ""] if part
-    )
-
+    nearby_text = " ".join(part for part in [candidate.caption or "", candidate.page_text or ""] if part)
     caption_match = bool(TABLE_1_PATTERN.search(nearby_text))
-    first_column_text_ratio = _text_ratio(first_column)
-    later_column_numeric_ratio = _numeric_ratio(later_columns)
+    first_column_text_ratio = _text_ratio([row[0] for row in candidate.raw_rows if row])
+    later_column_numeric_ratio = _numeric_ratio(_flatten_later_columns(candidate.raw_rows))
     rectangular = bool(candidate.metadata.get("is_rectangular", False))
     min_shape = len(candidate.raw_rows) >= 2 and max((len(row) for row in candidate.raw_rows), default=0) >= 2
 
-    score = 0.0
-    if caption_match:
-        score += 0.45
-    if first_column_text_ratio >= 0.6:
-        score += 0.25
-    if later_column_numeric_ratio >= 0.5:
-        score += 0.2
-    if rectangular:
-        score += 0.1
-    if min_shape:
-        score += 0.05
-
-    metadata = {
-        **candidate.metadata,
-        "signals": {
-            "caption_match": caption_match,
-            "first_column_text_ratio": round(first_column_text_ratio, 4),
-            "later_column_numeric_ratio": round(later_column_numeric_ratio, 4),
-            "rectangular": rectangular,
-        },
-    }
-    return candidate.model_copy(update={"score": min(score, 1.0), "metadata": metadata})
+    score = 0.45 * caption_match
+    score += 0.25 if first_column_text_ratio >= 0.6 else 0.0
+    score += 0.2 if later_column_numeric_ratio >= 0.5 else 0.0
+    score += 0.1 if rectangular else 0.0
+    score += 0.05 if min_shape else 0.0
+    return candidate.model_copy(
+        update={
+            "score": min(score, 1.0),
+            "metadata": {
+                **candidate.metadata,
+                "signals": {
+                    "caption_match": caption_match,
+                    "first_column_text_ratio": round(first_column_text_ratio, 4),
+                    "later_column_numeric_ratio": round(later_column_numeric_ratio, 4),
+                    "rectangular": rectangular,
+                },
+            },
+        }
+    )
 
 
 def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandidate]:
     """Detect raw table candidates on a single page."""
+    from table1_parser.extract.layout_fallback import build_text_layout_candidates, detect_horizontal_rules
+
     page_text = _safe_extract_text(page)
+    rule_segments = _page_rule_segments(page)
     raw_tables = page.find_tables() if hasattr(page, "find_tables") else []
     candidates: list[DetectedTableCandidate] = []
-
     if raw_tables:
         for table_index, table in enumerate(raw_tables):
             raw_rows = table.extract() if hasattr(table, "extract") else table
-            normalized_rows = _normalize_rows(raw_rows)
-            candidate = DetectedTableCandidate(
-                page_num=page_num,
-                table_index=table_index,
-                bbox=getattr(table, "bbox", None),
-                raw_rows=normalized_rows,
-                caption=_extract_nearby_caption(page, getattr(table, "bbox", None)),
-                page_text=page_text,
-                metadata={
-                    "is_rectangular": _is_rectangular(raw_rows),
-                    "horizontal_rules": _detect_horizontal_rules(page, getattr(table, "bbox", None)),
-                },
+            bbox = getattr(table, "bbox", None)
+            candidates.append(
+                score_candidate(
+                    DetectedTableCandidate(
+                        page_num=page_num,
+                        table_index=table_index,
+                        bbox=bbox,
+                        raw_rows=_normalize_rows(raw_rows),
+                        caption=_extract_nearby_caption(page, bbox),
+                        page_text=page_text,
+                        metadata={
+                            "is_rectangular": _is_rectangular(raw_rows),
+                            "horizontal_rules": detect_horizontal_rules(rule_segments, bbox),
+                        },
+                    )
+                )
             )
-            candidates.append(score_candidate(candidate))
         return candidates
 
     if hasattr(page, "extract_tables"):
-        extracted_tables = page.extract_tables() or []
-        for table_index, raw_rows in enumerate(extracted_tables):
-            normalized_rows = _normalize_rows(raw_rows)
-            candidate = DetectedTableCandidate(
-                page_num=page_num,
-                table_index=table_index,
-                raw_rows=normalized_rows,
-                caption=_find_table_line(page_text),
-                page_text=page_text,
-                metadata={"is_rectangular": _is_rectangular(raw_rows)},
+        for table_index, raw_rows in enumerate(page.extract_tables() or []):
+            candidates.append(
+                score_candidate(
+                    DetectedTableCandidate(
+                        page_num=page_num,
+                        table_index=table_index,
+                        raw_rows=_normalize_rows(raw_rows),
+                        caption=_find_table_line(page_text),
+                        page_text=page_text,
+                        metadata={"is_rectangular": _is_rectangular(raw_rows)},
+                    )
+                )
             )
-            candidates.append(score_candidate(candidate))
     if candidates:
         return candidates
 
-    return _fallback_text_layout_candidates(page=page, page_num=page_num, page_text=page_text)
+    return build_text_layout_candidates(
+        page_num=page_num,
+        page_text=page_text,
+        words=_safe_extract_words(page),
+        chars=_safe_extract_chars(page),
+        rule_segments=rule_segments,
+    )
 
 
 def detect_table_candidates(pdf: Any) -> list[DetectedTableCandidate]:
@@ -488,3 +226,6 @@ def detect_table_candidates(pdf: Any) -> list[DetectedTableCandidate]:
     for page_num, page in enumerate(pdf.pages, start=1):
         candidates.extend(detect_page_candidates(page, page_num))
     return candidates
+
+
+from table1_parser.extract.layout_fallback import _build_rows_from_line_segment, _restore_word_text

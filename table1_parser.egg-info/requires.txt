@@ -2,7 +2,7 @@ pydantic<3,>=2
 pydantic-settings<3,>=2
 openai<2,>=1.0
 pdfplumber<1,>=0.11
-pymupdf4llm<1,>=0.0.20
+pymupdf4llm<2,>=1.27
 
 [dev]
 pytest<9,>=8

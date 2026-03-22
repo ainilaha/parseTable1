@@ -1,0 +1,132 @@
+"""Small PyMuPDF adapter for fallback page geometry extraction."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+
+def _import_pymupdf() -> Any:
+    """Import pymupdf lazily so package imports remain lightweight."""
+    try:
+        import pymupdf
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError("pymupdf is required for PyMuPDF geometry extraction.") from exc
+    return pymupdf
+
+
+def open_pymupdf_document(pdf_path: str) -> Any:
+    """Open a PDF with PyMuPDF."""
+    path = Path(pdf_path)
+    if not path.exists():
+        raise FileNotFoundError(f"PDF not found: {pdf_path}")
+    return _import_pymupdf().open(path)
+
+
+def extract_page_text(page: Any) -> str:
+    """Extract plain page text while tolerating backend quirks."""
+    try:
+        return (page.get_text("text") or "").strip()
+    except Exception:
+        return ""
+
+
+def extract_page_words(page: Any) -> list[dict[str, object]]:
+    """Extract normalized positioned words from a PyMuPDF page."""
+    try:
+        raw_words = page.get_text("words") or []
+    except Exception:
+        return []
+    words: list[dict[str, object]] = []
+    for word in raw_words:
+        if not isinstance(word, (list, tuple)) or len(word) < 5:
+            continue
+        x0, top, x1, bottom, text = word[:5]
+        words.append(
+            {
+                "text": str(text).strip(),
+                "x0": float(x0),
+                "x1": float(x1),
+                "top": float(top),
+                "bottom": float(bottom),
+            }
+        )
+    return words
+
+
+def extract_page_chars(page: Any) -> list[dict[str, object]]:
+    """Extract normalized positioned chars from a PyMuPDF page."""
+    try:
+        raw = page.get_text("rawdict") or {}
+    except Exception:
+        return []
+    chars: list[dict[str, object]] = []
+    for block in raw.get("blocks", []):
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                for char in span.get("chars", []):
+                    bbox = _coerce_rect(char.get("bbox"))
+                    if bbox is None:
+                        continue
+                    chars.append(
+                        {
+                            "text": str(char.get("c", "")),
+                            "x0": bbox[0],
+                            "x1": bbox[2],
+                            "top": bbox[1],
+                            "bottom": bbox[3],
+                        }
+                    )
+    return chars
+
+
+def extract_page_rule_segments(page: Any) -> list[tuple[float, float, float, float]]:
+    """Extract candidate horizontal drawing segments from a PyMuPDF page."""
+    try:
+        drawings = page.get_drawings() or []
+    except Exception:
+        return []
+    segments: list[tuple[float, float, float, float]] = []
+    for drawing in drawings:
+        rect = _coerce_rect(drawing.get("rect"))
+        if rect is not None:
+            segments.append(rect)
+        for item in drawing.get("items", []):
+            segment = _coerce_line_item(item)
+            if segment is not None:
+                segments.append(segment)
+    return segments
+
+
+def _coerce_rect(value: Any) -> tuple[float, float, float, float] | None:
+    """Convert a rect-like object to a tuple."""
+    if value is None:
+        return None
+    if all(hasattr(value, attr) for attr in ("x0", "y0", "x1", "y1")):
+        return (float(value.x0), float(value.y0), float(value.x1), float(value.y1))
+    if isinstance(value, (list, tuple)) and len(value) == 4:
+        return tuple(float(part) for part in value)
+    return None
+
+
+def _coerce_line_item(item: Any) -> tuple[float, float, float, float] | None:
+    """Convert a PyMuPDF drawing line item to a segment tuple."""
+    if not isinstance(item, tuple) or len(item) < 3 or item[0] != "l":
+        return None
+    start = _coerce_point(item[1])
+    end = _coerce_point(item[2])
+    if start is None or end is None:
+        return None
+    return (start[0], start[1], end[0], end[1])
+
+
+def _coerce_point(value: Any) -> tuple[float, float] | None:
+    """Convert a point-like object to a numeric pair."""
+    if value is None:
+        return None
+    if all(hasattr(value, attr) for attr in ("x", "y")):
+        return (float(value.x), float(value.y))
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return (float(value[0]), float(value[1]))
+    return None
+
