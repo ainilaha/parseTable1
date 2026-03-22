@@ -266,6 +266,15 @@ Current implementation note:
 
 - `body_rows` is serialized as `list[list[str]]`
 - the checked-in `schemas/table_llm_payload.schema.json` is expected to match `LLMInputPayload.model_json_schema()`
+- the checked-in `tests/data/sample_table_llm_payload.json` is expected to validate against `LLMInputPayload`
+- `tests/test_llm.py` contains contract-drift tests for both the schema file and the sample payload
+
+Current source-of-truth files for this contract:
+
+- `table1_parser/llm/schemas.py`
+- `schemas/table_llm_payload.schema.json`
+- `tests/data/sample_table_llm_payload.json`
+- `tests/test_llm.py`
 
 ## 5. `llm_output.json`
 

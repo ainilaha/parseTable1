@@ -76,7 +76,9 @@ visualize_table_from_json("parseTable1.out/papers/cobaltpaper/extracted_tables.j
 
 More detail:
 
+- [`docs/parsing_process.md`](docs/parsing_process.md)
 - [`docs/r_visualization.md`](docs/r_visualization.md)
+- [`docs/parsing_output_design.md`](docs/parsing_output_design.md)
 
 ## Output Layout
 
@@ -147,3 +149,17 @@ The trace script writes:
 - `llm_output.json`
 - `final_interpretation.json`
 - `diff.txt`
+
+## JSON Contracts
+
+The repository keeps the table pipeline JSON-first. The current output and intermediate JSON design is documented in:
+
+- [`docs/parsing_output_design.md`](docs/parsing_output_design.md)
+
+For the Phase 5 LLM input payload specifically:
+
+- the canonical Pydantic model is `table1_parser.llm.schemas.LLMInputPayload`
+- the checked-in JSON schema is [`schemas/table_llm_payload.schema.json`](schemas/table_llm_payload.schema.json)
+- the checked-in sample payload is [`tests/data/sample_table_llm_payload.json`](tests/data/sample_table_llm_payload.json)
+
+The test suite includes drift checks to ensure the checked-in schema and sample payload stay aligned with the live `LLMInputPayload` model.

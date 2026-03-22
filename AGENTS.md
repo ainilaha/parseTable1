@@ -15,6 +15,10 @@ docs/codex_build_spec.md
 
 Agents should always read that file before implementing features.
 
+For parsing design intentions and newer semantic-table planning notes, also read:
+
+docs/design_index.md
+
 ---
 
 # Project Goals
@@ -253,4 +257,3 @@ When starting development, implement **Phase 1 only**:
 - minimal tests
 
 Extraction and LLM logic will be implemented later.
-
