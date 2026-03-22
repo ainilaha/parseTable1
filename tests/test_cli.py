@@ -44,7 +44,7 @@ def test_cli_extract_stub_prints_not_implemented(capsys) -> None:
 
 
 def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypatch, capsys) -> None:
-    """The parse command should write extracted and normalized outputs from one extraction pass."""
+    """The parse command should write available stage outputs from one extraction pass."""
     monkeypatch.chdir(tmp_path)
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
@@ -62,16 +62,20 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     captured = capsys.readouterr()
     extracted_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "extracted_tables.json"
     normalized_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "normalized_tables.json"
+    table_definition_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions.json"
 
     assert exit_code == 0
     assert calls["extract"] == 1
     assert extracted_path.exists()
     assert normalized_path.exists()
+    assert table_definition_path.exists()
     assert json.loads(extracted_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(normalized_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert json.loads(table_definition_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert "Wrote parseTable1.out/papers/paper/extracted_tables.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/normalized_tables.json" in captured.out
-    assert "Later parse stages are not implemented yet." in captured.out
+    assert "Wrote parseTable1.out/papers/paper/table_definitions.json" in captured.out
+    assert "Final parsed tables are not implemented yet." in captured.out
 
 
 def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:

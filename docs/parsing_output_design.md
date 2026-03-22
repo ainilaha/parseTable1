@@ -20,7 +20,7 @@ Before changing JSON outputs or schemas, always read:
 Those files define the main development criteria:
 
 - keep extraction, normalization, heuristics, LLM interpretation, and validation as separate modules
-- preserve the pipeline shape `PDF -> ExtractedTable -> NormalizedTable -> ParsedTable`
+- preserve the pipeline shape `PDF -> ExtractedTable -> NormalizedTable -> TableDefinition -> ParsedTable`
 - keep tables in structured JSON rather than switching to Markdown-first representations
 - preserve raw extracted data and original text
 - use deterministic parsing first and LLM refinement only for semantic disambiguation
@@ -44,6 +44,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | --- | --- | --- | --- |
 | Extraction | `ExtractedTable` | Written now as `extracted_tables.json` by `extract` and `parse` | Preserve raw table grid and cell provenance |
 | Normalization | `NormalizedTable` | Written now as `normalized_tables.json` by `normalize` and `parse` | Clean rows, detect headers, derive row features |
+| Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
 | Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
 | LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
@@ -188,7 +189,84 @@ Design intent:
 - `row_views` are the compact per-row features that later heuristic and LLM stages consume
 - saved normalized tables can be reloaded as formal downstream input
 
-## 3. `heuristics.json`
+## 3. `table_definitions.json`
+
+Current status:
+
+- canonical value-free semantic intermediate
+- written by the `parse` CLI command
+
+Current CLI path:
+
+```text
+parseTable1.out/papers/<paper_stem>/table_definitions.json
+```
+
+Top-level shape:
+
+```json
+[
+  {
+    "...": "one TableDefinition object"
+  }
+]
+```
+
+Canonical model:
+
+- `TableDefinition`
+- child models: `DefinedVariable`, `DefinedLevel`, `ColumnDefinition`, `DefinedColumn`
+
+Top-level design components:
+
+- `table_id`, `title`, `caption`
+- `variables`
+- `column_definition`
+- `notes`
+- `overall_confidence`
+
+`DefinedVariable` design components:
+
+- `variable_name`
+- `variable_label`
+- `variable_type`
+- `row_start`, `row_end`
+- `levels`
+- `units_hint`
+- `summary_style_hint`
+- `confidence`
+
+`DefinedLevel` design components:
+
+- `level_name`
+- `level_label`
+- `row_idx`
+- `confidence`
+
+`ColumnDefinition` design components:
+
+- `grouping_label`
+- `grouping_name`
+- `columns`
+- `confidence`
+
+`DefinedColumn` design components:
+
+- `col_idx`
+- `column_name`
+- `column_label`
+- `inferred_role`
+- `grouping_variable_hint`
+- `confidence`
+
+Design intent:
+
+- persist the row and column semantics needed for later SQL-query generation
+- stay value-free so database-matching and query-building can happen before value parsing
+- keep row and column references tied to the normalized table index space
+- provide a deterministic baseline before optional LLM refinement is introduced
+
+## 4. `heuristics.json`
 
 Current status:
 
@@ -245,7 +323,7 @@ Design intent:
 - keep it small and row-referenced
 - do not treat this as the final exported table format
 
-## 4. `llm_input.json`
+## 5. `llm_input.json`
 
 Current status:
 
@@ -303,7 +381,7 @@ Current source-of-truth files for this contract:
 - `tests/data/sample_table_llm_payload.json`
 - `tests/test_llm.py`
 
-## 5. `llm_output.json`
+## 6. `llm_output.json`
 
 Current status:
 
@@ -328,7 +406,7 @@ Design intent:
 - separate raw output from validated interpretation
 - do not use this file as a stable downstream interface
 
-## 6. `final_interpretation.json`
+## 7. `final_interpretation.json`
 
 Current status:
 
@@ -388,7 +466,7 @@ Important limits of this artifact:
 
 This file is useful for inspection, R helpers, and LLM tracing, but it is not yet the final normalized export format for downstream analysis.
 
-## 7. `ParsedTable` JSON
+## 8. `ParsedTable` JSON
 
 Current status:
 

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from table1_parser.config import Settings
 from table1_parser.extract import build_extractor
+from table1_parser.heuristics.table_definition_builder import build_table_definitions, table_definitions_to_payload
 from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
 
 DEFAULT_OUTPUT_DIR = Path("parseTable1.out")
@@ -84,12 +85,13 @@ def _extract_payload(tables: list[object]) -> list[dict[str, object]]:
     return [table.model_dump(mode="json") for table in tables]
 
 
-def _run_available_parse_stages(pdf_path: str) -> tuple[list[object], list[object]]:
+def _run_available_parse_stages(pdf_path: str) -> tuple[list[object], list[object], list[object]]:
     """Run the currently implemented parse stages once and return their typed outputs."""
     extractor = _build_default_extractor()
     extracted_tables = extractor.extract(pdf_path)
     normalized_tables = normalize_extracted_tables(extracted_tables)
-    return extracted_tables, normalized_tables
+    table_definitions = build_table_definitions(normalized_tables)
+    return extracted_tables, normalized_tables, table_definitions
 
 
 def _handle_extract(args: argparse.Namespace) -> int:
@@ -123,7 +125,7 @@ def _handle_normalize(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        _, normalized_tables = _run_available_parse_stages(args.pdf_path)
+        _, normalized_tables, _ = _run_available_parse_stages(args.pdf_path)
     except Exception as exc:
         print(_error_payload(str(exc)))
         return 1
@@ -146,13 +148,14 @@ def _handle_parse(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        extracted_tables, normalized_tables = _run_available_parse_stages(args.pdf_path)
+        extracted_tables, normalized_tables, table_definitions = _run_available_parse_stages(args.pdf_path)
     except Exception as exc:
         print(_error_payload(str(exc)))
         return 1
 
     extract_output_path = _extract_output_path(args.pdf_path, args.outdir)
     normalize_output_path = _normalize_output_path(args.pdf_path, args.outdir)
+    table_definition_output_path = _table_definition_output_path(args.pdf_path, args.outdir)
     extract_output_path.parent.mkdir(parents=True, exist_ok=True)
 
     extract_output_path.write_text(
@@ -160,10 +163,15 @@ def _handle_parse(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
     write_normalized_tables(normalize_output_path, normalized_tables)
+    table_definition_output_path.write_text(
+        json.dumps(table_definitions_to_payload(table_definitions), indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     print(f"Wrote {extract_output_path}")
     print(f"Wrote {normalize_output_path}")
-    print("Later parse stages are not implemented yet.")
+    print(f"Wrote {table_definition_output_path}")
+    print("Final parsed tables are not implemented yet.")
     return 0
 
 
@@ -177,6 +185,12 @@ def _normalize_output_path(pdf_path: str, outdir: str) -> Path:
     """Return the default normalized-table JSON path for one paper."""
     paper_stem = Path(pdf_path).stem
     return Path(outdir) / "papers" / paper_stem / "normalized_tables.json"
+
+
+def _table_definition_output_path(pdf_path: str, outdir: str) -> Path:
+    """Return the default table-definition JSON path for one paper."""
+    paper_stem = Path(pdf_path).stem
+    return Path(outdir) / "papers" / paper_stem / "table_definitions.json"
 
 
 def main(argv: Sequence[str] | None = None) -> int:

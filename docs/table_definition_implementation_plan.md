@@ -80,15 +80,15 @@ Implement:
 1. Pydantic schema for `TableDefinition`
 2. Deterministic row-structure inference from `NormalizedTable`
 3. Deterministic column inference from normalized headers
-4. Optional LLM refinement interface for ambiguous cases
-5. Validation of the `TableDefinition`
-6. CLI export from `table1-parser parse`
-7. Tests and docs
+4. Validation of the `TableDefinition`
+5. CLI export from `table1-parser parse`
+6. Tests and docs
 
 Do not implement:
 
 - value extraction
 - `ParsedTable`
+- LLM refinement
 - database matching itself
 - SQL generation itself
 
@@ -150,9 +150,19 @@ The result should support downstream matching to the database field that created
 
 That downstream matching layer may live in R, so the output should stay simple, explicit, and JSON-first.
 
-## LLM Role
+## LLM Role in the Next Phase
 
-LLM use should be optional and only for semantic ambiguity.
+LLM use is expected to be valuable, but it is not part of this implementation phase.
+
+The deterministic `TableDefinition` built in this phase should become the baseline result. In the next phase, an optional LLM refinement layer can be added on top of that baseline and turned on or off for evaluation.
+
+Target future flow:
+
+```text
+NormalizedTable -> deterministic TableDefinition -> optional LLM-refined TableDefinition -> validation
+```
+
+When added, LLM use should be optional and only for semantic ambiguity.
 
 Use the LLM to refine:
 
@@ -167,6 +177,13 @@ Do not use the LLM to:
 - invent columns
 - infer values
 - replace deterministic extraction or normalization
+
+The future implementation should make it easy to compare:
+
+- deterministic-only output
+- deterministic + LLM-refined output
+
+so the project can assess whether the LLM adds useful signal.
 
 ## Validation Requirements
 

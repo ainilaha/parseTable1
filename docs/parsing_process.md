@@ -7,13 +7,14 @@ This project parses Table 1-style epidemiology tables in stages. The goal is to 
 The intended pipeline is:
 
 ```text
-PDF -> ExtractedTable -> NormalizedTable -> ParsedTable
+PDF -> ExtractedTable -> NormalizedTable -> TableDefinition -> ParsedTable
 ```
 
 In plain terms:
 
 - `ExtractedTable` is what the PDF extraction layer found
 - `NormalizedTable` is the cleaned and organized version used for interpretation
+- `TableDefinition` is the value-free semantic structure used for database matching and later parsing
 - `ParsedTable` is the final structured result with variables, levels, columns, and values
 
 For CLI use, `table1-parser parse` is intended to be the main user command. It should run the pipeline once and write every currently available stage artifact for the paper.
@@ -50,8 +51,8 @@ But it does not yet fully decide:
 
 Later stages use the `NormalizedTable` to make progressively stronger interpretations:
 
-- heuristics classify rows and group likely variables
-- optional LLM interpretation refines ambiguous structure
+- deterministic heuristics build a `TableDefinition`
+- optional LLM interpretation can later refine ambiguous structure
 - validation checks that the interpretation is consistent with the real table
 - final assembly produces a `ParsedTable`
 
@@ -69,9 +70,10 @@ This separation keeps the parser safer and easier to debug.
 
 If you are looking at parser outputs:
 
-- `table1-parser parse path/to/paper.pdf` is the main entry point and currently writes `extracted_tables.json` and `normalized_tables.json`
+- `table1-parser parse path/to/paper.pdf` is the main entry point and currently writes `extracted_tables.json`, `normalized_tables.json`, and `table_definitions.json`
 - `extract` and `normalize` remain useful for inspecting a single stage in isolation
 
 - raw extraction output answers: "What table did the PDF extractor recover?"
 - normalized output answers: "What cleaned table structure will the parser reason over?"
+- table-definition output answers: "What row variables, levels, and columns did the deterministic parser infer?"
 - parsed output answers: "What variables, levels, columns, and values did the system finally infer?"

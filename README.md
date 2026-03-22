@@ -6,7 +6,7 @@ Research-oriented tooling for extracting, normalizing, heuristically interpretin
 
 - The main user command is now `table1-parser parse`, which runs the available pipeline stages once and writes all currently available paper outputs.
 - The `extract` and `normalize` commands are still available for stage-specific inspection and debugging.
-- The next planned stage is `TableDefinition`, a value-free semantic representation of the table structure.
+- `TableDefinition` is now implemented as a deterministic, value-free semantic representation of the table structure.
 - The final semantic `ParsedTable` stage is not implemented yet.
 - The repository also contains heuristic interpretation, diagnostics, and LLM-oriented developer tooling.
 
@@ -29,7 +29,7 @@ Each stage has a different purpose:
   A cleaned and organized version of the extracted table. This separates header rows from body rows, preserves row structure, and computes row-level signals that help later interpretation.
 
 - `TableDefinition`
-  The next planned value-free semantic stage. This is meant to capture which variables appear in the rows, which ones are categorical, what their levels are, and how the columns were constructed, without including the table's printed values.
+  The value-free semantic stage. This captures which variables appear in the rows, which ones are categorical, what their levels are, and how the columns were constructed, without including the table's printed values.
 
 - `ParsedTable`
   The final semantic output. This combines variable definitions, column meanings, and parsed table values into a structured format.
@@ -40,8 +40,9 @@ At the moment, the repository can persist:
 
 - `ExtractedTable`
 - `NormalizedTable`
+- `TableDefinition`
 
-Today, a single call to `table1-parser parse` writes both of those artifacts from one extraction pass. `TableDefinition` is the next intended persisted intermediate.
+Today, a single call to `table1-parser parse` writes those artifacts from one extraction pass.
 
 ## Install
 
@@ -69,6 +70,7 @@ By default this writes:
 ```text
 parseTable1.out/papers/<paper_stem>/extracted_tables.json
 parseTable1.out/papers/<paper_stem>/normalized_tables.json
+parseTable1.out/papers/<paper_stem>/table_definitions.json
 ```
 
 For example:
@@ -77,7 +79,7 @@ For example:
 table1-parser parse testpapers/cobaltpaper.pdf
 ```
 
-This currently writes the extraction and normalization outputs in one run. As later stages are implemented, `parse` is intended to write those too.
+This currently writes the extraction, normalization, and table-definition outputs in one run. As later stages are implemented, `parse` is intended to write those too.
 
 If you want just the raw extraction stage:
 
@@ -171,6 +173,7 @@ parseTable1.out/
     cobaltpaper/
       extracted_tables.json
       normalized_tables.json
+      table_definitions.json
 ```
 
 This keeps outputs for each paper in a separate directory and leaves room for later semantic-definition, parsed, and interpretation-stage outputs.

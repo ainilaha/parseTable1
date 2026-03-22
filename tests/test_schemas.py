@@ -6,6 +6,10 @@ import pytest
 from pydantic import ValidationError
 
 from table1_parser.schemas import (
+    ColumnDefinition,
+    DefinedColumn,
+    DefinedLevel,
+    DefinedVariable,
     ExtractedTable,
     LLMTableContext,
     LLMTableParseResponse,
@@ -16,6 +20,7 @@ from table1_parser.schemas import (
     ParsedVariable,
     RowView,
     TableCell,
+    TableDefinition,
     ValueRecord,
 )
 
@@ -124,6 +129,51 @@ def test_parsed_table_creation_and_serialization() -> None:
     assert dumped["variables"][0]["levels"][0]["label"] == "Male"
     assert dumped["columns"][0]["inferred_role"] == "overall"
     assert dumped["values"][0]["parsed_secondary_numeric"] == 45.0
+
+
+def test_table_definition_creation_and_serialization() -> None:
+    """TableDefinition schemas should serialize nested row and column definitions correctly."""
+    definition = TableDefinition(
+        table_id="tbl-1",
+        title="Table 1",
+        caption="Baseline characteristics by RA status",
+        variables=[
+            DefinedVariable(
+                variable_name="Sex",
+                variable_label="Sex",
+                variable_type="binary",
+                row_start=2,
+                row_end=4,
+                levels=[
+                    DefinedLevel(level_name="Male", level_label="Male", row_idx=3),
+                    DefinedLevel(level_name="Female", level_label="Female", row_idx=4),
+                ],
+                confidence=0.95,
+            )
+        ],
+        column_definition=ColumnDefinition(
+            grouping_label="RA status",
+            grouping_name="RA status",
+            columns=[
+                DefinedColumn(
+                    col_idx=1,
+                    column_name="Overall",
+                    column_label="Overall",
+                    inferred_role="overall",
+                    grouping_variable_hint="RA status",
+                    confidence=0.95,
+                )
+            ],
+            confidence=0.95,
+        ),
+        notes=["deterministic_baseline"],
+        overall_confidence=0.95,
+    )
+
+    dumped = definition.model_dump(mode="json")
+
+    assert dumped["variables"][0]["levels"][0]["level_label"] == "Male"
+    assert dumped["column_definition"]["columns"][0]["inferred_role"] == "overall"
 
 
 def test_llm_contract_models_create_without_llm_logic() -> None:

@@ -13,7 +13,7 @@ Then use the documents below as needed.
 
 - `docs/parsing_process.md`
   Short user-facing overview of the intended pipeline:
-  `PDF -> ExtractedTable -> NormalizedTable -> ParsedTable`
+  `PDF -> ExtractedTable -> NormalizedTable -> TableDefinition -> ParsedTable`
 
 - `docs/parsing_output_design.md`
   Current JSON artifact design, canonical models, and output-file intent.

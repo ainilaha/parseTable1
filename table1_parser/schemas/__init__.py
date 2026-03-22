@@ -10,17 +10,29 @@ from table1_parser.schemas.parsed_table import (
     ParsedVariable,
     ValueRecord,
 )
+from table1_parser.schemas.table_definition import (
+    ColumnDefinition,
+    DefinedColumn,
+    DefinedLevel,
+    DefinedVariable,
+    TableDefinition,
+)
 
 __all__ = [
     "ExtractedTable",
     "LLMTableContext",
     "LLMTableParseResponse",
     "NormalizedTable",
+    "ColumnDefinition",
+    "DefinedColumn",
+    "DefinedLevel",
+    "DefinedVariable",
     "ParsedColumn",
     "ParsedLevel",
     "ParsedTable",
     "ParsedVariable",
     "RowView",
+    "TableDefinition",
     "TableCell",
     "ValueRecord",
 ]
