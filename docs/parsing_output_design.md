@@ -47,6 +47,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | Normalization | `NormalizedTable` | Written now as `normalized_tables.json` by `normalize` and `parse` | Clean rows, detect headers, derive row features |
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
 | Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles |
+| Semantic LLM table definition | `LLMSemanticTableDefinition` | Written now as `table_definitions_llm.json` by `parse` when LLM config is available | Persist value-free semantic interpretation grounded in table indices and retrieved paper context |
 | Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
 | LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
@@ -332,7 +333,50 @@ Variation note:
 - that variation should be handled in section parsing and retrieval, not by redefining the meaning of `paper_markdown.md`
 - `docs/paper_markdown_spec.md` is the design reference for this artifact
 
-## 5. `heuristics.json`
+## 5. `table_definitions_llm.json`
+
+Current status:
+
+- written by `parse` when semantic LLM configuration is available
+- skipped with a warning when semantic LLM is not disabled but configuration is missing
+- skipped when `--no-llm-semantic` is used
+
+Current CLI path:
+
+```text
+parseTable1.out/papers/<paper_stem>/table_definitions_llm.json
+```
+
+Canonical model:
+
+- `LLMSemanticTableDefinition`
+
+Top-level shape:
+
+```json
+[
+  {
+    "...": "one LLMSemanticTableDefinition object"
+  }
+]
+```
+
+Design components:
+
+- `table_id`
+- `variables`
+- `column_definition`
+- `notes`
+- `overall_confidence`
+
+Design intent:
+
+- let the LLM speak about row and column semantics using table structure plus retrieved paper context
+- preserve `table_definitions.json` as the deterministic baseline artifact
+- keep row and column references tied to the normalized table index space
+- validate the LLM output before writing this file
+
+## 6. `heuristics.json`
 
 Current status:
 
@@ -389,7 +433,7 @@ Design intent:
 - keep it small and row-referenced
 - do not treat this as the final exported table format
 
-## 6. `llm_input.json`
+## 7. `llm_input.json`
 
 Current status:
 
@@ -447,7 +491,7 @@ Current source-of-truth files for this contract:
 - `tests/data/sample_table_llm_payload.json`
 - `tests/test_llm.py`
 
-## 7. `llm_output.json`
+## 8. `llm_output.json`
 
 Current status:
 
@@ -472,7 +516,7 @@ Design intent:
 - separate raw output from validated interpretation
 - do not use this file as a stable downstream interface
 
-## 8. `final_interpretation.json`
+## 9. `final_interpretation.json`
 
 Current status:
 
@@ -532,7 +576,7 @@ Important limits of this artifact:
 
 This file is useful for inspection, R helpers, and LLM tracing, but it is not yet the final normalized export format for downstream analysis.
 
-## 9. `ParsedTable` JSON
+## 10. `ParsedTable` JSON
 
 Current status:
 

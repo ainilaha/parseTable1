@@ -16,6 +16,13 @@ from table1_parser.context import (
 )
 from table1_parser.extract import build_extractor
 from table1_parser.heuristics.table_definition_builder import build_table_definitions, table_definitions_to_payload
+from table1_parser.llm import (
+    LLMConfigurationError,
+    LLMProviderError,
+    LLMSemanticInterpretationError,
+    LLMSemanticTableDefinitionParser,
+    build_llm_client,
+)
 from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
 
 DEFAULT_OUTPUT_DIR = Path("parseTable1.out")
@@ -60,6 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--outdir",
         default=str(DEFAULT_OUTPUT_DIR),
         help="Root output directory. Defaults to parseTable1.out.",
+    )
+    parse_parser.add_argument(
+        "--no-llm-semantic",
+        action="store_true",
+        help="Disable semantic LLM table-definition inference.",
     )
     parse_parser.set_defaults(handler=_handle_parse)
 
@@ -165,9 +177,18 @@ def _handle_parse(args: argparse.Namespace) -> int:
         print(_error_payload(str(exc)))
         return 1
 
+    llm_table_definitions = _maybe_run_semantic_llm(
+        args.pdf_path,
+        normalized_tables,
+        table_definitions,
+        table_contexts,
+        disabled=args.no_llm_semantic,
+    )
+
     extract_output_path = _extract_output_path(args.pdf_path, args.outdir)
     normalize_output_path = _normalize_output_path(args.pdf_path, args.outdir)
     table_definition_output_path = _table_definition_output_path(args.pdf_path, args.outdir)
+    llm_table_definition_output_path = _llm_table_definition_output_path(args.pdf_path, args.outdir)
     paper_markdown_output_path = _paper_markdown_output_path(args.pdf_path, args.outdir)
     paper_sections_output_path = _paper_sections_output_path(args.pdf_path, args.outdir)
     table_context_output_dir = _table_context_output_dir(args.pdf_path, args.outdir)
@@ -183,6 +204,11 @@ def _handle_parse(args: argparse.Namespace) -> int:
         json.dumps(table_definitions_to_payload(table_definitions), indent=2) + "\n",
         encoding="utf-8",
     )
+    if llm_table_definitions is not None:
+        llm_table_definition_output_path.write_text(
+            json.dumps([definition.model_dump(mode="json") for definition in llm_table_definitions], indent=2) + "\n",
+            encoding="utf-8",
+        )
     paper_markdown_output_path.write_text(paper_markdown, encoding="utf-8")
     paper_sections_output_path.write_text(
         json.dumps(paper_sections_to_payload(paper_sections), indent=2) + "\n",
@@ -197,11 +223,43 @@ def _handle_parse(args: argparse.Namespace) -> int:
     print(f"Wrote {extract_output_path}")
     print(f"Wrote {normalize_output_path}")
     print(f"Wrote {table_definition_output_path}")
+    if llm_table_definitions is not None:
+        print(f"Wrote {llm_table_definition_output_path}")
     print(f"Wrote {paper_markdown_output_path}")
     print(f"Wrote {paper_sections_output_path}")
     print(f"Wrote {table_context_output_dir}")
     print("Final parsed tables are not implemented yet.")
     return 0
+
+
+def _maybe_run_semantic_llm(
+    pdf_path: str,
+    normalized_tables: list[object],
+    table_definitions: list[object],
+    table_contexts: list[object],
+    *,
+    disabled: bool,
+) -> list[object] | None:
+    """Return semantic LLM table definitions when the feature is available for this run."""
+    if disabled:
+        return None
+
+    settings = Settings()
+    try:
+        client = build_llm_client(settings=settings)
+    except LLMConfigurationError as exc:
+        print(f"LLM semantic interpretation skipped: {exc} Use --no-llm-semantic to suppress this warning.")
+        return None
+
+    parser = LLMSemanticTableDefinitionParser(client)
+    try:
+        return [
+            parser.parse(table, definition, context)
+            for table, definition, context in zip(normalized_tables, table_definitions, table_contexts, strict=True)
+        ]
+    except (LLMProviderError, LLMSemanticInterpretationError) as exc:
+        print(f"LLM semantic interpretation skipped: {exc}")
+        return None
 
 
 def _extract_output_path(pdf_path: str, outdir: str) -> Path:
@@ -220,6 +278,12 @@ def _table_definition_output_path(pdf_path: str, outdir: str) -> Path:
     """Return the default table-definition JSON path for one paper."""
     paper_stem = Path(pdf_path).stem
     return Path(outdir) / "papers" / paper_stem / "table_definitions.json"
+
+
+def _llm_table_definition_output_path(pdf_path: str, outdir: str) -> Path:
+    """Return the default semantic-LLM table-definition JSON path for one paper."""
+    paper_stem = Path(pdf_path).stem
+    return Path(outdir) / "papers" / paper_stem / "table_definitions_llm.json"
 
 
 def _paper_markdown_output_path(pdf_path: str, outdir: str) -> Path:

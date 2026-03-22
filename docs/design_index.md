@@ -40,6 +40,9 @@ Then use the documents below as needed.
 - `docs/llm_semantic_inference_phase.md`
   Design for the next LLM phase: markdown-based paper retrieval, semantic interpretation, and adjudication.
 
+- `docs/llm_semantic_cli_changes.md`
+  Narrow CLI wiring plan for running semantic LLM table-definition inference during `parse`.
+
 - `docs/llm_semantic_inference_steps.md`
   Brief implementation checklist for the LLM semantic inference phase.
 

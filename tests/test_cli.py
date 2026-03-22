@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 from table1_parser import cli
+from table1_parser.llm.client import LLMConfigurationError
+from table1_parser.llm.semantic_schemas import LLMSemanticTableDefinition
 from table1_parser.schemas import PaperSection, TableContext
 from table1_parser.schemas import ExtractedTable, TableCell
 
@@ -78,7 +80,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
         ],
     )
 
-    exit_code = cli.main(["parse", str(pdf_path)])
+    exit_code = cli.main(["parse", str(pdf_path), "--no-llm-semantic"])
 
     captured = capsys.readouterr()
     extracted_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "extracted_tables.json"
@@ -109,6 +111,115 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert "Wrote parseTable1.out/papers/paper/paper_sections.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/table_contexts" in captured.out
     assert "Final parsed tables are not implemented yet." in captured.out
+    assert "LLM semantic interpretation skipped:" not in captured.out
+
+
+def test_cli_parse_writes_semantic_llm_output_when_available(tmp_path, monkeypatch, capsys) -> None:
+    """The parse command should write semantic LLM table definitions when configuration is available."""
+    monkeypatch.chdir(tmp_path)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+
+    class FakeExtractor:
+        def extract(self, _: str) -> list[ExtractedTable]:
+            return [_build_extracted_table()]
+
+    class FakeSemanticParser:
+        def __init__(self, client: object) -> None:
+            self.client = client
+
+        def parse(self, table: object, definition: object, context: object) -> LLMSemanticTableDefinition:
+            return LLMSemanticTableDefinition(
+                table_id=definition.table_id,
+                variables=[],
+                column_definition={"columns": []},
+                notes=["semantic"],
+                overall_confidence=0.9,
+            )
+
+    monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
+    monkeypatch.setattr(cli, "extract_paper_markdown", lambda _: "# Methods\nExample study population.")
+    monkeypatch.setattr(
+        cli,
+        "parse_markdown_sections",
+        lambda _: [PaperSection(section_id="section_0", order=0, heading="Methods", level=1, role_hint="methods_like", content="Example study population.")],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_table_contexts",
+        lambda sections, definitions: [
+            TableContext(
+                table_id=definitions[0].table_id,
+                table_index=0,
+                table_label="Table 1",
+                title=definitions[0].title,
+                caption=definitions[0].caption,
+                methods_like_section_ids=[sections[0].section_id],
+            )
+        ],
+    )
+    monkeypatch.setattr(cli, "build_llm_client", lambda settings=None: object())
+    monkeypatch.setattr(cli, "LLMSemanticTableDefinitionParser", FakeSemanticParser)
+
+    exit_code = cli.main(["parse", str(pdf_path)])
+
+    captured = capsys.readouterr()
+    llm_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions_llm.json"
+
+    assert exit_code == 0
+    assert llm_path.exists()
+    assert json.loads(llm_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert "Wrote parseTable1.out/papers/paper/table_definitions_llm.json" in captured.out
+
+
+def test_cli_parse_warns_and_skips_semantic_llm_when_configuration_is_missing(tmp_path, monkeypatch, capsys) -> None:
+    """The parse command should warn and continue when semantic LLM config is unavailable."""
+    monkeypatch.chdir(tmp_path)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+
+    class FakeExtractor:
+        def extract(self, _: str) -> list[ExtractedTable]:
+            return [_build_extracted_table()]
+
+    monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
+    monkeypatch.setattr(cli, "extract_paper_markdown", lambda _: "# Methods\nExample study population.")
+    monkeypatch.setattr(
+        cli,
+        "parse_markdown_sections",
+        lambda _: [PaperSection(section_id="section_0", order=0, heading="Methods", level=1, role_hint="methods_like", content="Example study population.")],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_table_contexts",
+        lambda sections, definitions: [
+            TableContext(
+                table_id=definitions[0].table_id,
+                table_index=0,
+                table_label="Table 1",
+                title=definitions[0].title,
+                caption=definitions[0].caption,
+                methods_like_section_ids=[sections[0].section_id],
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_llm_client",
+        lambda settings=None: (_ for _ in ()).throw(LLMConfigurationError("OPENAI_API_KEY is required when LLM_PROVIDER=openai.")),
+    )
+
+    exit_code = cli.main(["parse", str(pdf_path)])
+
+    captured = capsys.readouterr()
+    llm_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions_llm.json"
+    table_definition_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions.json"
+
+    assert exit_code == 0
+    assert table_definition_path.exists()
+    assert not llm_path.exists()
+    assert "LLM semantic interpretation skipped:" in captured.out
+    assert "Use --no-llm-semantic to suppress this warning." in captured.out
 
 
 def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:

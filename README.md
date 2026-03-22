@@ -44,6 +44,7 @@ At the moment, the repository can persist:
 - paper-level markdown context
 
 Today, a single call to `table1-parser parse` writes those artifacts from one extraction pass.
+When LLM configuration is available, the same `parse` call also writes semantic LLM table definitions.
 
 ## Install
 
@@ -77,13 +78,25 @@ parseTable1.out/papers/<paper_stem>/paper_sections.json
 parseTable1.out/papers/<paper_stem>/table_contexts/table_0_context.json
 ```
 
+If semantic LLM configuration is available, it also writes:
+
+```text
+parseTable1.out/papers/<paper_stem>/table_definitions_llm.json
+```
+
 For example:
 
 ```bash
 table1-parser parse testpapers/cobaltpaper.pdf
 ```
 
-This currently writes the extraction, normalization, table-definition, and paper-context outputs in one run. As later stages are implemented, `parse` is intended to write those too.
+This currently writes the extraction, normalization, table-definition, and paper-context outputs in one run. When configured, it also writes semantic LLM table-definition output. As later stages are implemented, `parse` is intended to write those too.
+
+To suppress semantic LLM inference explicitly:
+
+```bash
+table1-parser parse path/to/paper.pdf --no-llm-semantic
+```
 
 If you want just the raw extraction stage:
 
@@ -178,6 +191,7 @@ parseTable1.out/
       extracted_tables.json
       normalized_tables.json
       table_definitions.json
+      table_definitions_llm.json
       paper_markdown.md
       paper_sections.json
       table_contexts/
@@ -189,7 +203,7 @@ The `parse` command is intended to populate this directory with every available 
 
 ## LLM Configuration
 
-Phase 5 developer tooling uses environment-variable-based configuration and fails clearly if the provider is not configured.
+The semantic LLM parse path uses environment-variable-based configuration. If the variables are present, `parse` runs semantic LLM table-definition inference by default. If they are missing, `parse` warns and continues with deterministic outputs only. Use `--no-llm-semantic` to turn that path off explicitly.
 
 Minimum OpenAI setup:
 
