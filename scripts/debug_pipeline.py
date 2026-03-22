@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Usage: python scripts/debug_pipeline.py path/to/file.pdf"""
+
 from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path
-def _bootstrap_repo_venv() -> None:
+
+
+def _bootstrap_repo_root() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    site_packages = (
-        repo_root / ".venv" / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
-    )
-    if site_packages.exists():
-        sys.path.insert(0, str(site_packages))
-_bootstrap_repo_venv()
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+
+
+_bootstrap_repo_root()
+
 from table1_parser.config import Settings
 from table1_parser.extract import build_extractor
 from table1_parser.extract.pdf_loader import open_pdf
@@ -20,6 +24,8 @@ from table1_parser.extract.table_selector import select_top_candidates
 from table1_parser.heuristics import classify_rows, detect_column_roles, group_variable_blocks
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.normalize import normalize_extracted_table
+
+
 def _print_detected_tables(pdf_path: str) -> list[object]:
     with open_pdf(pdf_path) as pdf:
         candidates = detect_table_candidates(pdf)
@@ -104,5 +110,7 @@ def main() -> int:
     for sample in samples or ["  none"]:
         print(sample)
     return 0
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

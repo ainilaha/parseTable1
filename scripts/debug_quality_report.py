@@ -8,16 +8,13 @@ import sys
 from pathlib import Path
 
 
-def _bootstrap_repo_venv() -> None:
+def _bootstrap_repo_root() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    site_packages = (
-        repo_root / ".venv" / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
-    )
-    if site_packages.exists():
-        sys.path.insert(0, str(site_packages))
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
 
-_bootstrap_repo_venv()
+_bootstrap_repo_root()
 
 from table1_parser.config import Settings
 from table1_parser.diagnostics import build_parse_quality_report

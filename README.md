@@ -70,8 +70,8 @@ export LLM_DEBUG=false
 
 More detail:
 
-- [`docs/llm_integration.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/llm_integration.md)
-- [`docs/llm_setup.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/llm_setup.md)
+- [`docs/llm_integration.md`](docs/llm_integration.md)
+- [`docs/llm_setup.md`](docs/llm_setup.md)
 
 ## R Visualization
 
@@ -101,7 +101,7 @@ print_variable_structure(x)
 
 More detail:
 
-- [`docs/r_visualization.md`](/Users/robert/Projects/Epiconnector/parseTable1/docs/r_visualization.md)
+- [`docs/r_visualization.md`](docs/r_visualization.md)
 
 ## Example Workflow
 

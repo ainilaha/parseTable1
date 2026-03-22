@@ -18,6 +18,10 @@ dist/
 *.out
 *.log
 debug_*.txt
+/out
 test-results/
 trace_output/
 outputs/
+
+# Large or local-only PDF fixtures
+/testpapers/OPEandRA.pdf

@@ -4,8 +4,8 @@ The repository includes small base-R helpers for visually inspecting parser JSON
 
 File:
 
-- [`R/visualize_table_from_json.R`](/Users/robert/Projects/Epiconnector/parseTable1/R/visualize_table_from_json.R)
-- [`R/extract_variables_from_final_interpretation.R`](/Users/robert/Projects/Epiconnector/parseTable1/R/extract_variables_from_final_interpretation.R)
+- [`R/visualize_table_from_json.R`](../R/visualize_table_from_json.R)
+- [`R/extract_variables_from_final_interpretation.R`](../R/extract_variables_from_final_interpretation.R)
 
 ## Table Display Helper
 

@@ -1,2 +1,0 @@
-[console_scripts]
-table1-parser = table1_parser.cli:main
