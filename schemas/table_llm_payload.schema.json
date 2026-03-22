@@ -1,60 +1,94 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TableLLMPayload",
-  "type": "object",
-  "required": ["header_rows", "body_rows"],
-  "properties": {
-    "title": {
-      "type": ["string", "null"]
-    },
-    "caption": {
-      "type": ["string", "null"]
-    },
-    "header_rows": {
-      "type": "array",
-      "items": {
-        "type": "array",
-        "items": { "type": "string" }
-      }
-    },
-    "body_rows": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["row_idx", "cells"],
-        "properties": {
-          "row_idx": {
-            "type": "integer"
-          },
-          "cells": {
-            "type": "array",
-            "items": { "type": "string" }
-          },
-          "heuristic_type": {
-            "type": ["string", "null"]
-          },
-          "numeric_cell_count": {
-            "type": ["integer", "null"]
-          },
-          "has_trailing_values": {
-            "type": ["boolean", "null"]
-          },
-          "indent_level": {
-            "type": ["integer", "null"]
-          }
-        }
-      }
-    },
-    "heuristics": {
-      "type": "object",
+  "$defs": {
+    "LLMHeuristicPayload": {
+      "description": "Compact heuristic context passed into prompt construction.",
       "properties": {
-        "variable_blocks": {
+        "column_roles": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Column Roles",
           "type": "array"
         },
-        "column_roles": {
+        "row_classifications": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Row Classifications",
+          "type": "array"
+        },
+        "variable_blocks": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Variable Blocks",
           "type": "array"
         }
-      }
+      },
+      "title": "LLMHeuristicPayload",
+      "type": "object"
     }
-  }
+  },
+  "description": "Compact structured payload provided to the LLM.",
+  "properties": {
+    "body_rows": {
+      "items": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Body Rows",
+      "type": "array"
+    },
+    "caption": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Caption"
+    },
+    "header_rows": {
+      "items": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Header Rows",
+      "type": "array"
+    },
+    "heuristics": {
+      "$ref": "#/$defs/LLMHeuristicPayload"
+    },
+    "table_id": {
+      "title": "Table Id",
+      "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    }
+  },
+  "required": [
+    "table_id"
+  ],
+  "title": "LLMInputPayload",
+  "type": "object"
 }

@@ -1,45 +1,46 @@
 {
+  "table_id": "tbl-sample",
   "title": "Table 1. Baseline Characteristics",
   "caption": "Characteristics by RA status",
   "header_rows": [
     ["Characteristics", "Overall", "Non-RA", "RA", "p-value"]
   ],
   "body_rows": [
-    {
-      "row_idx": 0,
-      "cells": ["n", "5490", "5171", "319", ""],
-      "heuristic_type": "continuous_variable_row",
-      "numeric_cell_count": 3,
-      "has_trailing_values": true,
-      "indent_level": 0
-    },
-    {
-      "row_idx": 1,
-      "cells": ["Age (yrs)", "53.2 (12.1)", "52.7 (11.9)", "61.0 (13.0)", "<0.001"],
-      "heuristic_type": "continuous_variable_row",
-      "numeric_cell_count": 3,
-      "has_trailing_values": true,
-      "indent_level": 0
-    },
-    {
-      "row_idx": 2,
-      "cells": ["Sex", "", "", "", ""],
-      "heuristic_type": "variable_header",
-      "numeric_cell_count": 0,
-      "has_trailing_values": false,
-      "indent_level": 0
-    },
-    {
-      "row_idx": 3,
-      "cells": ["Male", "2697 (49.1)", "2568 (49.7)", "129 (40.4)", ""],
-      "heuristic_type": "level_row",
-      "numeric_cell_count": 3,
-      "has_trailing_values": true,
-      "indent_level": 1
-    }
+    ["n", "5490", "5171", "319", ""],
+    ["Age (yrs)", "53.2 (12.1)", "52.7 (11.9)", "61.0 (13.0)", "<0.001"],
+    ["Sex", "", "", "", ""],
+    ["Male", "2697 (49.1)", "2568 (49.7)", "129 (40.4)", ""]
   ],
   "heuristics": {
-    "variable_blocks": [],
-    "column_roles": []
+    "row_classifications": [
+      {"row_idx": 0, "classification": "continuous_variable_row", "confidence": 0.9},
+      {"row_idx": 1, "classification": "continuous_variable_row", "confidence": 0.94},
+      {"row_idx": 2, "classification": "variable_header", "confidence": 0.91},
+      {"row_idx": 3, "classification": "level_row", "confidence": 0.92}
+    ],
+    "variable_blocks": [
+      {
+        "variable_row_idx": 1,
+        "row_start": 1,
+        "row_end": 1,
+        "variable_label": "Age (yrs)",
+        "variable_kind": "continuous",
+        "level_row_indices": []
+      },
+      {
+        "variable_row_idx": 2,
+        "row_start": 2,
+        "row_end": 3,
+        "variable_label": "Sex",
+        "variable_kind": "categorical",
+        "level_row_indices": [3]
+      }
+    ],
+    "column_roles": [
+      {"col_idx": 1, "header_label": "Overall", "role": "overall", "confidence": 0.96},
+      {"col_idx": 2, "header_label": "Non-RA", "role": "comparison_group", "confidence": 0.88},
+      {"col_idx": 3, "header_label": "RA", "role": "comparison_group", "confidence": 0.88},
+      {"col_idx": 4, "header_label": "p-value", "role": "p_value", "confidence": 0.98}
+    ]
   }
 }

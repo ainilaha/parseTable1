@@ -171,6 +171,7 @@ Example shape:
 
 ```json
 {
+  "table_id": "tbl-llm",
   "title": "Table 1. Baseline characteristics of participants",
   "caption": "Characteristics by diabetes status",
   "header_rows": [

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -15,8 +16,13 @@ from table1_parser.llm.prompts import (
     load_prompt_template,
     render_prompt_template,
 )
-from table1_parser.llm.schemas import LLMTableInterpretation
+from table1_parser.llm.schemas import LLMInputPayload, LLMTableInterpretation
 from table1_parser.schemas import NormalizedTable, RowView
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCHEMA_PATH = REPO_ROOT / "schemas" / "table_llm_payload.schema.json"
+SAMPLE_PAYLOAD_PATH = REPO_ROOT / "tests" / "data" / "sample_table_llm_payload.json"
 
 
 def _build_row(
@@ -113,6 +119,24 @@ def test_prompt_template_rendering_replaces_placeholders() -> None:
     )
 
     assert rendered == 'payload={"a": 1}\nschema={"b": 2}'
+
+
+def test_checked_in_llm_input_schema_matches_model_json_schema() -> None:
+    """The committed JSON schema should stay in sync with the current Pydantic model."""
+    checked_in_schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+
+    assert checked_in_schema == LLMInputPayload.model_json_schema()
+
+
+def test_sample_llm_payload_validates_against_current_model() -> None:
+    """The committed sample payload should match the current LLM input contract."""
+    payload = json.loads(SAMPLE_PAYLOAD_PATH.read_text(encoding="utf-8"))
+
+    parsed = LLMInputPayload.model_validate(payload)
+
+    assert parsed.table_id == "tbl-sample"
+    assert parsed.body_rows[0][0] == "n"
+    assert parsed.heuristics.row_classifications[2]["classification"] == "variable_header"
 
 
 def test_llm_parser_validates_structured_response() -> None:
