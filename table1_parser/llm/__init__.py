@@ -14,11 +14,17 @@ from table1_parser.llm.parser import (
     parse_table_with_configured_llm,
     parse_table_with_llm,
 )
+from table1_parser.llm.semantic_parser import (
+    LLMSemanticInterpretationError,
+    LLMSemanticTableDefinitionParser,
+)
 
 __all__ = [
     "LLMClient",
     "LLMConfigurationError",
     "LLMInterpretationError",
+    "LLMSemanticInterpretationError",
+    "LLMSemanticTableDefinitionParser",
     "LLMProviderError",
     "LLMTableParser",
     "OpenAIClient",
