@@ -4,10 +4,10 @@ Research-oriented tooling for extracting, normalizing, heuristically interpretin
 
 ## Current Status
 
-- The extraction workflow is available now through the `table1-parser` CLI.
-- Normalized tables can now also be written through the `table1-parser normalize` CLI.
+- The main user command is now `table1-parser parse`, which runs the available pipeline stages once and writes all currently available paper outputs.
+- The `extract` and `normalize` commands are still available for stage-specific inspection and debugging.
 - The next planned stage is `TableDefinition`, a value-free semantic representation of the table structure.
-- The full `parse` command is not implemented yet.
+- The final semantic `ParsedTable` stage is not implemented yet.
 - The repository also contains heuristic interpretation, diagnostics, and LLM-oriented developer tooling.
 
 ## Basic Idea
@@ -41,7 +41,7 @@ At the moment, the repository can persist:
 - `ExtractedTable`
 - `NormalizedTable`
 
-`TableDefinition` is the next intended persisted intermediate.
+Today, a single call to `table1-parser parse` writes both of those artifacts from one extraction pass. `TableDefinition` is the next intended persisted intermediate.
 
 ## Install
 
@@ -58,7 +58,28 @@ python3 -m pip install -e .
 
 ## Quick Start
 
-Extract tables from a PDF:
+Run the available parse pipeline once and write all current stage outputs:
+
+```bash
+table1-parser parse path/to/paper.pdf
+```
+
+By default this writes:
+
+```text
+parseTable1.out/papers/<paper_stem>/extracted_tables.json
+parseTable1.out/papers/<paper_stem>/normalized_tables.json
+```
+
+For example:
+
+```bash
+table1-parser parse testpapers/cobaltpaper.pdf
+```
+
+This currently writes the extraction and normalization outputs in one run. As later stages are implemented, `parse` is intended to write those too.
+
+If you want just the raw extraction stage:
 
 ```bash
 table1-parser extract path/to/paper.pdf
@@ -100,7 +121,7 @@ This writes to:
 results/papers/<paper_stem>/extracted_tables.json
 ```
 
-Normalize tables from a PDF:
+If you want just the normalization stage:
 
 ```bash
 table1-parser normalize path/to/paper.pdf
@@ -153,6 +174,7 @@ parseTable1.out/
 ```
 
 This keeps outputs for each paper in a separate directory and leaves room for later semantic-definition, parsed, and interpretation-stage outputs.
+The `parse` command is intended to populate this directory with every available stage output from a single pipeline run.
 
 ## LLM Configuration
 

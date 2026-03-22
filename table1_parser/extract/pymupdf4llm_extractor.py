@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 from pathlib import Path
 from typing import Any
@@ -37,6 +39,15 @@ def _import_pymupdf4llm() -> Any:
             "pymupdf4llm is required for the pymupdf4llm extraction backend."
         ) from exc
     return pymupdf4llm
+
+
+def _load_pymupdf4llm_payload(pdf_path: str) -> dict[str, Any]:
+    """Load PyMuPDF4LLM JSON while suppressing library stdout chatter."""
+    pymupdf4llm = _import_pymupdf4llm()
+    stdout_buffer = io.StringIO()
+    with contextlib.redirect_stdout(stdout_buffer):
+        payload = pymupdf4llm.to_json(pdf_path)
+    return json.loads(payload)
 
 
 class PyMuPDF4LLMExtractor(BaseExtractor):
@@ -81,8 +92,7 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
         ]
 
     def _detect_table_candidates(self, pdf_path: str) -> list[DetectedTableCandidate]:
-        pymupdf4llm = _import_pymupdf4llm()
-        payload = json.loads(pymupdf4llm.to_json(pdf_path))
+        payload = _load_pymupdf4llm_payload(pdf_path)
         pages = {
             int(page.get("page_number", 0)): page
             for page in payload.get("pages", [])

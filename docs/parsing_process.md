@@ -16,6 +16,8 @@ In plain terms:
 - `NormalizedTable` is the cleaned and organized version used for interpretation
 - `ParsedTable` is the final structured result with variables, levels, columns, and values
 
+For CLI use, `table1-parser parse` is intended to be the main user command. It should run the pipeline once and write every currently available stage artifact for the paper.
+
 ## What `NormalizedTable` Means
 
 A `NormalizedTable` is the intermediate representation between raw extraction and final parsing.
@@ -66,6 +68,9 @@ This separation keeps the parser safer and easier to debug.
 ## For Users
 
 If you are looking at parser outputs:
+
+- `table1-parser parse path/to/paper.pdf` is the main entry point and currently writes `extracted_tables.json` and `normalized_tables.json`
+- `extract` and `normalize` remain useful for inspecting a single stage in isolation
 
 - raw extraction output answers: "What table did the PDF extractor recover?"
 - normalized output answers: "What cleaned table structure will the parser reason over?"

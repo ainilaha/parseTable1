@@ -142,6 +142,22 @@ def _install_fake_pymupdf4llm(monkeypatch, payload: dict[str, object], *, fail: 
     monkeypatch.setitem(sys.modules, "pymupdf4llm", module)
 
 
+def _install_fake_pymupdf4llm_with_stdout(
+    monkeypatch,
+    payload: dict[str, object],
+    message: str,
+) -> None:
+    """Install a fake pymupdf4llm module that prints to stdout before returning JSON."""
+    module = ModuleType("pymupdf4llm")
+
+    def _to_json(_: str) -> str:
+        print(message)
+        return json.dumps(payload)
+
+    module.to_json = _to_json
+    monkeypatch.setitem(sys.modules, "pymupdf4llm", module)
+
+
 def _install_fake_pymupdf_document(monkeypatch, pages: list[FakePyMuPage]) -> None:
     """Install a fake PyMuPDF document and page adapters for a test case."""
     fake_doc = FakePyMuDoc(pages)
@@ -294,6 +310,24 @@ def test_pymupdf4llm_extractor_returns_empty_on_primary_failure(tmp_path, monkey
     tables = extractor.extract(str(pdf_path))
 
     assert tables == []
+
+
+def test_pymupdf4llm_extractor_suppresses_library_stdout(tmp_path, monkeypatch, capsys) -> None:
+    """Library stdout chatter should not leak into user-visible extractor output."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm_with_stdout(
+        monkeypatch,
+        {"pages": []},
+        "OCR disabled because Tesseract language data not found.",
+    )
+
+    extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    tables = extractor.extract(str(pdf_path))
+
+    captured = capsys.readouterr()
+    assert tables == []
+    assert captured.out == ""
 
 
 def test_pymupdf4llm_extractor_marks_rotated_tables_in_metadata(tmp_path, monkeypatch) -> None:

@@ -11,7 +11,6 @@ from table1_parser.config import Settings
 from table1_parser.extract import build_extractor
 from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
 
-NOT_IMPLEMENTED_MESSAGE = "Feature not implemented yet"
 DEFAULT_OUTPUT_DIR = Path("parseTable1.out")
 
 
@@ -55,34 +54,58 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_OUTPUT_DIR),
         help="Root output directory. Defaults to parseTable1.out.",
     )
-    parse_parser.set_defaults(handler=_handle_not_implemented)
+    parse_parser.set_defaults(handler=_handle_parse)
 
     return parser
 
 
-def _handle_not_implemented(_: argparse.Namespace) -> int:
-    """Return the Phase 1 placeholder response for unimplemented commands."""
-    print(NOT_IMPLEMENTED_MESSAGE)
-    return 0
+def _error_payload(message: str) -> str:
+    """Return a consistent JSON error payload for CLI failures."""
+    return json.dumps({"tables": [], "error": message}, indent=2)
+
+
+def _validate_pdf_path(pdf_path: str) -> Path | None:
+    """Return the PDF path when it exists, otherwise None."""
+    path = Path(pdf_path)
+    if path.is_file():
+        return path
+    print(_error_payload(f"PDF not found: {pdf_path}"))
+    return None
+
+
+def _build_default_extractor():
+    """Create the configured extraction backend for the current CLI run."""
+    settings = Settings()
+    return build_extractor(settings.default_extraction_backend)
+
+
+def _extract_payload(tables: list[object]) -> list[dict[str, object]]:
+    """Serialize extracted tables as JSON-ready dictionaries."""
+    return [table.model_dump(mode="json") for table in tables]
+
+
+def _run_available_parse_stages(pdf_path: str) -> tuple[list[object], list[object]]:
+    """Run the currently implemented parse stages once and return their typed outputs."""
+    extractor = _build_default_extractor()
+    extracted_tables = extractor.extract(pdf_path)
+    normalized_tables = normalize_extracted_tables(extracted_tables)
+    return extracted_tables, normalized_tables
 
 
 def _handle_extract(args: argparse.Namespace) -> int:
     """Run the Phase 2 extraction backend and serialize results as JSON."""
-    pdf_path = Path(args.pdf_path)
-    if not pdf_path.is_file():
-        print(json.dumps({"tables": [], "error": f"PDF not found: {args.pdf_path}"}, indent=2))
+    if _validate_pdf_path(args.pdf_path) is None:
         return 1
 
-    settings = Settings()
-    extractor = build_extractor(settings.default_extraction_backend)
+    extractor = _build_default_extractor()
 
     try:
         tables = extractor.extract(args.pdf_path)
     except Exception as exc:
-        print(json.dumps({"tables": [], "error": str(exc)}, indent=2))
+        print(_error_payload(str(exc)))
         return 1
 
-    payload = [table.model_dump(mode="json") for table in tables]
+    payload = _extract_payload(tables)
     if args.stdout:
         print(json.dumps(payload, indent=2))
         return 0
@@ -96,19 +119,13 @@ def _handle_extract(args: argparse.Namespace) -> int:
 
 def _handle_normalize(args: argparse.Namespace) -> int:
     """Extract and normalize tables from a PDF, then serialize the normalized output."""
-    pdf_path = Path(args.pdf_path)
-    if not pdf_path.is_file():
-        print(json.dumps({"tables": [], "error": f"PDF not found: {args.pdf_path}"}, indent=2))
+    if _validate_pdf_path(args.pdf_path) is None:
         return 1
 
-    settings = Settings()
-    extractor = build_extractor(settings.default_extraction_backend)
-
     try:
-        extracted_tables = extractor.extract(args.pdf_path)
-        normalized_tables = normalize_extracted_tables(extracted_tables)
+        _, normalized_tables = _run_available_parse_stages(args.pdf_path)
     except Exception as exc:
-        print(json.dumps({"tables": [], "error": str(exc)}, indent=2))
+        print(_error_payload(str(exc)))
         return 1
 
     payload = normalized_tables_to_payload(normalized_tables)
@@ -120,6 +137,33 @@ def _handle_normalize(args: argparse.Namespace) -> int:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_normalized_tables(output_path, normalized_tables)
     print(f"Wrote {output_path}")
+    return 0
+
+
+def _handle_parse(args: argparse.Namespace) -> int:
+    """Run the currently implemented parse pipeline once and write all available artifacts."""
+    if _validate_pdf_path(args.pdf_path) is None:
+        return 1
+
+    try:
+        extracted_tables, normalized_tables = _run_available_parse_stages(args.pdf_path)
+    except Exception as exc:
+        print(_error_payload(str(exc)))
+        return 1
+
+    extract_output_path = _extract_output_path(args.pdf_path, args.outdir)
+    normalize_output_path = _normalize_output_path(args.pdf_path, args.outdir)
+    extract_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    extract_output_path.write_text(
+        json.dumps(_extract_payload(extracted_tables), indent=2),
+        encoding="utf-8",
+    )
+    write_normalized_tables(normalize_output_path, normalized_tables)
+
+    print(f"Wrote {extract_output_path}")
+    print(f"Wrote {normalize_output_path}")
+    print("Later parse stages are not implemented yet.")
     return 0
 
 

@@ -43,14 +43,35 @@ def test_cli_extract_stub_prints_not_implemented(capsys) -> None:
     assert "error" in captured.out
 
 
-def test_cli_parse_stub_prints_not_implemented(capsys) -> None:
-    """The parse stub should still print the placeholder message."""
-    exit_code = cli.main(["parse", "paper.pdf"])
+def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypatch, capsys) -> None:
+    """The parse command should write extracted and normalized outputs from one extraction pass."""
+    monkeypatch.chdir(tmp_path)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    calls = {"extract": 0}
+
+    class FakeExtractor:
+        def extract(self, _: str) -> list[ExtractedTable]:
+            calls["extract"] += 1
+            return [_build_extracted_table()]
+
+    monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
+
+    exit_code = cli.main(["parse", str(pdf_path)])
 
     captured = capsys.readouterr()
+    extracted_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "extracted_tables.json"
+    normalized_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "normalized_tables.json"
 
     assert exit_code == 0
-    assert cli.NOT_IMPLEMENTED_MESSAGE in captured.out
+    assert calls["extract"] == 1
+    assert extracted_path.exists()
+    assert normalized_path.exists()
+    assert json.loads(extracted_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert json.loads(normalized_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert "Wrote parseTable1.out/papers/paper/extracted_tables.json" in captured.out
+    assert "Wrote parseTable1.out/papers/paper/normalized_tables.json" in captured.out
+    assert "Later parse stages are not implemented yet." in captured.out
 
 
 def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:

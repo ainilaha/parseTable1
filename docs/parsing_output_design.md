@@ -42,8 +42,8 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 
 | Layer | Canonical type | Current file status | Main purpose |
 | --- | --- | --- | --- |
-| Extraction | `ExtractedTable` | Written now as `extracted_tables.json` | Preserve raw table grid and cell provenance |
-| Normalization | `NormalizedTable` | Written now as `normalized_tables.json` | Clean rows, detect headers, derive row features |
+| Extraction | `ExtractedTable` | Written now as `extracted_tables.json` by `extract` and `parse` | Preserve raw table grid and cell provenance |
+| Normalization | `NormalizedTable` | Written now as `normalized_tables.json` by `normalize` and `parse` | Clean rows, detect headers, derive row features |
 | Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
 | LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
@@ -69,6 +69,11 @@ Current CLI path:
 ```text
 parseTable1.out/papers/<paper_stem>/extracted_tables.json
 ```
+
+This file is written by:
+
+- `table1-parser extract`
+- `table1-parser parse`
 
 Top-level shape:
 
@@ -124,6 +129,11 @@ Current CLI path:
 ```text
 parseTable1.out/papers/<paper_stem>/normalized_tables.json
 ```
+
+This file is written by:
+
+- `table1-parser normalize`
+- `table1-parser parse`
 
 Top-level shape:
 
