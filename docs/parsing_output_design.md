@@ -101,7 +101,7 @@ Top-level design components:
 - `caption`: detected caption when available
 - `n_rows`, `n_cols`: extracted grid dimensions
 - `cells`: flat list of `TableCell` objects
-- `extraction_backend`: extractor name such as `pdfplumber` or a PyMuPDF-based backend
+- `extraction_backend`: extractor name, currently `pymupdf4llm`
 - `metadata`: extractor-specific extensions
 
 `TableCell` design components:

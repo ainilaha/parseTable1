@@ -24,11 +24,6 @@ def build_table_contexts(
     ]
 
 
-def table_contexts_to_payload(contexts: list[TableContext]) -> list[dict[str, object]]:
-    """Serialize table contexts as JSON-friendly dictionaries."""
-    return [context.model_dump(mode="json") for context in contexts]
-
-
 def build_table_context(
     table_index: int,
     definition: TableDefinition,

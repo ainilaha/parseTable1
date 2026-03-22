@@ -67,7 +67,6 @@ class LLMSemanticTableDefinitionParser:
             _write_trace_artifacts(
                 trace_dir=trace_dir,
                 deterministic_table_definition=deterministic_table_definition,
-                retrieved_context=retrieved_context,
                 payload=payload,
                 raw_response=raw_response,
                 result=validated,
@@ -89,7 +88,6 @@ def _write_trace_artifacts(
     *,
     trace_dir: str | Path,
     deterministic_table_definition: TableDefinition,
-    retrieved_context: TableContext,
     payload: LLMSemanticInputPayload,
     raw_response: dict[str, Any],
     result: LLMSemanticTableDefinition,
@@ -98,22 +96,6 @@ def _write_trace_artifacts(
     timestamp = _utc_timestamp()
     trace_path = Path(trace_dir)
     trace_path.mkdir(parents=True, exist_ok=True)
-    _write_json(
-        trace_path / "table_definition_deterministic.json",
-        {
-            "report_timestamp": timestamp,
-            "table_id": deterministic_table_definition.table_id,
-            "table_definition": deterministic_table_definition.model_dump(mode="json"),
-        },
-    )
-    _write_json(
-        trace_path / "table_definition_context.json",
-        {
-            "report_timestamp": timestamp,
-            "table_id": deterministic_table_definition.table_id,
-            "context": retrieved_context.model_dump(mode="json"),
-        },
-    )
     _write_json(
         trace_path / "table_definition_llm_input.json",
         {
@@ -138,35 +120,3 @@ def _write_trace_artifacts(
             "interpretation": result.model_dump(mode="json"),
         },
     )
-    (trace_path / "table_definition_llm_diff.txt").write_text(
-        f"timestamp: {timestamp}\n" + _diff(deterministic_table_definition, result) + "\n",
-        encoding="utf-8",
-    )
-
-
-def _diff(deterministic: TableDefinition, llm_result: LLMSemanticTableDefinition) -> str:
-    """Create a small human-readable diff between deterministic and LLM outputs."""
-    lines: list[str] = []
-    deterministic_variables = {variable.row_start: variable for variable in deterministic.variables}
-    for variable in llm_result.variables:
-        baseline = deterministic_variables.get(variable.row_start)
-        if baseline is None:
-            lines.append(f"variable added at rows {variable.row_start}-{variable.row_end}: {variable.variable_label}")
-            continue
-        if baseline.variable_type != variable.variable_type:
-            lines.append(
-                f"variable type changed at {variable.row_start}: {baseline.variable_type} -> {variable.variable_type}"
-            )
-    deterministic_columns = {column.col_idx: column for column in deterministic.column_definition.columns}
-    for column in llm_result.column_definition.columns:
-        baseline = deterministic_columns.get(column.col_idx)
-        if baseline is None:
-            lines.append(f"column added at {column.col_idx}: role={column.inferred_role}")
-            continue
-        if baseline.inferred_role != column.inferred_role:
-            lines.append(
-                f"column role changed at {column.col_idx}: {baseline.inferred_role} -> {column.inferred_role}"
-            )
-    if llm_result.notes:
-        lines.append(f"notes added: {len(llm_result.notes)}")
-    return "\n".join(lines) if lines else "no deterministic-to-llm semantic changes detected"

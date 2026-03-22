@@ -73,7 +73,7 @@ Rationale:
 - it supports image and vector extraction
 - it is well suited for LLM/RAG-oriented document extraction
 
-Keep existing `pdfplumber`-based extraction only as a **fallback path**, not the primary path.
+Keep extraction aligned with the current `pymupdf4llm`-based path.
 
 ---
 
@@ -120,7 +120,7 @@ Preferred outputs:
 Use extractors in this order:
 
 1. **Primary:** PyMuPDF4LLM
-2. **Fallback:** existing pdfplumber path and other legacy extractors if needed
+2. Extend the existing `pymupdf4llm` path when needed
 
 Fallback extractors should only run when:
 - the primary extractor fails
@@ -130,7 +130,7 @@ Fallback extractors should only run when:
 Do not treat all extractors as co-equal.
 
 PyMuPDF4LLM is the default.
-pdfplumber remains as backup.
+No legacy extraction backend should remain as backup.
 
 ---
 
@@ -196,7 +196,7 @@ Do not silently switch extractor paths without making that visible.
 When implementing extraction changes, add tests that confirm:
 
 1. PyMuPDF4LLM is the default extractor
-2. pdfplumber is used only as fallback
+2. `pymupdf4llm` is the only extraction backend
 3. narrative extraction produces Markdown
 4. table extraction preserves structured JSON
 5. figure extraction produces image artifacts when applicable
@@ -213,7 +213,7 @@ When asked to improve extraction:
 - keep the work focused on extraction modules and closely related normalization/debugging
 - do not redesign the whole parser
 - do not switch the table pipeline from JSON to Markdown
-- do not remove the pdfplumber fallback unless explicitly asked
+- do not add a second extraction backend unless explicitly asked
 
 ---
 

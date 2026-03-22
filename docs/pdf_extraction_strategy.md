@@ -66,7 +66,7 @@ The default extractor should be:
 
 **PyMuPDF4LLM**
 
-Keep `pdfplumber` as a fallback extractor.
+Keep `pymupdf4llm` as the only extractor.
 
 PyMuPDF4LLM supports:
 - Markdown output
@@ -121,7 +121,7 @@ If the extraction layer supports figure metadata, keep it lightweight.
 Use extractors in this order:
 
 1. **Primary:** PyMuPDF4LLM
-2. **Fallback:** pdfplumber and other existing extractors
+2. Improve the existing `pymupdf4llm` extractor
 
 Fallback should only be used if:
 - PyMuPDF4LLM fails
@@ -199,7 +199,7 @@ Do not spread extractor-specific logic through unrelated parsing modules.
 Add or maintain tests that confirm:
 
 1. PyMuPDF4LLM is the default extractor
-2. pdfplumber is only used as fallback
+2. `pymupdf4llm` is the only supported extractor
 3. narrative extraction produces Markdown
 4. table extraction preserves JSON / structured output
 5. figure extraction produces image artifacts when applicable
@@ -226,7 +226,7 @@ This strategy does not require:
 The extraction strategy is:
 
 - **PyMuPDF4LLM is the default extractor**
-- **pdfplumber remains as fallback**
+- `pymupdf4llm` remains the single extraction backend
 - **Markdown is primary for narrative text**
 - **JSON is primary for tables**
 - **PNG/image artifacts are primary for figures**

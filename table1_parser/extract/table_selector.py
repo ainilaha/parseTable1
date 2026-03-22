@@ -118,53 +118,6 @@ def _fill_caption_number_gaps(
         selected[_candidate_key(best_match)] = best_match
 
 
-def _annotate_unresolved_sequence_gaps(
-    selected: list[DetectedTableCandidate],
-    candidates: list[DetectedTableCandidate],
-) -> list[DetectedTableCandidate]:
-    """Attach unresolved caption-number gaps to the first selected captioned candidate."""
-    selected_numbers = sorted(
-        {
-            table_number
-            for candidate in selected
-            for table_number in [_caption_table_number(candidate)]
-            if table_number is not None
-        }
-    )
-    if len(selected_numbers) < 2:
-        return selected
-
-    candidate_numbers = {
-        table_number
-        for candidate in candidates
-        for table_number in [_caption_table_number(candidate)]
-        if table_number is not None
-    }
-    missing_numbers = [
-        number
-        for number in range(selected_numbers[0], selected_numbers[-1] + 1)
-        if number not in candidate_numbers
-    ]
-    if not missing_numbers:
-        return selected
-
-    annotated = list(selected)
-    for index, candidate in enumerate(annotated):
-        if _caption_table_number(candidate) is None:
-            continue
-        annotated[index] = candidate.model_copy(
-            update={
-                "metadata": {
-                    **candidate.metadata,
-                    "sequence_gap_detected": True,
-                    "missing_caption_numbers": missing_numbers,
-                }
-            }
-        )
-        break
-    return annotated
-
-
 def select_top_candidates(
     candidates: list[DetectedTableCandidate],
     max_candidates: int,
@@ -204,8 +157,5 @@ def select_top_candidates(
                 current_anchor = best_match
                 next_page += 1
         _fill_caption_number_gaps(selected, candidates, max_candidates, confidence_threshold)
-        return _annotate_unresolved_sequence_gaps(
-            sorted(selected.values(), key=lambda candidate: (candidate.page_num, candidate.table_index)),
-            candidates,
-        )
+        return sorted(selected.values(), key=lambda candidate: (candidate.page_num, candidate.table_index))
     return ranked[:max_candidates]

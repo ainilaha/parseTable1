@@ -198,8 +198,8 @@ def test_semantic_parser_validates_safe_structured_response(tmp_path) -> None:
     assert result.table_id == "tbl-semantic"
     assert result.variables[1].levels[0].level_label == "Male"
     assert (tmp_path / "table_definition_llm_input.json").exists()
+    assert (tmp_path / "table_definition_llm_output.json").exists()
     assert (tmp_path / "table_definition_llm_interpretation.json").exists()
-    assert (tmp_path / "table_definition_llm_diff.txt").exists()
 
 
 def test_semantic_parser_rejects_unknown_evidence_passage() -> None:

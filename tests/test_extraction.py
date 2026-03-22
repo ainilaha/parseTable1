@@ -35,7 +35,7 @@ class FakeCroppedPage:
 
 
 class FakeTable:
-    """Simple pdfplumber table test double."""
+    """Simple legacy table test double."""
 
     def __init__(
         self,
@@ -51,7 +51,7 @@ class FakeTable:
 
 
 class FakePage:
-    """Simple pdfplumber page test double."""
+    """Simple legacy page test double."""
 
     width = 612.0
 
@@ -87,7 +87,7 @@ class FakePage:
 
 
 class FakePDF:
-    """Simple pdfplumber PDF test double."""
+    """Simple legacy PDF test double."""
 
     def __init__(self, pages: list[FakePage]) -> None:
         self.pages = pages
@@ -639,33 +639,6 @@ def test_select_top_candidates_recovers_discarded_caption_match_below_gap_thresh
     assert [candidate.page_num for candidate in selected] == [4, 5, 6]
     assert selected[1].metadata["sequence_gap_recovered"] is True
     assert selected[1].metadata["sequence_gap_recovery_reason"] == "caption_matched_below_threshold"
-
-
-def test_select_top_candidates_marks_unresolved_caption_sequence_gaps() -> None:
-    """A remaining numbered gap should be surfaced in metadata when no matching candidate exists."""
-    candidates = [
-        DetectedTableCandidate(
-            page_num=4,
-            table_index=0,
-            raw_rows=[["A", "1"], ["B", "2"]],
-            caption="Table 1",
-            score=0.95,
-            metadata={"signals": {"caption_match": True, "caption_table_number": 1}},
-        ),
-        DetectedTableCandidate(
-            page_num=6,
-            table_index=0,
-            raw_rows=[["A", "1"], ["B", "2"]],
-            caption="Table 3",
-            score=0.9,
-            metadata={"signals": {"caption_match": True, "caption_table_number": 3}},
-        ),
-    ]
-
-    selected = select_top_candidates(candidates, max_candidates=10, confidence_threshold=0.7)
-
-    assert selected[0].metadata["sequence_gap_detected"] is True
-    assert selected[0].metadata["missing_caption_numbers"] == [2]
 
 
 def test_pymupdf4llm_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> None:

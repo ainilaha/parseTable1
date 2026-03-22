@@ -38,7 +38,7 @@ from table1_parser.extract import build_extractor
 from table1_parser.llm import parse_table_with_configured_llm
 from table1_parser.normalize import normalize_extracted_table
 
-extractor = build_extractor("pdfplumber")
+extractor = build_extractor("pymupdf4llm")
 table = extractor.extract("testpapers/cobaltpaper.pdf")[0]
 normalized = normalize_extracted_table(table)
 result = parse_table_with_configured_llm(

@@ -42,7 +42,7 @@ def test_extracted_table_creation_and_serialization() -> None:
             TableCell(row_idx=0, col_idx=0, text="Age", page_num=3),
             TableCell(row_idx=0, col_idx=1, text="52.1 (8.7)", page_num=3),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
         metadata={"journal": "Example"},
     )
 

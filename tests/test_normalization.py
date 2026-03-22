@@ -189,7 +189,7 @@ def test_normalization_marks_flush_left_indentation_as_uninformative() -> None:
             TableCell(row_idx=3, col_idx=0, text="Other", bbox=(10.0, 40.0, 45.0, 48.0)),
             TableCell(row_idx=3, col_idx=1, text="12"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -227,7 +227,7 @@ def test_extracted_table_to_normalized_table_conversion() -> None:
             TableCell(row_idx=2, col_idx=1, text="34"),
             TableCell(row_idx=2, col_idx=2, text="0.10"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -236,7 +236,7 @@ def test_extracted_table_to_normalized_table_conversion() -> None:
     assert normalized.body_rows == [1, 2]
     assert normalized.row_views[0].first_cell_normalized == "Age years"
     assert normalized.row_views[1].first_cell_alpha_only == "Male"
-    assert normalized.metadata["extraction_backend"] == "pdfplumber"
+    assert normalized.metadata["extraction_backend"] == "pymupdf4llm"
 
 
 def test_normalization_preserves_table_orientation_metadata() -> None:
@@ -291,7 +291,7 @@ def test_normalized_table_round_trip_serialization(tmp_path: Path) -> None:
             TableCell(row_idx=2, col_idx=1, text="34"),
             TableCell(row_idx=2, col_idx=2, text="0.10"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -316,7 +316,7 @@ def test_normalized_table_payload_helper_serializes_models() -> None:
             TableCell(row_idx=1, col_idx=0, text="Age, years"),
             TableCell(row_idx=1, col_idx=1, text="52.1"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     payload = normalized_tables_to_payload([normalize_extracted_table(extracted)])
@@ -346,7 +346,7 @@ def test_normalization_uses_rule_metadata_for_header_boundary_when_available() -
             TableCell(row_idx=2, col_idx=1, text="34"),
             TableCell(row_idx=2, col_idx=2, text="0.10"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
         metadata={
             "row_bounds": [(12.0, 20.0), (26.0, 34.0), (40.0, 48.0)],
             "horizontal_rules": [6.0, 24.0],
@@ -418,7 +418,7 @@ def test_mostly_empty_leading_column_gets_removed() -> None:
             TableCell(row_idx=2, col_idx=2, text="34"),
             TableCell(row_idx=2, col_idx=3, text="0.10"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -454,7 +454,7 @@ def test_noisy_mostly_empty_leading_column_still_gets_removed() -> None:
             TableCell(row_idx=3, col_idx=2, text="34"),
             TableCell(row_idx=3, col_idx=3, text=""),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -484,7 +484,7 @@ def test_meaningful_first_column_is_preserved() -> None:
             TableCell(row_idx=2, col_idx=1, text="34"),
             TableCell(row_idx=2, col_idx=2, text="0.10"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -516,7 +516,7 @@ def test_trailing_mostly_empty_column_is_removed_conservatively() -> None:
             TableCell(row_idx=2, col_idx=2, text="0.10"),
             TableCell(row_idx=2, col_idx=3, text=""),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -551,7 +551,7 @@ def test_inner_empty_cells_are_preserved_when_edge_columns_are_trimmed() -> None
             TableCell(row_idx=2, col_idx=3, text="0.10"),
             TableCell(row_idx=2, col_idx=4, text=""),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)
@@ -590,7 +590,7 @@ def test_row_and_column_order_are_preserved_after_edge_trimming() -> None:
             TableCell(row_idx=3, col_idx=3, text="q"),
             TableCell(row_idx=3, col_idx=4, text=""),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
     normalized = normalize_extracted_table(extracted)

@@ -4,7 +4,7 @@ Keep the implementation tight. Do not sprawl this across many large helpers or v
 
 ## Goal
 
-Add the current unruled-table and collapsed-label fallback behavior to the PyMuPDF / PyMuPDF4LLM path before removing any `pdfplumber` functionality.
+Add the current unruled-table and collapsed-label fallback behavior to the PyMuPDF / PyMuPDF4LLM path.
 
 ## Preserve These Behaviors
 
@@ -46,7 +46,7 @@ Add one public function:
 
 - `build_text_layout_candidates(...)`
 
-This module should not import `pdfplumber` or `pymupdf`.
+This module should not import alternate extraction backends directly.
 
 ## `table1_parser/extract/pymupdf_page_adapter.py`
 
@@ -102,7 +102,7 @@ Do not run fallback blindly on pages that already have good explicit table boxes
 
 ## Files To Leave Alone For Now
 
-- `table1_parser/extract/pdfplumber_extractor.py`
+- `table1_parser/extract/pymupdf4llm_extractor.py`
 - `table1_parser/extract/pdf_loader.py`
 
 Keep them during the migration for regression comparison. Do not expand them.
@@ -142,7 +142,7 @@ Required coverage:
 - `row_bounds` is populated
 - `horizontal_rules` is populated when drawings support it
 
-Keep current `pdfplumber` tests during this phase as the comparison baseline.
+Keep current `pymupdf4llm` tests during this phase as the comparison baseline.
 
 ## `tests/test_normalization.py`
 
@@ -158,7 +158,7 @@ Add or update one test to confirm PyMuPDF fallback metadata still drives downstr
 6. Add PyMuPDF fallback integration tests
 7. Add one downstream normalization regression test
 8. Compare on real fallback-heavy PDFs
-9. Only then plan `pdfplumber` removal
+9. Keep the extraction path `pymupdf4llm`-only
 
 ## Acceptance Criteria
 
@@ -170,4 +170,3 @@ Add or update one test to confirm PyMuPDF fallback metadata still drives downstr
 - `horizontal_rules` survives or is acceptably approximated
 - No material regression on representative PDFs
 - Added code stays compact and localized
-

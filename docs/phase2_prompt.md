@@ -22,7 +22,7 @@ table1_parser/extract/base.py
 table1_parser/extract/pdf_loader.py  
 table1_parser/extract/table_detector.py  
 table1_parser/extract/table_selector.py  
-table1_parser/extract/pdfplumber_extractor.py  
+table1_parser/extract/pymupdf4llm_extractor.py  
 
 Camelot and Tabula backends may be stubs for now.
 
@@ -38,13 +38,13 @@ Each extractor must return ExtractedTable objects defined in schemas.
 
 ---
 
-# pdfplumber extractor
+# PyMuPDF4LLM extractor
 
-Implement a working backend using pdfplumber.
+Implement a working backend using PyMuPDF4LLM.
 
 Requirements:
 
-- detect tables using pdfplumber table extraction
+- detect tables using PyMuPDF4LLM table extraction
 - convert table grid into TableCell objects
 - assign row_idx and col_idx
 - populate ExtractedTable fields

@@ -30,7 +30,7 @@ def _build_extracted_table() -> ExtractedTable:
             TableCell(row_idx=2, col_idx=1, text="34"),
             TableCell(row_idx=2, col_idx=2, text="0.10"),
         ],
-        extraction_backend="pdfplumber",
+        extraction_backend="pymupdf4llm",
     )
 
 
