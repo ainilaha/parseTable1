@@ -16,6 +16,7 @@ Before changing JSON outputs or schemas, always read:
 
 - `AGENTS.md`
 - `docs/codex_build_spec.md`
+- `docs/paper_markdown_spec.md` when changing markdown-context outputs
 
 Those files define the main development criteria:
 
@@ -322,7 +323,14 @@ Design intent:
 - keep paper-level context in the same per-paper output directory
 - support future LLM semantic interpretation with compact retrieved evidence
 - avoid tying retrieval to exact section names like `Methods`
+- preserve `paper_markdown.md` as the raw markdown artifact and move derived structure into `paper_sections.json`
 - preserve a JSON-first, inspectable context path alongside the table path
+
+Variation note:
+
+- papers may use different section names, heading levels, and table-reference styles
+- that variation should be handled in section parsing and retrieval, not by redefining the meaning of `paper_markdown.md`
+- `docs/paper_markdown_spec.md` is the design reference for this artifact
 
 ## 5. `heuristics.json`
 

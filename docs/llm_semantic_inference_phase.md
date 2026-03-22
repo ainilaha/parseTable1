@@ -2,6 +2,10 @@
 
 This document scopes the next phase: using an LLM to interpret table semantics from both the table structure and the surrounding paper text.
 
+See also:
+
+- `docs/paper_markdown_spec.md`
+
 ## Goal
 
 Add an optional LLM-driven semantic interpretation stage that can:
@@ -81,6 +85,8 @@ Markdown should be used for document context because it is easier to:
 
 It should not replace the structured table extraction path.
 
+The persisted markdown artifact is `paper_markdown.md`. Its design intent and variation rules are defined in `docs/paper_markdown_spec.md`.
+
 ## Output Layout
 
 The document-context artifacts should live in the same per-paper output directory as the table artifacts:
@@ -139,6 +145,8 @@ Use deterministic heading extraction first, then let the LLM classify which sect
 
 The LLM should therefore help identify methods-like sections from headings and short excerpts, rather than relying on exact section names.
 
+This variation is expected and should be treated as normal, not as a special-case failure.
+
 ## LLM Inputs
 
 The LLM should receive:
@@ -149,6 +157,8 @@ The LLM should receive:
 - deterministic row and column guesses
 - caption and footnotes
 - retrieved evidence passages with stable passage IDs
+
+Those passages may come from differently named but methods-like, results-like, or model-description sections.
 
 ## Modularization
 

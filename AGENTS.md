@@ -19,6 +19,8 @@ For parsing design intentions and newer semantic-table planning notes, also read
 
 docs/design_index.md
 
+When changing CLI behavior, persisted outputs, schema shape, markdown-context handling, or design assumptions, update the relevant `docs/*.md` files in the same change. Keep the design docs current.
+
 ---
 
 # Project Goals
@@ -58,7 +60,7 @@ Never combine them into one step.
 
 Pipeline structure should be:
 
-PDF → ExtractedTable → NormalizedTable → ParsedTable
+PDF → ExtractedTable → NormalizedTable → TableDefinition → ParsedTable
 
 ### Intermediate schema
 
@@ -111,9 +113,7 @@ Allowed libraries include:
 
 - pydantic v2
 - pandas
-- pdfplumber
-- camelot
-- tabula-py
+- pymupdf4llm
 - typer or argparse
 - pytest
 

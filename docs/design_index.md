@@ -31,6 +31,9 @@ Then use the documents below as needed.
 
 ## Supporting References
 
+- `docs/paper_markdown_spec.md`
+  Design intent for `paper_markdown.md`, including expected variation in section naming and heading structure.
+
 - `docs/llm_integration.md`
   Current LLM integration and trace-artifact behavior.
 
@@ -53,3 +56,6 @@ Then use the documents below as needed.
 
 - If you are updating user-facing explanations of the pipeline:
   read `docs/parsing_process.md`.
+
+- If you are changing markdown extraction, section parsing, or table-context retrieval:
+  read `docs/paper_markdown_spec.md` and `docs/llm_semantic_inference_phase.md`.
