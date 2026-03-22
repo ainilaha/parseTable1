@@ -11,6 +11,7 @@ File:
 
 The table display helper can display:
 
+- stored normalized-table JSON such as `normalized_tables.json`
 - row-oriented payload JSON such as `llm_input.json`
 - parsed-table-style JSON that contains `variables`, `columns`, and `values`
 - trace wrapper files that store the actual payload under `payload`, `interpretation`, or `response`
@@ -20,7 +21,7 @@ It is intended only for human inspection.
 ## Command-line usage
 
 ```bash
-Rscript R/visualize_table_from_json.R trace_output/cobaltpaper/table_0/llm_input.json
+Rscript R/visualize_table_from_json.R parseTable1.out/papers/cobaltpaper/normalized_tables.json
 ```
 
 ## Interactive R usage
@@ -31,6 +32,7 @@ From the repo root:
 source("R/visualize_table_from_json.R")
 options(width = 200)
 visualize_table_from_json("trace_output/cobaltpaper/table_0/llm_input.json")
+visualize_table_from_json("parseTable1.out/papers/cobaltpaper/normalized_tables.json")
 ```
 
 From inside the `R/` directory:

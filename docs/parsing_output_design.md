@@ -43,7 +43,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | Layer | Canonical type | Current file status | Main purpose |
 | --- | --- | --- | --- |
 | Extraction | `ExtractedTable` | Written now as `extracted_tables.json` | Preserve raw table grid and cell provenance |
-| Normalization | `NormalizedTable` | Internal only for now | Clean rows, detect headers, derive row features |
+| Normalization | `NormalizedTable` | Written now as `normalized_tables.json` | Clean rows, detect headers, derive row features |
 | Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
 | LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
@@ -116,10 +116,26 @@ Design intent:
 
 Current status:
 
-- canonical internal model
-- not currently written by the CLI as a standalone file
+- canonical intermediate model
+- written by the `normalize` CLI command as `normalized_tables.json`
 
-If persisted later, it should be a direct serialization of:
+Current CLI path:
+
+```text
+parseTable1.out/papers/<paper_stem>/normalized_tables.json
+```
+
+Top-level shape:
+
+```json
+[
+  {
+    "...": "one NormalizedTable object"
+  }
+]
+```
+
+The file is a direct serialization of:
 
 - `NormalizedTable.model_dump(mode="json")`
 
@@ -160,6 +176,7 @@ Design intent:
 - normalization should add deterministic structure without losing raw text
 - `cleaned_rows` may support later prompting and debugging, but raw cell text still lives in extraction output
 - `row_views` are the compact per-row features that later heuristic and LLM stages consume
+- saved normalized tables can be reloaded as formal downstream input
 
 ## 3. `heuristics.json`
 

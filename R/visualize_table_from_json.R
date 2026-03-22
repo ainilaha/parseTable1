@@ -11,12 +11,28 @@ read_json_file <- function(json_path) {
   jsonlite::fromJSON(json_text, simplifyVector = FALSE)
 }
 
+normalize_indent_steps <- function(indent) {
+  value <- as.integer(indent %||% 0L)
+  if (is.na(value) || value <= 0) {
+    return(0L)
+  }
+  max(1L, min(4L, as.integer(floor(value / 2L))))
+}
+
 pick_header <- function(payload) {
   header_rows <- payload$header_rows
   if (is.null(header_rows) || length(header_rows) == 0) {
     return(character())
   }
-  unlist(header_rows[[length(header_rows)]], use.names = FALSE)
+  if (is.list(header_rows[[1]])) {
+    return(unlist(header_rows[[length(header_rows)]], use.names = FALSE))
+  }
+  cleaned_rows <- payload$metadata$cleaned_rows %||% list()
+  header_idx <- as.integer(header_rows[[length(header_rows)]]) + 1L
+  if (length(cleaned_rows) >= header_idx && header_idx >= 1L) {
+    return(unlist(cleaned_rows[[header_idx]], use.names = FALSE))
+  }
+  character()
 }
 
 build_payload_display <- function(payload) {
@@ -39,6 +55,53 @@ build_payload_display <- function(payload) {
   }
   if (length(header) == 0) {
     header <- c("Label", paste0("V", seq_len(max_cols - 1)))
+  }
+  header <- c(header, rep("", max_cols - length(header)))
+  row_matrix <- do.call(
+    rbind,
+    lapply(row_cells, function(cells) c(cells, rep("", max_cols - length(cells))))
+  )
+  display <- as.data.frame(row_matrix, stringsAsFactors = FALSE, check.names = FALSE)
+  names(display) <- header
+  display
+}
+
+build_normalized_display <- function(payload) {
+  cleaned_rows <- payload$metadata$cleaned_rows %||% list()
+  body_rows <- payload$body_rows %||% list()
+  row_views <- payload$row_views %||% list()
+  if (length(cleaned_rows) == 0 || length(body_rows) == 0) {
+    return(data.frame())
+  }
+  header <- pick_header(payload)
+  indent_by_row <- setNames(
+    vapply(row_views, function(row) as.integer(row$indent_level %||% 0L), integer(1)),
+    vapply(row_views, function(row) as.character(as.integer(row$row_idx %||% -1L)), character(1))
+  )
+  row_cells <- lapply(body_rows, function(row_idx) {
+    idx <- as.integer(row_idx)
+    row_position <- idx + 1L
+    if (is.na(idx) || row_position < 1L || row_position > length(cleaned_rows)) {
+      return(character())
+    }
+    cells <- unlist(cleaned_rows[[row_position]], use.names = FALSE)
+    key <- as.character(idx)
+    indent <- indent_by_row[[key]] %||% 0L
+    if (length(cells) > 0) {
+      steps <- normalize_indent_steps(indent)
+      if (steps > 0L) {
+        cells[1] <- paste0(strrep("  ", steps), cells[1])
+      }
+    }
+    cells
+  })
+  row_cells <- row_cells[vapply(row_cells, length, integer(1)) > 0L]
+  max_cols <- max(length(header), max(vapply(row_cells, length, integer(1)), 0L))
+  if (max_cols == 0) {
+    return(data.frame())
+  }
+  if (length(header) == 0) {
+    header <- c("Label", paste0("V", seq_len(max_cols - 1L)))
   }
   header <- c(header, rep("", max_cols - length(header)))
   row_matrix <- do.call(
@@ -99,12 +162,26 @@ unwrap_trace_payload <- function(payload) {
   payload
 }
 
+unwrap_table_array <- function(payload) {
+  if (is.null(names(payload)) && length(payload) > 0 && is.list(payload[[1]])) {
+    return(payload[[1]])
+  }
+  payload
+}
+
+looks_like_normalized_table <- function(payload) {
+  !is.null(payload$row_views) &&
+    !is.null(payload$metadata) &&
+    !is.null(payload$metadata$cleaned_rows) &&
+    !is.null(payload$body_rows)
+}
+
 `%||%` <- function(x, y) {
   if (is.null(x) || length(x) == 0) y else x
 }
 
 visualize_table_from_json <- function(json_path) {
-  payload <- unwrap_trace_payload(read_json_file(json_path))
+  payload <- unwrap_table_array(unwrap_trace_payload(read_json_file(json_path)))
   title <- payload$title %||% NULL
   caption <- payload$caption %||% NULL
   if (!is.null(title) && nzchar(title)) {
@@ -117,12 +194,14 @@ visualize_table_from_json <- function(json_path) {
     cat("\n")
   }
 
-  display <- if (!is.null(payload$body_rows)) {
+  display <- if (looks_like_normalized_table(payload)) {
+    build_normalized_display(payload)
+  } else if (!is.null(payload$body_rows)) {
     build_payload_display(payload)
   } else if (!is.null(payload$variables) && !is.null(payload$columns)) {
     build_parsed_display(payload)
   } else {
-    stop("Unsupported JSON structure. Expected body_rows or parsed variables/columns.", call. = FALSE)
+    stop("Unsupported JSON structure. Expected normalized rows, payload body_rows, or parsed variables/columns.", call. = FALSE)
   }
 
   if (nrow(display) == 0) {

@@ -409,7 +409,7 @@ def test_pdfplumber_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> No
 
 
 def test_cli_extract_outputs_json(tmp_path, monkeypatch, capsys) -> None:
-    """The extract CLI should print serialized ExtractedTable JSON."""
+    """The extract CLI should print serialized ExtractedTable JSON when stdout is requested."""
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
     fake_pdf = FakePDF(
@@ -423,7 +423,7 @@ def test_cli_extract_outputs_json(tmp_path, monkeypatch, capsys) -> None:
     )
     _install_fake_pdfplumber(monkeypatch, fake_pdf)
 
-    exit_code = cli.main(["extract", str(pdf_path)])
+    exit_code = cli.main(["extract", str(pdf_path), "--stdout"])
 
     captured = capsys.readouterr()
     payload = json.loads(captured.out)

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from table1_parser.config import Settings
 from table1_parser.extract import build_extractor
+from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
 
 NOT_IMPLEMENTED_MESSAGE = "Feature not implemented yet"
 DEFAULT_OUTPUT_DIR = Path("parseTable1.out")
@@ -32,6 +33,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print extracted JSON to stdout instead of writing files.",
     )
     extract_parser.set_defaults(handler=_handle_extract)
+
+    normalize_parser = subparsers.add_parser("normalize", help="Normalize extracted tables from a PDF.")
+    normalize_parser.add_argument("pdf_path", help="Path to the source PDF file.")
+    normalize_parser.add_argument(
+        "--outdir",
+        default=str(DEFAULT_OUTPUT_DIR),
+        help="Root output directory. Defaults to parseTable1.out.",
+    )
+    normalize_parser.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Print normalized JSON to stdout instead of writing files.",
+    )
+    normalize_parser.set_defaults(handler=_handle_normalize)
 
     parse_parser = subparsers.add_parser("parse", help="Parse a Table 1 PDF.")
     parse_parser.add_argument("pdf_path", help="Path to the source PDF file.")
@@ -74,10 +89,40 @@ def _handle_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_normalize(args: argparse.Namespace) -> int:
+    """Extract and normalize tables from a PDF, then serialize the normalized output."""
+    settings = Settings()
+    extractor = build_extractor(settings.default_extraction_backend)
+
+    try:
+        extracted_tables = extractor.extract(args.pdf_path)
+        normalized_tables = normalize_extracted_tables(extracted_tables)
+    except Exception as exc:
+        print(json.dumps({"tables": [], "error": str(exc)}, indent=2))
+        return 1
+
+    payload = normalized_tables_to_payload(normalized_tables)
+    if args.stdout:
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    output_path = _normalize_output_path(args.pdf_path, args.outdir)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    write_normalized_tables(output_path, normalized_tables)
+    print(f"Wrote {output_path}")
+    return 0
+
+
 def _extract_output_path(pdf_path: str, outdir: str) -> Path:
     """Return the default extracted-table JSON path for one paper."""
     paper_stem = Path(pdf_path).stem
     return Path(outdir) / "papers" / paper_stem / "extracted_tables.json"
+
+
+def _normalize_output_path(pdf_path: str, outdir: str) -> Path:
+    """Return the default normalized-table JSON path for one paper."""
+    paper_stem = Path(pdf_path).stem
+    return Path(outdir) / "papers" / paper_stem / "normalized_tables.json"
 
 
 def main(argv: Sequence[str] | None = None) -> int:

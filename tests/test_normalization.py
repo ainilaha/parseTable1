@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from table1_parser.normalize.cleaner import clean_text
 from table1_parser.normalize.header_detector import detect_header_rows
+from table1_parser.normalize.io import load_normalized_tables, normalized_tables_to_payload, write_normalized_tables
 from table1_parser.normalize.pipeline import normalize_extracted_table
 from table1_parser.normalize.row_signature import build_row_signature
 from table1_parser.normalize.text_normalizer import alpha_only_text, normalize_label_text
@@ -234,6 +237,59 @@ def test_extracted_table_to_normalized_table_conversion() -> None:
     assert normalized.row_views[0].first_cell_normalized == "Age years"
     assert normalized.row_views[1].first_cell_alpha_only == "Male"
     assert normalized.metadata["extraction_backend"] == "pdfplumber"
+
+
+def test_normalized_table_round_trip_serialization(tmp_path: Path) -> None:
+    """Normalized tables should round-trip cleanly through the persisted JSON artifact."""
+    extracted = ExtractedTable(
+        table_id="tbl-roundtrip",
+        source_pdf="paper.pdf",
+        page_num=1,
+        n_rows=3,
+        n_cols=3,
+        cells=[
+            TableCell(row_idx=0, col_idx=0, text="Variable"),
+            TableCell(row_idx=0, col_idx=1, text="Overall"),
+            TableCell(row_idx=0, col_idx=2, text="P-value"),
+            TableCell(row_idx=1, col_idx=0, text="Age, years"),
+            TableCell(row_idx=1, col_idx=1, text="52.1"),
+            TableCell(row_idx=1, col_idx=2, text="0.03"),
+            TableCell(row_idx=2, col_idx=0, text="Male"),
+            TableCell(row_idx=2, col_idx=1, text="34"),
+            TableCell(row_idx=2, col_idx=2, text="0.10"),
+        ],
+        extraction_backend="pdfplumber",
+    )
+
+    normalized = normalize_extracted_table(extracted)
+    output_path = tmp_path / "normalized_tables.json"
+    write_normalized_tables(output_path, [normalized])
+    loaded = load_normalized_tables(output_path)
+
+    assert loaded[0] == normalized
+
+
+def test_normalized_table_payload_helper_serializes_models() -> None:
+    """The payload helper should produce a list of JSON-friendly normalized-table objects."""
+    extracted = ExtractedTable(
+        table_id="tbl-payload",
+        source_pdf="paper.pdf",
+        page_num=1,
+        n_rows=2,
+        n_cols=2,
+        cells=[
+            TableCell(row_idx=0, col_idx=0, text="Variable"),
+            TableCell(row_idx=0, col_idx=1, text="Overall"),
+            TableCell(row_idx=1, col_idx=0, text="Age, years"),
+            TableCell(row_idx=1, col_idx=1, text="52.1"),
+        ],
+        extraction_backend="pdfplumber",
+    )
+
+    payload = normalized_tables_to_payload([normalize_extracted_table(extracted)])
+
+    assert payload[0]["table_id"] == "tbl-payload"
+    assert payload[0]["header_rows"] == [0]
 
 
 def test_normalization_uses_rule_metadata_for_header_boundary_when_available() -> None:

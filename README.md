@@ -84,12 +84,24 @@ This writes to:
 results/papers/<paper_stem>/extracted_tables.json
 ```
 
-## R Visualization
-
-The repository includes small base-R helpers for visual inspection of output JSON files.
+Normalize tables from a PDF:
 
 ```bash
-Rscript R/visualize_table_from_json.R parseTable1.out/papers/cobaltpaper/extracted_tables.json
+table1-parser normalize path/to/paper.pdf
+```
+
+By default this writes JSON to:
+
+```bash
+parseTable1.out/papers/<paper_stem>/normalized_tables.json
+```
+
+## R Visualization
+
+The repository includes small base-R helpers for visual inspection of normalized, parsed, and trace-oriented JSON files.
+
+```bash
+Rscript R/visualize_table_from_json.R parseTable1.out/papers/cobaltpaper/normalized_tables.json
 ```
 
 From an interactive R session:
@@ -97,7 +109,7 @@ From an interactive R session:
 ```r
 source("R/visualize_table_from_json.R")
 options(width = 200)
-visualize_table_from_json("parseTable1.out/papers/cobaltpaper/extracted_tables.json")
+visualize_table_from_json("parseTable1.out/papers/cobaltpaper/normalized_tables.json")
 ```
 
 More detail:
@@ -121,9 +133,10 @@ parseTable1.out/
   papers/
     cobaltpaper/
       extracted_tables.json
+      normalized_tables.json
 ```
 
-This keeps outputs for each paper in a separate directory and leaves room for later normalized, parsed, and interpretation-stage outputs.
+This keeps outputs for each paper in a separate directory and leaves room for later semantic-definition, parsed, and interpretation-stage outputs.
 
 ## LLM Configuration
 
@@ -175,6 +188,8 @@ The trace script writes:
 - `llm_output.json`
 - `final_interpretation.json`
 - `diff.txt`
+
+These trace artifacts live under `trace_output/` and are separate from the paper-oriented artifacts under `parseTable1.out/`.
 
 ## JSON Contracts
 

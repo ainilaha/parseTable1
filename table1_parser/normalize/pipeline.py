@@ -176,3 +176,8 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
         n_cols=len(raw_rows[0]) if raw_rows else 0,
         metadata=metadata,
     )
+
+
+def normalize_extracted_tables(tables: list[ExtractedTable]) -> list[NormalizedTable]:
+    """Normalize a list of extracted tables while preserving input order."""
+    return [normalize_extracted_table(table) for table in tables]
