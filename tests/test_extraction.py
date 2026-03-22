@@ -720,6 +720,48 @@ def test_pymupdf4llm_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> N
     assert tables[0].extraction_backend == "pymupdf4llm"
 
 
+def test_pymupdf4llm_extractor_restores_spaces_between_split_caption_spans(tmp_path, monkeypatch) -> None:
+    """Caption spans like ['Table', '1'] should preserve the visible space."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [100, 80, 300, 96],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table"}, {"text": "1"}]}],
+                        },
+                        {
+                            "bbox": [100, 120, 280, 160],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [100, 120, 280, 160],
+                                "extract": [["Variable", "Overall"], ["Age", "52.1"]],
+                                "cells": [
+                                    [[100, 120, 200, 140], [200, 120, 280, 140]],
+                                    [[100, 140, 200, 160], [200, 140, 280, 160]],
+                                ],
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
+    )
+
+    extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    tables = extractor.extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].title == "Table 1"
+    assert tables[0].caption == "Table 1"
+
+
 def test_cli_extract_outputs_json(tmp_path, monkeypatch, capsys) -> None:
     """The extract CLI should print serialized ExtractedTable JSON when stdout is requested."""
     pdf_path = tmp_path / "paper.pdf"

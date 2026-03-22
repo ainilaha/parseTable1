@@ -430,10 +430,35 @@ def _extract_box_text(box: dict[str, Any]) -> str:
     lines: list[str] = []
     for line in textlines:
         spans = line.get("spans") or []
-        line_text = "".join(str(span.get("text", "")) for span in spans).strip()
+        line_text = _join_span_texts([str(span.get("text", "")) for span in spans])
         if line_text:
             lines.append(line_text)
     return " ".join(lines).strip()
+
+
+def _join_span_texts(parts: list[str]) -> str:
+    """Join adjacent span text while restoring spaces between split words."""
+    pieces: list[str] = []
+    for part in (part for part in parts if part):
+        if pieces and _needs_join_space(pieces[-1], part):
+            pieces.append(" ")
+        pieces.append(part)
+    return "".join(pieces).strip()
+
+
+def _needs_join_space(previous: str, current: str) -> bool:
+    """Return whether adjacent spans should have a space inserted."""
+    if not previous or not current:
+        return False
+    if previous[-1].isspace() or current[0].isspace():
+        return False
+    if previous[-1].isalnum() and current[0].isalnum():
+        return True
+    if previous[-1].isalnum() and current[0] == "(":
+        return True
+    if previous[-1] in {")", "]"} and current[0].isalnum():
+        return True
+    return False
 
 
 def _find_nearby_caption(
