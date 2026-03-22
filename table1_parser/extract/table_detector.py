@@ -1,4 +1,4 @@
-"""Heuristics for identifying likely Table 1 candidates in a PDF."""
+"""Heuristics for identifying likely table candidates in a PDF."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-TABLE_1_PATTERN = re.compile(r"\btable\s*1\b", re.IGNORECASE)
+TABLE_CAPTION_LINE_PATTERN = re.compile(r"^\s*table\s*(\d+)\b(?:\s*[:.])?", re.IGNORECASE)
 NUMERIC_TOKEN_PATTERN = re.compile(r"\d")
 ALPHA_TOKEN_PATTERN = re.compile(r"[A-Za-z]")
 
@@ -66,11 +66,70 @@ def _flatten_later_columns(raw_rows: list[list[str]]) -> list[str]:
     return [cell for row in raw_rows for cell in row[1:]]
 
 
+def _find_table_caption_lines(text_block: str) -> list[str]:
+    """Return caption-like lines that begin with a table label."""
+    captions: list[str] = []
+    for raw_line in text_block.splitlines():
+        line = raw_line.strip()
+        if line and TABLE_CAPTION_LINE_PATTERN.match(line):
+            captions.append(line)
+    return captions
+
+
 def _find_table_line(page_text: str) -> str | None:
-    """Return the most relevant table caption line from page text."""
-    for line in page_text.splitlines():
-        if "table" in line.lower():
-            return line.strip()
+    """Return the first caption-like table line from a text block."""
+    caption_lines = _find_table_caption_lines(page_text)
+    if not caption_lines:
+        return None
+    return caption_lines[0]
+
+
+def _extract_table_number(text_block: str | None) -> int | None:
+    """Return the table number from a caption-like line when present."""
+    if not text_block:
+        return None
+    caption_line = _find_table_line(text_block)
+    if not caption_line:
+        return None
+    match = TABLE_CAPTION_LINE_PATTERN.match(caption_line)
+    if match is None:
+        return None
+    return int(match.group(1))
+
+
+def _extract_embedded_caption(raw_rows: list[list[str]]) -> str | None:
+    """Return a caption-like line embedded in the first cell of a collapsed table row."""
+    if not raw_rows or not raw_rows[0]:
+        return None
+    first_cell = raw_rows[0][0].strip()
+    if not first_cell:
+        return None
+    first_line = first_cell.splitlines()[0].strip()
+    if TABLE_CAPTION_LINE_PATTERN.match(first_line):
+        return first_line
+    return None
+
+
+def _caption_for_index(
+    explicit_caption: str | None,
+    page_text: str,
+    table_index: int,
+    table_count: int | None = None,
+) -> str | None:
+    """Choose the best available caption for a candidate on a page."""
+    if explicit_caption:
+        return explicit_caption
+    caption_lines = _find_table_caption_lines(page_text)
+    if not caption_lines:
+        return None
+    caption_start_index = 0
+    if table_count is not None and table_count > len(caption_lines):
+        caption_start_index = table_count - len(caption_lines)
+    if table_index < caption_start_index:
+        return None
+    caption_index = table_index - caption_start_index
+    if 0 <= caption_index < len(caption_lines):
+        return caption_lines[caption_index]
     return None
 
 
@@ -103,16 +162,15 @@ def _safe_extract_chars(page: Any) -> list[dict[str, Any]]:
 def _extract_nearby_caption(page: Any, bbox: tuple[float, float, float, float] | None) -> str | None:
     """Extract nearby caption text from above the table when available."""
     page_text = _safe_extract_text(page)
-    fallback = _find_table_line(page_text)
     if bbox is None or not hasattr(page, "crop"):
-        return fallback
+        return _find_table_line(page_text)
     top = bbox[1]
     crop_bbox = (0.0, max(0.0, top - 90.0), float(getattr(page, "width", bbox[2])), top)
     try:
         cropped_text = _safe_extract_text(page.crop(crop_bbox))
     except Exception:
         cropped_text = ""
-    return cropped_text or fallback
+    return _find_table_line(cropped_text)
 
 
 def _page_rule_segments(page: Any) -> list[tuple[float, float, float, float]]:
@@ -135,26 +193,32 @@ def _page_rule_segments(page: Any) -> list[tuple[float, float, float, float]]:
 
 
 def score_candidate(candidate: DetectedTableCandidate) -> DetectedTableCandidate:
-    """Assign a Table 1 likelihood score to an extracted table candidate."""
-    nearby_text = " ".join(part for part in [candidate.caption or "", candidate.page_text or ""] if part)
-    caption_match = bool(TABLE_1_PATTERN.search(nearby_text))
+    """Assign a table-likelihood score to an extracted table candidate."""
+    effective_caption = candidate.caption or _extract_embedded_caption(candidate.raw_rows)
+    caption_table_number = _extract_table_number(effective_caption)
+    caption_match = caption_table_number is not None
+    table_1_match = caption_table_number == 1
     first_column_text_ratio = _text_ratio([row[0] for row in candidate.raw_rows if row])
     later_column_numeric_ratio = _numeric_ratio(_flatten_later_columns(candidate.raw_rows))
     rectangular = bool(candidate.metadata.get("is_rectangular", False))
     min_shape = len(candidate.raw_rows) >= 2 and max((len(row) for row in candidate.raw_rows), default=0) >= 2
 
-    score = 0.45 * caption_match
+    score = 0.4 * caption_match
+    score += 0.05 if table_1_match else 0.0
     score += 0.25 if first_column_text_ratio >= 0.6 else 0.0
     score += 0.2 if later_column_numeric_ratio >= 0.5 else 0.0
     score += 0.1 if rectangular else 0.0
     score += 0.05 if min_shape else 0.0
     return candidate.model_copy(
         update={
+            "caption": effective_caption,
             "score": min(score, 1.0),
             "metadata": {
                 **candidate.metadata,
                 "signals": {
                     "caption_match": caption_match,
+                    "table_1_match": table_1_match,
+                    "caption_table_number": caption_table_number,
                     "first_column_text_ratio": round(first_column_text_ratio, 4),
                     "later_column_numeric_ratio": round(later_column_numeric_ratio, 4),
                     "rectangular": rectangular,
@@ -173,6 +237,7 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
     raw_tables = page.find_tables() if hasattr(page, "find_tables") else []
     candidates: list[DetectedTableCandidate] = []
     if raw_tables:
+        table_count = len(raw_tables)
         for table_index, table in enumerate(raw_tables):
             raw_rows = table.extract() if hasattr(table, "extract") else table
             bbox = getattr(table, "bbox", None)
@@ -183,7 +248,12 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
                         table_index=table_index,
                         bbox=bbox,
                         raw_rows=_normalize_rows(raw_rows),
-                        caption=_extract_nearby_caption(page, bbox),
+                        caption=_caption_for_index(
+                            _extract_nearby_caption(page, bbox),
+                            page_text,
+                            table_index,
+                            table_count,
+                        ),
                         page_text=page_text,
                         metadata={
                             "is_rectangular": _is_rectangular(raw_rows),
@@ -195,14 +265,16 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
         return candidates
 
     if hasattr(page, "extract_tables"):
-        for table_index, raw_rows in enumerate(page.extract_tables() or []):
+        extracted_tables = page.extract_tables() or []
+        table_count = len(extracted_tables)
+        for table_index, raw_rows in enumerate(extracted_tables):
             candidates.append(
                 score_candidate(
                     DetectedTableCandidate(
                         page_num=page_num,
                         table_index=table_index,
                         raw_rows=_normalize_rows(raw_rows),
-                        caption=_find_table_line(page_text),
+                        caption=_caption_for_index(None, page_text, table_index, table_count),
                         page_text=page_text,
                         metadata={"is_rectangular": _is_rectangular(raw_rows)},
                     )
@@ -226,6 +298,3 @@ def detect_table_candidates(pdf: Any) -> list[DetectedTableCandidate]:
     for page_num, page in enumerate(pdf.pages, start=1):
         candidates.extend(detect_page_candidates(page, page_num))
     return candidates
-
-
-from table1_parser.extract.layout_fallback import _build_rows_from_line_segment, _restore_word_text

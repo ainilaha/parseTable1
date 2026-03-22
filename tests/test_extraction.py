@@ -8,16 +8,19 @@ from types import ModuleType
 
 from table1_parser import cli
 from table1_parser.extract import build_extractor
-from table1_parser.extract.pdfplumber_extractor import PDFPlumberExtractor
 from table1_parser.extract import pymupdf4llm_extractor as pymupdf4llm_extractor_module
+from table1_parser.extract.layout_fallback import (
+    _build_rows_from_line_segment,
+    _restore_word_text,
+    build_text_layout_candidates,
+)
 from table1_parser.extract.pymupdf4llm_extractor import PyMuPDF4LLMExtractor
 from table1_parser.extract.table_detector import (
     DetectedTableCandidate,
-    _build_rows_from_line_segment,
-    _restore_word_text,
     detect_table_candidates,
     score_candidate,
 )
+from table1_parser.extract.table_selector import select_top_candidates
 
 
 class FakeCroppedPage:
@@ -129,13 +132,6 @@ class FakePyMuDoc:
         return None
 
 
-def _install_fake_pdfplumber(monkeypatch, pdf: FakePDF) -> None:
-    """Install a minimal fake pdfplumber module for a test case."""
-    module = ModuleType("pdfplumber")
-    module.open = lambda _: pdf
-    monkeypatch.setitem(sys.modules, "pdfplumber", module)
-
-
 def _install_fake_pymupdf4llm(monkeypatch, payload: dict[str, object], *, fail: bool = False) -> None:
     """Install a minimal fake pymupdf4llm module for a test case."""
     module = ModuleType("pymupdf4llm")
@@ -144,6 +140,20 @@ def _install_fake_pymupdf4llm(monkeypatch, payload: dict[str, object], *, fail: 
     else:
         module.to_json = lambda _: json.dumps(payload)
     monkeypatch.setitem(sys.modules, "pymupdf4llm", module)
+
+
+def _install_fake_pymupdf_document(monkeypatch, pages: list[FakePyMuPage]) -> None:
+    """Install a fake PyMuPDF document and page adapters for a test case."""
+    fake_doc = FakePyMuDoc(pages)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "open_pymupdf_document", lambda _: fake_doc)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_text", lambda page: page.text)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_words", lambda page: page.words)
+    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_chars", lambda page: page.chars)
+    monkeypatch.setattr(
+        pymupdf4llm_extractor_module,
+        "extract_page_rule_segments",
+        lambda page: page.rule_segments,
+    )
 
 
 def test_score_candidate_prefers_table1_like_layout() -> None:
@@ -165,6 +175,32 @@ def test_score_candidate_prefers_table1_like_layout() -> None:
 
     assert scored.score >= 0.9
     assert scored.metadata["signals"]["caption_match"] is True
+
+
+def test_score_candidate_uses_embedded_caption_from_collapsed_first_cell() -> None:
+    """Single-row collapsed tables should still score when the first cell starts with a caption."""
+    candidate = DetectedTableCandidate(
+        page_num=9,
+        table_index=0,
+        raw_rows=[
+            [
+                "Table 2: Distribution of urinary OPEs metabolites",
+                "DPHP\n95.88\n0.74",
+                "BDCPP\n93.75\n0.81",
+                "BCEP\n82.17\n0.38",
+                "DBuP\n51.07\n0.13",
+            ]
+        ],
+        caption=None,
+        page_text="",
+        metadata={"is_rectangular": False},
+    )
+
+    scored = score_candidate(candidate)
+
+    assert scored.caption == "Table 2: Distribution of urinary OPEs metabolites"
+    assert scored.metadata["signals"]["caption_match"] is True
+    assert scored.score >= 0.8
 
 
 def test_build_extractor_defaults_to_pymupdf4llm() -> None:
@@ -215,6 +251,12 @@ def test_pymupdf4llm_extractor_returns_structured_tables(tmp_path, monkeypatch) 
             ]
         },
     )
+    monkeypatch.setattr(
+        pymupdf4llm_extractor_module,
+        "extract_clipped_line_directions",
+        lambda page, clip_bbox: [(1.0, 0.0), (1.0, 0.0)],
+    )
+    _install_fake_pymupdf_document(monkeypatch, [FakePyMuPage(text="", words=[])])
 
     extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
     tables = extractor.extract(str(pdf_path))
@@ -226,6 +268,10 @@ def test_pymupdf4llm_extractor_returns_structured_tables(tmp_path, monkeypatch) 
     assert tables[0].metadata["layout_source"] == "pymupdf4llm_json"
     assert tables[0].metadata["primary_representation"] == "json"
     assert tables[0].metadata["fallback_used"] is False
+    assert tables[0].metadata["table_orientation"] == "upright"
+    assert tables[0].metadata["rotation_source"] == "pymupdf_line_direction"
+    assert tables[0].metadata["rotation_direction"] == "upright"
+    assert tables[0].metadata["rotation_confidence"] == 1.0
     assert tables[0].metadata["row_bounds"] == [
         (124.0, 135.0),
         (135.0, 147.0),
@@ -239,30 +285,65 @@ def test_pymupdf4llm_extractor_returns_structured_tables(tmp_path, monkeypatch) 
     assert tables[0].cells[0].bbox == (120.0, 124.0, 250.0, 135.0)
 
 
-def test_pymupdf4llm_extractor_falls_back_to_pdfplumber_on_primary_failure(tmp_path, monkeypatch) -> None:
+def test_pymupdf4llm_extractor_returns_empty_on_primary_failure(tmp_path, monkeypatch) -> None:
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
     _install_fake_pymupdf4llm(monkeypatch, {}, fail=True)
-    fake_pdf = FakePDF(
-        pages=[
-            FakePage(
-                text="Table 1. Baseline characteristics",
-                cropped_text="Table 1. Baseline characteristics",
-                tables=[FakeTable([["Variable", "Overall"], ["Age", "52.1"]])],
-            )
-        ]
-    )
-    _install_fake_pdfplumber(monkeypatch, fake_pdf)
 
     extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
     tables = extractor.extract(str(pdf_path))
 
+    assert tables == []
+
+
+def test_pymupdf4llm_extractor_marks_rotated_tables_in_metadata(tmp_path, monkeypatch) -> None:
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 9,
+                    "boxes": [
+                        {
+                            "bbox": [90, 140, 265, 650],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [90, 140, 265, 650],
+                                "row_count": 1,
+                                "col_count": 3,
+                                "extract": [
+                                    [
+                                        "Table 2: Distribution of urinary OPEs metabolites",
+                                        "DPHP\n95.88\n0.74",
+                                        "BDCPP\n93.75\n0.81",
+                                    ]
+                                ],
+                                "cells": [
+                                    [[90, 140, 120, 650], [120, 140, 180, 650], [180, 140, 240, 650]],
+                                ],
+                            },
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        pymupdf4llm_extractor_module,
+        "extract_clipped_line_directions",
+        lambda page, clip_bbox: [(0.0, -1.0), (0.0, -1.0), (0.0, -1.0)],
+    )
+    _install_fake_pymupdf_document(monkeypatch, [FakePyMuPage(text="", words=[])])
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
+
     assert len(tables) == 1
-    assert tables[0].extraction_backend == "pdfplumber"
-    assert tables[0].metadata["fallback_used"] is True
-    assert tables[0].metadata["fallback_backend"] == "pdfplumber"
-    assert tables[0].metadata["fallback_reason"] == "primary_error"
-    assert tables[0].metadata["extractor_used"] == "pymupdf4llm"
+    assert tables[0].metadata["table_orientation"] == "rotated"
+    assert tables[0].metadata["rotation_source"] == "pymupdf_line_direction"
+    assert tables[0].metadata["rotation_direction"] == "vertical_text_up"
+    assert tables[0].metadata["rotation_confidence"] == 1.0
 
 
 def test_pymupdf4llm_extractor_uses_text_layout_fallback_when_json_has_no_tables(
@@ -288,7 +369,8 @@ def test_pymupdf4llm_extractor_uses_text_layout_fallback_when_json_has_no_tables
             ]
         },
     )
-    fake_doc = FakePyMuDoc(
+    _install_fake_pymupdf_document(
+        monkeypatch,
         [
             FakePyMuPage(
                 text="Table1\nBaselinecharacteristics\nQ1 Q2",
@@ -335,13 +417,8 @@ def test_pymupdf4llm_extractor_uses_text_layout_fallback_when_json_has_no_tables
                 ],
                 rule_segments=[(50.0, 94.0, 320.0, 94.0)],
             )
-        ]
+        ],
     )
-    monkeypatch.setattr(pymupdf4llm_extractor_module, "open_pymupdf_document", lambda _: fake_doc)
-    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_text", lambda page: page.text)
-    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_words", lambda page: page.words)
-    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_chars", lambda page: page.chars)
-    monkeypatch.setattr(pymupdf4llm_extractor_module, "extract_page_rule_segments", lambda page: page.rule_segments)
 
     tables = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
 
@@ -372,30 +449,134 @@ def test_detect_table_candidates_scores_tables_on_a_page() -> None:
     assert candidates[0].score > 0.7
 
 
-def test_pdfplumber_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> None:
-    """The extractor should convert raw grid cells into indexed TableCell objects."""
-    pdf_path = tmp_path / "paper.pdf"
-    pdf_path.write_text("placeholder")
-    fake_pdf = FakePDF(
+def test_detect_table_candidates_assigns_page_caption_lines_by_order() -> None:
+    """Candidates on the same page should use caption lines in reading order."""
+    pdf = FakePDF(
         pages=[
             FakePage(
-                text="Table 1. Baseline characteristics",
-                cropped_text="Table 1. Baseline characteristics",
+                text=(
+                    "Table 1. Baseline characteristics\n"
+                    "Table 2. Secondary outcomes\n"
+                ),
                 tables=[
-                    FakeTable(
-                        [
-                            ["Variable", "Overall", "P"],
-                            ["Age", "52.1", "0.03"],
-                            ["Male", "34", "0.10"],
-                        ]
-                    )
+                    FakeTable([["Variable", "Overall"], ["Age", "52.1"]]),
+                    FakeTable([["Outcome", "Cases"], ["BMI", "27.4"]], bbox=(10.0, 260.0, 300.0, 360.0)),
                 ],
+                cropped_text=" ",
             )
         ]
     )
-    _install_fake_pdfplumber(monkeypatch, fake_pdf)
 
-    extractor = PDFPlumberExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    candidates = detect_table_candidates(pdf)
+
+    assert [candidate.caption for candidate in candidates] == [
+        "Table 1. Baseline characteristics",
+        "Table 2. Secondary outcomes",
+    ]
+    assert candidates[0].metadata["signals"]["table_1_match"] is True
+    assert candidates[1].metadata["signals"]["table_1_match"] is False
+
+
+def test_select_top_candidates_keeps_uncaptioned_continuations() -> None:
+    """Continuation pages should survive selection once a nearby table is confirmed."""
+    candidates = [
+        DetectedTableCandidate(
+            page_num=24,
+            table_index=0,
+            raw_rows=[["Characteristic", "Case", "Control", "P"], ["Age", "52.1", "49.8", "0.03"]],
+            caption="Table 1. Baseline characteristics",
+            score=0.95,
+            metadata={
+                "signals": {
+                    "caption_match": True,
+                    "table_1_match": True,
+                    "first_column_text_ratio": 1.0,
+                    "later_column_numeric_ratio": 1.0,
+                    "rectangular": False,
+                }
+            },
+        ),
+        DetectedTableCandidate(
+            page_num=25,
+            table_index=0,
+            raw_rows=[["BMI", "29.2", "27.7", "0.39"], ["Waist", "90.2", "86.1", "0.04"]],
+            score=0.5,
+            metadata={
+                "signals": {
+                    "caption_match": False,
+                    "table_1_match": False,
+                    "first_column_text_ratio": 1.0,
+                    "later_column_numeric_ratio": 1.0,
+                    "rectangular": False,
+                }
+            },
+        ),
+        DetectedTableCandidate(
+            page_num=26,
+            table_index=0,
+            raw_rows=[["Obese I", "3.31", "1.76", "0.019"], ["Obese II", "2.88", "1.44", "0.011"]],
+            score=0.5,
+            metadata={
+                "signals": {
+                    "caption_match": False,
+                    "table_1_match": False,
+                    "first_column_text_ratio": 1.0,
+                    "later_column_numeric_ratio": 1.0,
+                    "rectangular": False,
+                }
+            },
+        ),
+    ]
+
+    selected = select_top_candidates(candidates, max_candidates=10, confidence_threshold=0.7)
+
+    assert [(candidate.page_num, candidate.table_index) for candidate in selected] == [
+        (24, 0),
+        (25, 0),
+        (26, 0),
+    ]
+
+
+def test_pymupdf4llm_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> None:
+    """The extractor should convert raw grid cells into indexed TableCell objects."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [100, 80, 300, 96],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 1. Baseline characteristics"}]}],
+                        },
+                        {
+                            "bbox": [100, 120, 360, 180],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [100, 120, 360, 180],
+                                "extract": [
+                                    ["Variable", "Overall", "P"],
+                                    ["Age", "52.1", "0.03"],
+                                    ["Male", "34", "0.10"],
+                                ],
+                                "cells": [
+                                    [[100, 120, 200, 140], [200, 120, 280, 140], [280, 120, 360, 140]],
+                                    [[100, 140, 200, 160], [200, 140, 280, 160], [280, 140, 360, 160]],
+                                    [[100, 160, 200, 180], [200, 160, 280, 180], [280, 160, 360, 180]],
+                                ],
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
+    )
+
+    extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
     tables = extractor.extract(str(pdf_path))
 
     assert len(tables) == 1
@@ -405,23 +586,42 @@ def test_pdfplumber_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> No
     assert tables[0].cells[0].col_idx == 0
     assert tables[0].cells[4].text == "52.1"
     assert tables[0].page_num == 1
-    assert tables[0].extraction_backend == "pdfplumber"
+    assert tables[0].extraction_backend == "pymupdf4llm"
 
 
 def test_cli_extract_outputs_json(tmp_path, monkeypatch, capsys) -> None:
     """The extract CLI should print serialized ExtractedTable JSON when stdout is requested."""
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
-    fake_pdf = FakePDF(
-        pages=[
-            FakePage(
-                text="Table 1. Baseline characteristics",
-                cropped_text="Table 1. Baseline characteristics",
-                tables=[FakeTable([["Variable", "Overall"], ["Age", "52.1"]])],
-            )
-        ]
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [100, 80, 260, 96],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 1. Baseline characteristics"}]}],
+                        },
+                        {
+                            "bbox": [100, 120, 280, 160],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [100, 120, 280, 160],
+                                "extract": [["Variable", "Overall"], ["Age", "52.1"]],
+                                "cells": [
+                                    [[100, 120, 200, 140], [200, 120, 280, 140]],
+                                    [[100, 140, 200, 160], [200, 140, 280, 160]],
+                                ],
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
     )
-    _install_fake_pdfplumber(monkeypatch, fake_pdf)
 
     exit_code = cli.main(["extract", str(pdf_path), "--stdout"])
 
@@ -433,10 +633,38 @@ def test_cli_extract_outputs_json(tmp_path, monkeypatch, capsys) -> None:
     assert payload[0]["cells"][0]["text"] == "Variable"
 
 
+def test_text_layout_fallback_ignores_prose_table_references() -> None:
+    """Narrative references like '(Table 2, Figure 1)' should not start a fallback table segment."""
+    words = [
+        {"text": "134", "x0": 50.0, "x1": 64.0, "top": 60.0, "bottom": 68.0},
+        {"text": "(Table", "x0": 70.0, "x1": 98.0, "top": 60.0, "bottom": 68.0},
+        {"text": "2,", "x0": 100.0, "x1": 112.0, "top": 60.0, "bottom": 68.0},
+        {"text": "Figure", "x0": 114.0, "x1": 142.0, "top": 60.0, "bottom": 68.0},
+        {"text": "1).", "x0": 144.0, "x1": 156.0, "top": 60.0, "bottom": 68.0},
+        {"text": "Additional", "x0": 160.0, "x1": 208.0, "top": 60.0, "bottom": 68.0},
+        {"text": "Cases", "x0": 50.0, "x1": 82.0, "top": 84.0, "bottom": 92.0},
+        {"text": "10", "x0": 220.0, "x1": 232.0, "top": 84.0, "bottom": 92.0},
+        {"text": "12", "x0": 280.0, "x1": 292.0, "top": 84.0, "bottom": 92.0},
+        {"text": "Controls", "x0": 50.0, "x1": 98.0, "top": 98.0, "bottom": 106.0},
+        {"text": "11", "x0": 220.0, "x1": 232.0, "top": 98.0, "bottom": 106.0},
+        {"text": "13", "x0": 280.0, "x1": 292.0, "top": 98.0, "bottom": 106.0},
+    ]
+
+    candidates = build_text_layout_candidates(
+        page_num=7,
+        page_text="134 (Table 2, Figure 1). Additional",
+        words=words,
+        layout_source="text_positions",
+    )
+
+    assert candidates == []
+
+
 def test_text_layout_fallback_detects_unruled_table(tmp_path, monkeypatch) -> None:
     """The detector should reconstruct a table from positioned words when no grid is found."""
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(monkeypatch, {"pages": [{"page_number": 1, "boxes": []}]})
     words = [
         {"text": "Table1", "x0": 50.0, "x1": 90.0, "top": 60.0, "bottom": 68.0},
         {"text": "Baselinecharacteristics", "x0": 50.0, "x1": 220.0, "top": 72.0, "bottom": 80.0},
@@ -451,19 +679,17 @@ def test_text_layout_fallback_detects_unruled_table(tmp_path, monkeypatch) -> No
         {"text": "49.8", "x0": 240.0, "x1": 260.0, "top": 110.0, "bottom": 118.0},
         {"text": "53.7", "x0": 300.0, "x1": 320.0, "top": 110.0, "bottom": 118.0},
     ]
-    fake_pdf = FakePDF(
-        pages=[
-            FakePage(
+    _install_fake_pymupdf_document(
+        monkeypatch,
+        [
+            FakePyMuPage(
                 text="Table1\nBaselinecharacteristics\nQ1 Q2",
-                cropped_text="Table1\nBaselinecharacteristics",
-                tables=[],
                 words=words,
             )
-        ]
+        ],
     )
-    _install_fake_pdfplumber(monkeypatch, fake_pdf)
 
-    extractor = PDFPlumberExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
     tables = extractor.extract(str(pdf_path))
 
     assert len(tables) == 1
@@ -474,7 +700,7 @@ def test_text_layout_fallback_detects_unruled_table(tmp_path, monkeypatch) -> No
     cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}
     assert cell_map[(0, 1)] == "Q1"
     assert cell_map[(0, 2)] == "Q2"
-    assert tables[0].metadata["layout_source"] == "text_positions"
+    assert tables[0].metadata["layout_source"] == "pymupdf_text_positions"
 
 
 def test_text_layout_fallback_restores_spaces_in_collapsed_first_column_tokens(
@@ -484,6 +710,7 @@ def test_text_layout_fallback_restores_spaces_in_collapsed_first_column_tokens(
     """Fallback extraction should restore readable spacing from char gaps in first-column labels."""
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(monkeypatch, {"pages": [{"page_number": 1, "boxes": []}]})
     words = [
         {"text": "Table1", "x0": 50.0, "x1": 90.0, "top": 60.0, "bottom": 68.0},
         {"text": "Baselinecharacteristics", "x0": 50.0, "x1": 220.0, "top": 72.0, "bottom": 80.0},
@@ -525,20 +752,18 @@ def test_text_layout_fallback_restores_spaces_in_collapsed_first_column_tokens(
         {"text": "%", "x0": 134.0, "x1": 138.0, "top": 110.0, "bottom": 118.0},
         {"text": ")", "x0": 138.0, "x1": 139.5, "top": 110.0, "bottom": 118.0},
     ]
-    fake_pdf = FakePDF(
-        pages=[
-            FakePage(
+    _install_fake_pymupdf_document(
+        monkeypatch,
+        [
+            FakePyMuPage(
                 text="Table1\nBaselinecharacteristics\nQ1 Q2",
-                cropped_text="Table1\nBaselinecharacteristics",
-                tables=[],
                 words=words,
                 chars=chars,
             )
-        ]
+        ],
     )
-    _install_fake_pdfplumber(monkeypatch, fake_pdf)
 
-    extractor = PDFPlumberExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
+    extractor = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0)
     tables = extractor.extract(str(pdf_path))
 
     cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}

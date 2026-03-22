@@ -68,6 +68,11 @@ def _handle_not_implemented(_: argparse.Namespace) -> int:
 
 def _handle_extract(args: argparse.Namespace) -> int:
     """Run the Phase 2 extraction backend and serialize results as JSON."""
+    pdf_path = Path(args.pdf_path)
+    if not pdf_path.is_file():
+        print(json.dumps({"tables": [], "error": f"PDF not found: {args.pdf_path}"}, indent=2))
+        return 1
+
     settings = Settings()
     extractor = build_extractor(settings.default_extraction_backend)
 
@@ -91,6 +96,11 @@ def _handle_extract(args: argparse.Namespace) -> int:
 
 def _handle_normalize(args: argparse.Namespace) -> int:
     """Extract and normalize tables from a PDF, then serialize the normalized output."""
+    pdf_path = Path(args.pdf_path)
+    if not pdf_path.is_file():
+        print(json.dumps({"tables": [], "error": f"PDF not found: {args.pdf_path}"}, indent=2))
+        return 1
+
     settings = Settings()
     extractor = build_extractor(settings.default_extraction_backend)
 

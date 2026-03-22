@@ -222,7 +222,6 @@ For Phase 1 these commands should only print:
 Create `config.py` with configuration settings such as:
 
 default_extraction_backend  
-use_ocr_fallback  
 llm_enabled  
 llm_model  
 max_table_candidates  

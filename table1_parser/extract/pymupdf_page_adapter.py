@@ -98,6 +98,27 @@ def extract_page_rule_segments(page: Any) -> list[tuple[float, float, float, flo
     return segments
 
 
+def extract_clipped_line_directions(
+    page: Any,
+    clip_bbox: tuple[float, float, float, float] | None,
+) -> list[tuple[float, float]]:
+    """Extract line direction vectors from a clipped PyMuPDF page region."""
+    if clip_bbox is None:
+        return []
+    try:
+        raw = page.get_text("dict", clip=clip_bbox) or {}
+    except Exception:
+        return []
+    directions: list[tuple[float, float]] = []
+    for block in raw.get("blocks", []):
+        for line in block.get("lines", []):
+            direction = line.get("dir")
+            if not isinstance(direction, (list, tuple)) or len(direction) != 2:
+                continue
+            directions.append((float(direction[0]), float(direction[1])))
+    return directions
+
+
 def _coerce_rect(value: Any) -> tuple[float, float, float, float] | None:
     """Convert a rect-like object to a tuple."""
     if value is None:
@@ -129,4 +150,3 @@ def _coerce_point(value: Any) -> tuple[float, float] | None:
     if isinstance(value, (list, tuple)) and len(value) == 2:
         return (float(value[0]), float(value[1]))
     return None
-

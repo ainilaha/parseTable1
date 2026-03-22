@@ -239,6 +239,39 @@ def test_extracted_table_to_normalized_table_conversion() -> None:
     assert normalized.metadata["extraction_backend"] == "pdfplumber"
 
 
+def test_normalization_preserves_table_orientation_metadata() -> None:
+    """Normalization should preserve extraction metadata about table orientation."""
+    extracted = ExtractedTable(
+        table_id="tbl-rotated",
+        source_pdf="paper.pdf",
+        page_num=9,
+        title="Table 2",
+        caption="Distribution table",
+        n_rows=2,
+        n_cols=2,
+        cells=[
+            TableCell(row_idx=0, col_idx=0, text="Variable"),
+            TableCell(row_idx=0, col_idx=1, text="Value"),
+            TableCell(row_idx=1, col_idx=0, text="DPHP"),
+            TableCell(row_idx=1, col_idx=1, text="0.74"),
+        ],
+        extraction_backend="pymupdf4llm",
+        metadata={
+            "table_orientation": "rotated",
+            "rotation_source": "pymupdf_line_direction",
+            "rotation_direction": "vertical_text_up",
+            "rotation_confidence": 0.98,
+        },
+    )
+
+    normalized = normalize_extracted_table(extracted)
+
+    assert normalized.metadata["table_orientation"] == "rotated"
+    assert normalized.metadata["rotation_source"] == "pymupdf_line_direction"
+    assert normalized.metadata["rotation_direction"] == "vertical_text_up"
+    assert normalized.metadata["rotation_confidence"] == 0.98
+
+
 def test_normalized_table_round_trip_serialization(tmp_path: Path) -> None:
     """Normalized tables should round-trip cleanly through the persisted JSON artifact."""
     extracted = ExtractedTable(

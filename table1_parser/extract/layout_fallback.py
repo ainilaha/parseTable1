@@ -14,7 +14,7 @@ from table1_parser.extract.table_detector import (
 
 ALPHA_TOKEN_PATTERN = re.compile(r"[A-Za-z]")
 NUMERIC_TOKEN_PATTERN = re.compile(r"\d")
-TABLE_CAPTION_PATTERN = re.compile(r"\btable\s*\d+\b", re.IGNORECASE)
+TABLE_CAPTION_PATTERN = re.compile(r"^\s*table\s*\d+\b(?:\s*[:.])?", re.IGNORECASE)
 LINE_MERGE_TOLERANCE = 4.0
 COLUMN_CLUSTER_TOLERANCE = 18.0
 COLLAPSED_LABEL_PATTERN = re.compile(r"[a-z][A-Z]|[A-Za-z-]{8,}")
@@ -265,4 +265,3 @@ def build_text_layout_candidates(
             )
         )
     return candidates
-
