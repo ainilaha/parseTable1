@@ -571,6 +571,103 @@ def test_select_top_candidates_keeps_uncaptioned_continuations() -> None:
     ]
 
 
+def test_select_top_candidates_keeps_numbered_gap_fillers_below_main_threshold() -> None:
+    """Missing caption numbers inside a selected run should be retained on a relaxed threshold."""
+    candidates = [
+        DetectedTableCandidate(
+            page_num=4,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 1",
+            score=0.95,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 1}},
+        ),
+        DetectedTableCandidate(
+            page_num=5,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 2",
+            score=0.65,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 2}},
+        ),
+        DetectedTableCandidate(
+            page_num=6,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 3",
+            score=0.9,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 3}},
+        ),
+    ]
+
+    selected = select_top_candidates(candidates, max_candidates=10, confidence_threshold=0.7)
+
+    assert [candidate.page_num for candidate in selected] == [4, 5, 6]
+
+
+def test_select_top_candidates_recovers_discarded_caption_match_below_gap_threshold() -> None:
+    """A discarded caption-matched candidate should be recovered to fill a numbering gap."""
+    candidates = [
+        DetectedTableCandidate(
+            page_num=4,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 1",
+            score=0.95,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 1, "later_column_numeric_ratio": 1.0}},
+        ),
+        DetectedTableCandidate(
+            page_num=5,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 2",
+            score=0.45,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 2, "later_column_numeric_ratio": 1.0}},
+        ),
+        DetectedTableCandidate(
+            page_num=6,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 3",
+            score=0.9,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 3, "later_column_numeric_ratio": 1.0}},
+        ),
+    ]
+
+    selected = select_top_candidates(candidates, max_candidates=10, confidence_threshold=0.7)
+
+    assert [candidate.page_num for candidate in selected] == [4, 5, 6]
+    assert selected[1].metadata["sequence_gap_recovered"] is True
+    assert selected[1].metadata["sequence_gap_recovery_reason"] == "caption_matched_below_threshold"
+
+
+def test_select_top_candidates_marks_unresolved_caption_sequence_gaps() -> None:
+    """A remaining numbered gap should be surfaced in metadata when no matching candidate exists."""
+    candidates = [
+        DetectedTableCandidate(
+            page_num=4,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 1",
+            score=0.95,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 1}},
+        ),
+        DetectedTableCandidate(
+            page_num=6,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 3",
+            score=0.9,
+            metadata={"signals": {"caption_match": True, "caption_table_number": 3}},
+        ),
+    ]
+
+    selected = select_top_candidates(candidates, max_candidates=10, confidence_threshold=0.7)
+
+    assert selected[0].metadata["sequence_gap_detected"] is True
+    assert selected[0].metadata["missing_caption_numbers"] == [2]
+
+
 def test_pymupdf4llm_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> None:
     """The extractor should convert raw grid cells into indexed TableCell objects."""
     pdf_path = tmp_path / "paper.pdf"
@@ -735,6 +832,92 @@ def test_text_layout_fallback_detects_unruled_table(tmp_path, monkeypatch) -> No
     assert cell_map[(0, 1)] == "Q1"
     assert cell_map[(0, 2)] == "Q2"
     assert tables[0].metadata["layout_source"] == "pymupdf_text_positions"
+
+
+def test_pymupdf4llm_extractor_rescues_low_quality_explicit_table_with_text_layout(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """A collapsed explicit table box should be replaced by a stronger same-page text-layout rescue."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [40, 50, 260, 72],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 2"}]}],
+                        },
+                        {
+                            "bbox": [40, 72, 320, 86],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Association with DKD"}]}],
+                        },
+                        {
+                            "bbox": [40, 90, 560, 170],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [40, 90, 560, 170],
+                                "extract": [
+                                    ["", "OR (95% CI), P-value"],
+                                    ["", "Participants\nCrude\nModel 1\nModel 2"],
+                                    ["", "HEI-2020\n0.991 (0.983-0.999), 0.034\n0.979 (0.970-0.988), <0.001\n0.982 (0.973-0.992), <0.001"],
+                                ],
+                                "cells": [
+                                    [[40, 90, 120, 105], [120, 90, 560, 105]],
+                                    [[40, 105, 120, 120], [120, 105, 560, 120]],
+                                    [[40, 120, 120, 170], [120, 120, 560, 170]],
+                                ],
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
+    )
+    _install_fake_pymupdf_document(
+        monkeypatch,
+        [
+            FakePyMuPage(
+                text="Table 2\nAssociation with DKD",
+                words=[
+                    {"text": "Table", "x0": 40.0, "x1": 58.0, "top": 50.0, "bottom": 58.0},
+                    {"text": "2", "x0": 61.0, "x1": 65.0, "top": 50.0, "bottom": 58.0},
+                    {"text": "Association", "x0": 40.0, "x1": 90.0, "top": 62.0, "bottom": 70.0},
+                    {"text": "with", "x0": 94.0, "x1": 112.0, "top": 62.0, "bottom": 70.0},
+                    {"text": "DKD", "x0": 116.0, "x1": 132.0, "top": 62.0, "bottom": 70.0},
+                    {"text": "Participants", "x0": 50.0, "x1": 92.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "Crude", "x0": 170.0, "x1": 190.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "Model", "x0": 310.0, "x1": 330.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "1", "x0": 333.0, "x1": 337.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "Model", "x0": 450.0, "x1": 470.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "2", "x0": 473.0, "x1": 477.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "HEI-2020", "x0": 50.0, "x1": 82.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "0.991", "x0": 170.0, "x1": 188.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "0.979", "x0": 310.0, "x1": 328.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "0.982", "x0": 450.0, "x1": 468.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "T1", "x0": 50.0, "x1": 58.0, "top": 118.0, "bottom": 126.0},
+                    {"text": "Ref.", "x0": 170.0, "x1": 184.0, "top": 118.0, "bottom": 126.0},
+                    {"text": "Ref.", "x0": 310.0, "x1": 324.0, "top": 118.0, "bottom": 126.0},
+                    {"text": "Ref.", "x0": 450.0, "x1": 464.0, "top": 118.0, "bottom": 126.0},
+                ],
+            )
+        ],
+    )
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=5, heuristic_confidence_threshold=0.7).extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].title == "Table 2"
+    assert tables[0].n_rows > 3
+    assert tables[0].n_cols >= 3
+    assert tables[0].metadata["layout_source"] == "pymupdf_text_positions_rescue"
+    assert tables[0].metadata["fallback_used"] is True
 
 
 def test_text_layout_fallback_restores_spaces_in_collapsed_first_column_tokens(

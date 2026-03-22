@@ -152,6 +152,12 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                             )
                         )
                     )
+                page_candidates = self._rescue_low_quality_page_candidates(
+                    page_num=page_num,
+                    page=page,
+                    page_text=page_text,
+                    page_candidates=page_candidates,
+                )
                 if page_candidates:
                     explicit_page_nums.add(page_num)
                     candidates.extend(page_candidates)
@@ -238,6 +244,50 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
             metadata=metadata,
         )
 
+    def _rescue_low_quality_page_candidates(
+        self,
+        *,
+        page_num: int,
+        page: Any,
+        page_text: str,
+        page_candidates: list[DetectedTableCandidate],
+    ) -> list[DetectedTableCandidate]:
+        """Replace suspicious explicit page candidates with better text-layout candidates."""
+        if page is None or not any(_needs_layout_rescue(candidate, self.heuristic_confidence_threshold) for candidate in page_candidates):
+            return page_candidates
+
+        rescue_candidates = build_text_layout_candidates(
+            page_num=page_num,
+            page_text=page_text or extract_page_text(page),
+            words=extract_page_words(page),
+            chars=extract_page_chars(page),
+            rule_segments=extract_page_rule_segments(page),
+            layout_source="pymupdf_text_positions_rescue",
+        )
+        if not rescue_candidates:
+            return page_candidates
+
+        rescued: list[DetectedTableCandidate] = []
+        for candidate in page_candidates:
+            replacement = _best_rescue_candidate(candidate, rescue_candidates, self.heuristic_confidence_threshold)
+            if replacement is None:
+                rescued.append(candidate)
+                continue
+            rescued.append(
+                replacement.model_copy(
+                    update={
+                        "table_index": candidate.table_index,
+                        "metadata": {
+                            **replacement.metadata,
+                            "extractor_used": self.backend_name,
+                            "fallback_used": True,
+                            **_infer_table_orientation_metadata(page, replacement.bbox),
+                        },
+                    }
+                )
+            )
+        return rescued
+
 
 def _infer_table_orientation_metadata(
     page: Any,
@@ -288,6 +338,78 @@ def _infer_table_orientation_metadata(
         "rotation_direction": "upright",
         "rotation_confidence": round(horizontal_count / considered_count, 4),
     }
+
+
+def _best_rescue_candidate(
+    candidate: DetectedTableCandidate,
+    rescue_candidates: list[DetectedTableCandidate],
+    confidence_threshold: float,
+) -> DetectedTableCandidate | None:
+    """Return a better same-page rescue candidate when one is clearly superior."""
+    target_table_number = candidate.metadata.get("signals", {}).get("caption_table_number")
+    matching = [
+        rescue
+        for rescue in rescue_candidates
+        if rescue.metadata.get("signals", {}).get("caption_table_number") == target_table_number
+    ]
+    ranked = matching or rescue_candidates
+    if not ranked:
+        return None
+    best = sorted(
+        ranked,
+        key=lambda rescue: (
+            -rescue.score,
+            -_column_count(rescue),
+            -len(rescue.raw_rows),
+        ),
+    )[0]
+    if not _should_replace_with_rescue(candidate, best, confidence_threshold):
+        return None
+    return best
+
+
+def _should_replace_with_rescue(
+    candidate: DetectedTableCandidate,
+    rescue: DetectedTableCandidate,
+    confidence_threshold: float,
+) -> bool:
+    """Return whether a rescue candidate is strong enough to replace an explicit one."""
+    if rescue.score < confidence_threshold:
+        return False
+    if rescue.score <= candidate.score:
+        return False
+    if _column_count(rescue) > _column_count(candidate):
+        return True
+    if _first_column_fill_ratio(rescue) > _first_column_fill_ratio(candidate) + 0.4:
+        return True
+    return len(rescue.raw_rows) > len(candidate.raw_rows) + 5
+
+
+def _needs_layout_rescue(candidate: DetectedTableCandidate, confidence_threshold: float) -> bool:
+    """Return whether an explicit candidate looks collapsed enough to justify fallback rescue."""
+    if candidate.score >= confidence_threshold:
+        return False
+    signals = candidate.metadata.get("signals", {})
+    if not bool(signals.get("caption_match", False)):
+        return False
+    if _column_count(candidate) <= 2:
+        return True
+    return _first_column_fill_ratio(candidate) < 0.25
+
+
+def _column_count(candidate: DetectedTableCandidate) -> int:
+    """Return the candidate column count."""
+    return max((len(row) for row in candidate.raw_rows), default=0)
+
+
+def _first_column_fill_ratio(candidate: DetectedTableCandidate) -> float:
+    """Measure how often the first column is populated in the extracted grid."""
+    if not candidate.raw_rows:
+        return 0.0
+    return round(
+        sum(bool(row and row[0].strip()) for row in candidate.raw_rows) / len(candidate.raw_rows),
+        4,
+    )
 
 
 def _collect_page_text(page_boxes: list[dict[str, Any]]) -> str:
