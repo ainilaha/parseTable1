@@ -8,6 +8,32 @@ Research-oriented tooling for extracting, normalizing, heuristically interpretin
 - The full `parse` command is not implemented yet.
 - The repository also contains normalization, heuristic interpretation, diagnostics, and LLM-oriented developer tooling.
 
+## Basic Idea
+
+The goal of this project is to parse Table 1-style tables from epidemiology papers into structured representations that can be inspected, validated, and used by downstream tools.
+
+The intended pipeline is:
+
+```text
+PDF -> ExtractedTable -> NormalizedTable -> TableDefinition -> ParsedTable
+```
+
+Each stage has a different purpose:
+
+- `ExtractedTable`
+  Raw table extraction from the PDF. This preserves the recovered grid, cell text, page information, and extraction metadata.
+
+- `NormalizedTable`
+  A cleaned and organized version of the extracted table. This separates header rows from body rows, preserves row structure, and computes row-level signals that help later interpretation.
+
+- `TableDefinition`
+  A planned value-free semantic stage. This is meant to capture which variables appear in the rows, which ones are categorical, what their levels are, and how the columns were constructed, without including the table's printed values.
+
+- `ParsedTable`
+  The final semantic output. This combines variable definitions, column meanings, and parsed table values into a structured format.
+
+This separation is intentional. It keeps extraction, normalization, semantic interpretation, and final value output distinct, which makes the system easier to debug and safer to extend.
+
 ## Install
 
 ```bash
