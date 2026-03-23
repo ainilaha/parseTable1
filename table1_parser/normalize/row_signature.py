@@ -36,7 +36,8 @@ def build_row_signature(
     base_x0: float | None = None,
 ) -> RowView:
     """Build a normalized row signature from raw cell content."""
-    cleaned_cells = [clean_text(cell) for cell in raw_cells]
+    raw_cells_copy = list(raw_cells)
+    cleaned_cells = [clean_text(cell) for cell in raw_cells_copy]
     first_cell_raw = raw_cells[0] if raw_cells else ""
     trailing_cells = cleaned_cells[1:] if len(cleaned_cells) > 1 else []
     nonempty_cell_count = sum(1 for cell in cleaned_cells if cell)
@@ -45,7 +46,7 @@ def build_row_signature(
 
     return RowView(
         row_idx=row_idx,
-        raw_cells=cleaned_cells,
+        raw_cells=raw_cells_copy,
         first_cell_raw=first_cell_raw,
         first_cell_normalized=normalize_label_text(first_cell_raw),
         first_cell_alpha_only=alpha_only_text(first_cell_raw),

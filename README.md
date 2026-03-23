@@ -7,7 +7,7 @@ Research-oriented tooling for extracting, normalizing, heuristically interpretin
 - The main user command is now `table1-parser parse`, which runs the available pipeline stages once and writes all currently available paper outputs.
 - The `extract` and `normalize` commands are still available for stage-specific inspection and debugging.
 - `TableDefinition` is now implemented as a deterministic, value-free semantic representation of the table structure.
-- The final semantic `ParsedTable` stage is not implemented yet.
+- `ParsedTable` is now emitted as the final structured value layer, with conservative numeric parsing and soft Table 1 `n (%)` heuristics.
 - The repository also contains heuristic interpretation, diagnostics, and LLM-oriented developer tooling.
 
 ## Basic Idea
@@ -41,6 +41,7 @@ At the moment, the repository can persist:
 - `ExtractedTable`
 - `NormalizedTable`
 - `TableDefinition`
+- `ParsedTable`
 - paper-level markdown context
 
 Today, a single call to `table1-parser parse` writes those artifacts from one extraction pass.
@@ -73,6 +74,7 @@ By default this writes:
 parseTable1.out/papers/<paper_stem>/extracted_tables.json
 parseTable1.out/papers/<paper_stem>/normalized_tables.json
 parseTable1.out/papers/<paper_stem>/table_definitions.json
+parseTable1.out/papers/<paper_stem>/parsed_tables.json
 parseTable1.out/papers/<paper_stem>/paper_markdown.md
 parseTable1.out/papers/<paper_stem>/paper_sections.json
 parseTable1.out/papers/<paper_stem>/table_contexts/table_0_context.json
@@ -90,7 +92,7 @@ For example:
 table1-parser parse testpapers/cobaltpaper.pdf
 ```
 
-This currently writes the extraction, normalization, table-definition, and paper-context outputs in one run. When configured, it also writes semantic LLM table-definition output. As later stages are implemented, `parse` is intended to write those too.
+This writes the extraction, normalization, table-definition, final parsed-table, and paper-context outputs in one run. When configured, it also writes semantic LLM table-definition output.
 
 To suppress semantic LLM inference explicitly:
 
@@ -202,6 +204,7 @@ parseTable1.out/
       extracted_tables.json
       normalized_tables.json
       table_definitions.json
+      parsed_tables.json
       table_definitions_llm.json
       paper_markdown.md
       paper_sections.json
@@ -209,7 +212,7 @@ parseTable1.out/
         table_0_context.json
 ```
 
-This keeps outputs for each paper in a separate directory and leaves room for later semantic-definition, parsed, and interpretation-stage outputs.
+This keeps outputs for each paper in a separate directory and leaves room for trace and interpretation-stage outputs.
 The `parse` command is intended to populate this directory with every available stage output from a single pipeline run.
 
 ## How To Read The Outputs
@@ -218,8 +221,9 @@ The easiest way to inspect one paper is:
 
 1. start with `normalized_tables.json` to see the cleaned table structure
 2. read `table_definitions.json` to see the deterministic row and column interpretation
-3. read `table_definitions_llm.json` when present to see the context-aware semantic interpretation
-4. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
+3. read `parsed_tables.json` to see the final structured values
+4. read `table_definitions_llm.json` when present to see the context-aware semantic interpretation
+5. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
 
 In practice:
 
@@ -229,6 +233,8 @@ In practice:
   best for stable row and column indices
 - `table_definitions.json`
   best for the syntax-first semantic baseline
+- `parsed_tables.json`
+  best for the final structured row, column, and value output
 - `table_definitions_llm.json`
   best for the paper-context-aware semantic view
 

@@ -654,9 +654,11 @@ def test_column_role_detector_handles_required_headers() -> None:
 def test_value_pattern_detector_handles_required_examples_and_negatives() -> None:
     """Value-pattern detection should classify the required examples conservatively."""
     assert detect_value_pattern("412 (48.2)").pattern == "count_pct"
+    assert detect_value_pattern("5,490").pattern == "n_only"
     assert detect_value_pattern("52.3 (14.1)").pattern == "mean_sd"
     assert detect_value_pattern("43.2 (35.0, 57.1)").pattern == "median_iqr"
     assert detect_value_pattern("<0.001").pattern == "p_value"
+    assert detect_value_pattern("＜0.001").pattern == "p_value"
     assert detect_value_pattern("412").pattern == "n_only"
 
     assert detect_value_pattern("Cases").pattern == "unknown"

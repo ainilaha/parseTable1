@@ -52,7 +52,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
 | LLM interpretation | `LLMTableInterpretation` | Written in trace mode as `final_interpretation.json` | Pre-validation semantic interpretation |
-| Final parsed output | `ParsedTable` | Schema exists, CLI export not implemented yet | Validated downstream structured table data |
+| Final parsed output | `ParsedTable` | Written now as `parsed_tables.json` by `parse` | Validated downstream structured table data |
 
 ## Coordinate and Identity Rules
 
@@ -581,9 +581,19 @@ This file is useful for inspection, R helpers, and LLM tracing, but it is not ye
 Current status:
 
 - canonical final schema exists now
-- the CLI `parse` export path is not implemented yet
+- written by the `parse` CLI command as `parsed_tables.json`
 
-When persisted later, this should be treated as the main downstream table representation.
+This should be treated as the main downstream table representation.
+
+Current CLI path:
+
+```text
+parseTable1.out/papers/<paper_stem>/parsed_tables.json
+```
+
+This file is written by:
+
+- `table1-parser parse`
 
 Top-level design components:
 
@@ -633,6 +643,16 @@ Why `values` are long-format:
 - it supports downstream filtering and export
 - it separates semantic row/column interpretation from numeric parsing
 - it preserves the original `raw_value`
+
+Design note for future value parsing:
+
+- parser-facing symbol canonicalization should be applied internally before regex matching and numeric parsing
+- canonicalization must not replace the stored `raw_value`
+- for Table 1 categorical `n (%)` cells, the intended first interpretation is:
+  - `parsed_numeric` = count
+  - `parsed_secondary_numeric` = percent
+- count-percent consistency checks should be soft heuristics, not hard validity requirements
+- the overall-column 100% rule should be limited to columns that are truly `overall` or clearly equivalent, while subgroup columns may legitimately sum to their share of the full study population instead of 100
 
 This is the richest JSON design in the repo because it joins variable semantics, column semantics, and cell-level values into one validated representation.
 

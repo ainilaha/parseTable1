@@ -5,6 +5,7 @@ from __future__ import annotations
 from table1_parser.heuristics.level_detector import detect_level_row_indices
 from table1_parser.heuristics.models import RowClassification, VariableBlock
 from table1_parser.heuristics.row_classifier import classify_rows, indentation_is_informative
+from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable, RowView
 
 
@@ -23,6 +24,11 @@ def _count_more_indented_levels(
     )
 
 
+def _nonempty_trailing_cell_count(row_view: RowView) -> int:
+    """Count meaningful trailing cells while preserving raw row text elsewhere."""
+    return sum(bool(clean_text(cell)) for cell in row_view.raw_cells[1:])
+
+
 def _promote_categorical_parents(
     row_order: list[int],
     classifications_by_row: dict[int, str],
@@ -36,7 +42,7 @@ def _promote_categorical_parents(
         if adjusted.get(row_idx) != "continuous_variable_row":
             continue
         row_view = row_views_by_idx[row_idx]
-        if sum(bool(cell) for cell in row_view.raw_cells[1:]) > 1:
+        if _nonempty_trailing_cell_count(row_view) > 1:
             continue
         level_rows = detect_level_row_indices(
             parent_row_idx=row_idx,
@@ -50,7 +56,7 @@ def _promote_categorical_parents(
         )
         if len(level_rows) >= 2 and (
             (indentation_informative and more_indented_levels >= 1)
-            or sum(bool(cell) for cell in row_view.raw_cells[1:]) <= 1
+            or _nonempty_trailing_cell_count(row_view) <= 1
         ):
             adjusted[row_idx] = "variable_header"
     return adjusted

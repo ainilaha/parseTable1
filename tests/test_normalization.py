@@ -14,9 +14,11 @@ from table1_parser.schemas import ExtractedTable, TableCell
 
 
 def test_clean_text_collapses_whitespace_and_normalizes_dashes() -> None:
-    """Cleaning should normalize repeated whitespace and dash variants."""
+    """Cleaning should normalize repeated whitespace, comparisons, and dash variants."""
     assert clean_text("  Age   -  years  ") == "Age - years"
     assert clean_text("BMI\u2013kg/m2") == "BMI-kg/m2"
+    assert clean_text("p \uff1c 0.05") == "p < 0.05"
+    assert clean_text("BMI \u2265 30") == "BMI >= 30"
 
 
 def test_label_normalization_preserves_alphanumerics() -> None:
@@ -148,6 +150,7 @@ def test_row_signature_generation_keeps_raw_and_normalized_forms() -> None:
     """Row signatures should preserve raw text while deriving normalized first-column features."""
     row_view = build_row_signature(1, ["  <HS", "34", "45%"])
 
+    assert row_view.raw_cells == ["  <HS", "34", "45%"]
     assert row_view.first_cell_raw == "  <HS"
     assert row_view.first_cell_normalized == "HS"
     assert row_view.first_cell_alpha_only == "HS"
@@ -201,6 +204,7 @@ def test_row_signature_preserves_raw_text_word_boundaries() -> None:
     """Row signatures should keep the raw string untouched while normalizing separately."""
     row_view = build_row_signature(1, ["High school", "34"])
 
+    assert row_view.raw_cells == ["High school", "34"]
     assert row_view.first_cell_raw == "High school"
     assert row_view.first_cell_normalized == "High school"
     assert row_view.first_cell_alpha_only == "High school"

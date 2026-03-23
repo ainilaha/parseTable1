@@ -7,6 +7,7 @@ from collections.abc import Sequence
 
 from table1_parser.heuristics.level_detector import is_common_level_label, is_likely_level_row
 from table1_parser.heuristics.models import RowClassification
+from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable, RowView
 
 
@@ -29,7 +30,7 @@ COUNT_LIKE_VALUE_PATTERN = re.compile(r"^\s*\d[\d,]*\s*$")
 
 def _trailing_cells(row_view: RowView) -> list[str]:
     """Return populated trailing cells after the first label column."""
-    return [cell for cell in row_view.raw_cells[1:] if cell]
+    return [clean_text(cell) for cell in row_view.raw_cells[1:] if clean_text(cell)]
 
 
 def _trailing_numeric_count(row_view: RowView) -> int:

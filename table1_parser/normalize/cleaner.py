@@ -6,11 +6,41 @@ import re
 
 
 WHITESPACE_PATTERN = re.compile(r"\s+")
-DASH_PATTERN = re.compile(r"[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]+")
+HTML_ENTITY_MAP = {
+    "&lt;": "<",
+    "&gt;": ">",
+    "&le;": "<=",
+    "&ge;": ">=",
+}
+SYMBOL_TRANSLATIONS = str.maketrans(
+    {
+        "\u2010": "-",
+        "\u2011": "-",
+        "\u2012": "-",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2015": "-",
+        "\u2212": "-",
+        "\u2264": "<=",
+        "\u2265": ">=",
+        "\u2266": "<=",
+        "\u2267": ">=",
+        "\uff1c": "<",
+        "\uff1e": ">",
+    }
+)
+
+
+def canonicalize_symbols(value: str) -> str:
+    """Normalize parser-facing symbol variants while keeping the input otherwise intact."""
+    normalized = value
+    for source, target in HTML_ENTITY_MAP.items():
+        normalized = normalized.replace(source, target)
+    return normalized.translate(SYMBOL_TRANSLATIONS)
 
 
 def clean_text(value: str) -> str:
-    """Collapse whitespace and normalize dash variants without dropping content."""
-    normalized = DASH_PATTERN.sub("-", value)
+    """Collapse whitespace and normalize symbol variants without dropping content."""
+    normalized = canonicalize_symbols(value)
     normalized = WHITESPACE_PATTERN.sub(" ", normalized)
     return normalized.strip()
