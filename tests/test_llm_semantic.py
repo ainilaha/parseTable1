@@ -88,6 +88,8 @@ def test_semantic_prompt_payload_contains_context_and_deterministic_definition()
     assert payload.body_rows[1].row_idx == 2
     assert payload.deterministic_table_definition.table_id == "tbl-semantic"
     assert payload.retrieved_context.table_label == "Table 2"
+    assert payload.deterministic_table_definition.variables[0].units_hint is None
+    assert payload.deterministic_table_definition.variables[0].summary_style_hint is None
 
 
 def test_semantic_prompt_includes_safety_and_evidence_requirements() -> None:
@@ -100,6 +102,8 @@ def test_semantic_prompt_includes_safety_and_evidence_requirements() -> None:
     assert "Return strict JSON only." in prompt
     assert "Do not invent rows, columns, levels, variables, values, or evidence passages." in prompt
     assert "Use evidence_passage_ids whenever you make a semantic claim." in prompt
+    assert "units_hint" not in prompt
+    assert "summary_style_hint" not in prompt
 
 
 def test_semantic_prompt_template_is_repo_file() -> None:

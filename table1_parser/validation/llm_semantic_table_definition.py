@@ -46,8 +46,6 @@ def validate_llm_semantic_table_definition(
                     )
                     for level in variable.levels
                 ],
-                units_hint=variable.units_hint,
-                summary_style_hint=variable.summary_style_hint,
                 confidence=variable.confidence,
             )
             for variable in definition.variables

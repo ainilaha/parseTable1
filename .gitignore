@@ -23,6 +23,8 @@ debug_*.txt
 test-results/
 trace_output/
 outputs/
+parse_runs/
+parseTable1.out/
 
 # Large or local-only PDF fixtures
 /testpapers/OPEandRA.pdf

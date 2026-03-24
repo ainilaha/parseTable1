@@ -47,8 +47,6 @@ class LLMSemanticVariableInterpretation(BaseModel):
     row_start: int = Field(ge=0)
     row_end: int = Field(ge=0)
     levels: list[LLMSemanticLevelInterpretation] = Field(default_factory=list)
-    units_hint: str | None = None
-    summary_style_hint: str | None = None
     evidence_passage_ids: list[str] = Field(default_factory=list)
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     disagrees_with_deterministic: bool = False

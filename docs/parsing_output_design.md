@@ -384,6 +384,7 @@ Design intent:
 - preserve `table_definitions.json` as the deterministic baseline artifact
 - keep row and column references tied to the normalized table index space
 - validate the LLM output before writing this file
+- keep per-variable `units_hint` and `summary_style_hint` out of the semantic LLM contract for now
 
 ## 6. `heuristics.json`
 

@@ -160,6 +160,12 @@ The LLM should receive:
 
 Those passages may come from differently named but methods-like, results-like, or model-description sections.
 
+Current simplification:
+
+- the semantic LLM input should omit deterministic `units_hint` and `summary_style_hint`
+- the semantic LLM output should not try to re-derive per-variable units or summary-style labels
+- those hints remain deterministic concerns for later value parsing
+
 ## Modularization
 
 Keep the LLM phase split into small modules:
@@ -186,6 +192,11 @@ The LLM should return a value-free semantic interpretation that includes:
 - evidence passage references
 - confidence
 - explicit disagreement with deterministic output where relevant
+
+It should not spend output capacity on:
+
+- per-variable `units_hint`
+- per-variable `summary_style_hint`
 
 The LLM should be allowed to say:
 
