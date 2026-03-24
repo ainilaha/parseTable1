@@ -9,6 +9,7 @@ The short version is:
 - raw extracted content is preserved
 - row and column references stay stable across phases
 - trace/debug wrappers are not the same thing as canonical parsed outputs
+- mixed-table papers may eventually route into different semantic families after normalization
 
 ## Required Reading Before Changing Outputs
 
@@ -53,6 +54,13 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
 | LLM interpretation | `LLMTableInterpretation` | Written in trace mode as `final_interpretation.json` | Pre-validation semantic interpretation |
 | Final parsed output | `ParsedTable` | Written now as `parsed_tables.json` by `parse` | Validated downstream structured table data |
+
+Design note for future multitable support:
+
+- after `NormalizedTable`, mixed papers may route through a `TableProfile` stage before final semantics are chosen
+- descriptive characteristic tables may continue using `TableDefinition` and `ParsedTable`
+- estimate-result tables may later use sibling artifacts such as `EstimateTableDefinition` and `ParsedEstimateTable`
+- this family split should be explicit in schemas and persisted files rather than hidden inside one overloaded parser
 
 ## Coordinate and Identity Rules
 

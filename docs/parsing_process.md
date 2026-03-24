@@ -1,6 +1,6 @@
 # Parsing Process Overview
 
-This project parses Table 1-style epidemiology tables in stages. The goal is to keep each stage small, inspectable, and reliable.
+This project parses epidemiology tables in stages. The goal is to keep each stage small, inspectable, and reliable.
 
 ## Intended Process
 
@@ -16,6 +16,14 @@ In plain terms:
 - `NormalizedTable` is the cleaned and organized version used for interpretation
 - `TableDefinition` is the value-free semantic structure used for database matching and later parsing
 - `ParsedTable` is the final structured result with variables, levels, columns, and values
+
+For mixed-table papers, the planned future pipeline adds a routing stage:
+
+```text
+PDF -> ExtractedTable -> NormalizedTable -> TableProfile -> family-specific definition -> family-specific parsed output
+```
+
+See `docs/multitable_architecture_spec.md`.
 
 For CLI use, `table1-parser parse` is intended to be the main user command. It should run the pipeline once and write every currently available stage artifact for the paper.
 
@@ -51,6 +59,7 @@ But it does not yet fully decide:
 
 Later stages use the `NormalizedTable` to make progressively stronger interpretations:
 
+- deterministic routing can classify table family
 - deterministic heuristics build a `TableDefinition`
 - paper markdown is chunked into sections and table-focused retrieval bundles
 - optional LLM interpretation can later refine ambiguous structure

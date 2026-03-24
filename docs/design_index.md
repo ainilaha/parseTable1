@@ -21,6 +21,12 @@ Then use the documents below as needed.
 - `docs/value_parsing_spec.md`
   Planned symbol canonicalization and Table 1 `n (%)` parsing heuristics for the later value-parsing path.
 
+- `docs/multitable_architecture_spec.md`
+  Planned routing stage, descriptive-vs-estimate table families, and estimate-table schemas for mixed-table papers.
+
+- `docs/multitable_implementation_plan.md`
+  Stepwise implementation plan for `TableProfile`, LLM gating, and later estimate-table parsing.
+
 ## Value-Free Semantic Stage
 
 - `docs/table_definition_scope.md`
@@ -59,6 +65,10 @@ Then use the documents below as needed.
 
 - If you are changing symbol normalization, parser-facing text canonicalization, or categorical `n (%)` value parsing:
   read `docs/value_parsing_spec.md`.
+
+- If you are changing mixed-table routing, LLM gating by table family, or estimate-result table parsing:
+  read `docs/multitable_architecture_spec.md`.
+  For concrete sequencing, also read `docs/multitable_implementation_plan.md`.
 
 - If you are working on the new value-free semantic stage for database matching:
   read `docs/table_definition_scope.md`, `docs/table_definition_schema.md`, and `docs/table_definition_implementation_plan.md`.
