@@ -18,6 +18,7 @@ from table1_parser.schemas.table_definition import (
     DefinedVariable,
     TableDefinition,
 )
+from table1_parser.schemas.table_profile import TableProfile
 
 __all__ = [
     "ExtractedTable",
@@ -39,4 +40,5 @@ __all__ = [
     "TableDefinition",
     "TableCell",
     "ValueRecord",
+    "TableProfile",
 ]

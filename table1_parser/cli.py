@@ -16,6 +16,7 @@ from table1_parser.context import (
 )
 from table1_parser.extract import build_extractor
 from table1_parser.heuristics.table_definition_builder import build_table_definitions, table_definitions_to_payload
+from table1_parser.heuristics.table_profile import build_table_profiles, table_profiles_to_payload
 from table1_parser.llm import (
     LLMConfigurationError,
     LLMProviderError,
@@ -106,17 +107,27 @@ def _extract_payload(tables: list[object]) -> list[dict[str, object]]:
 
 def _run_available_parse_stages(
     pdf_path: str,
-) -> tuple[list[object], list[object], list[object], list[object], str, list[object], list[object]]:
+) -> tuple[list[object], list[object], list[object], list[object], list[object], str, list[object], list[object]]:
     """Run the currently implemented parse stages once and return their typed outputs."""
     extractor = _build_default_extractor()
     extracted_tables = extractor.extract(pdf_path)
     normalized_tables = normalize_extracted_tables(extracted_tables)
+    table_profiles = build_table_profiles(normalized_tables)
     table_definitions = build_table_definitions(normalized_tables)
     parsed_tables = build_parsed_tables(normalized_tables, table_definitions)
     paper_markdown = extract_paper_markdown(pdf_path)
     paper_sections = parse_markdown_sections(paper_markdown)
     table_contexts = build_table_contexts(paper_sections, table_definitions)
-    return extracted_tables, normalized_tables, table_definitions, parsed_tables, paper_markdown, paper_sections, table_contexts
+    return (
+        extracted_tables,
+        normalized_tables,
+        table_profiles,
+        table_definitions,
+        parsed_tables,
+        paper_markdown,
+        paper_sections,
+        table_contexts,
+    )
 
 
 def _handle_extract(args: argparse.Namespace) -> int:
@@ -174,7 +185,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        extracted_tables, normalized_tables, table_definitions, parsed_tables, paper_markdown, paper_sections, table_contexts = _run_available_parse_stages(args.pdf_path)
+        extracted_tables, normalized_tables, table_profiles, table_definitions, parsed_tables, paper_markdown, paper_sections, table_contexts = _run_available_parse_stages(args.pdf_path)
     except Exception as exc:
         print(_error_payload(str(exc)))
         return 1
@@ -182,6 +193,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
     llm_table_definitions = _maybe_run_semantic_llm(
         args.pdf_path,
         normalized_tables,
+        table_profiles,
         table_definitions,
         table_contexts,
         disabled=args.no_llm_semantic,
@@ -189,6 +201,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
 
     extract_output_path = _extract_output_path(args.pdf_path, args.outdir)
     normalize_output_path = _normalize_output_path(args.pdf_path, args.outdir)
+    table_profile_output_path = _table_profile_output_path(args.pdf_path, args.outdir)
     table_definition_output_path = _table_definition_output_path(args.pdf_path, args.outdir)
     parsed_output_path = _parsed_output_path(args.pdf_path, args.outdir)
     llm_table_definition_output_path = _llm_table_definition_output_path(args.pdf_path, args.outdir)
@@ -203,6 +216,10 @@ def _handle_parse(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
     write_normalized_tables(normalize_output_path, normalized_tables)
+    table_profile_output_path.write_text(
+        json.dumps(table_profiles_to_payload(table_profiles), indent=2) + "\n",
+        encoding="utf-8",
+    )
     table_definition_output_path.write_text(
         json.dumps(table_definitions_to_payload(table_definitions), indent=2) + "\n",
         encoding="utf-8",
@@ -229,6 +246,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
 
     print(f"Wrote {extract_output_path}")
     print(f"Wrote {normalize_output_path}")
+    print(f"Wrote {table_profile_output_path}")
     print(f"Wrote {table_definition_output_path}")
     print(f"Wrote {parsed_output_path}")
     if llm_table_definitions is not None:
@@ -242,6 +260,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
 def _maybe_run_semantic_llm(
     pdf_path: str,
     normalized_tables: list[object],
+    table_profiles: list[object],
     table_definitions: list[object],
     table_contexts: list[object],
     *,
@@ -249,6 +268,19 @@ def _maybe_run_semantic_llm(
 ) -> list[object] | None:
     """Return semantic LLM table definitions when the feature is available for this run."""
     if disabled:
+        return None
+    eligible_items = [
+        (table, profile, definition, context)
+        for table, profile, definition, context in zip(
+            normalized_tables,
+            table_profiles,
+            table_definitions,
+            table_contexts,
+            strict=True,
+        )
+        if getattr(profile, "should_run_llm_semantics", False)
+    ]
+    if not eligible_items:
         return None
 
     settings = Settings()
@@ -262,7 +294,7 @@ def _maybe_run_semantic_llm(
     try:
         return [
             parser.parse(table, definition, context)
-            for table, definition, context in zip(normalized_tables, table_definitions, table_contexts, strict=True)
+            for table, _, definition, context in eligible_items
         ]
     except (LLMProviderError, LLMSemanticInterpretationError) as exc:
         print(f"LLM semantic interpretation skipped: {exc}")
@@ -285,6 +317,12 @@ def _table_definition_output_path(pdf_path: str, outdir: str) -> Path:
     """Return the default table-definition JSON path for one paper."""
     paper_stem = Path(pdf_path).stem
     return Path(outdir) / "papers" / paper_stem / "table_definitions.json"
+
+
+def _table_profile_output_path(pdf_path: str, outdir: str) -> Path:
+    """Return the default table-profile JSON path for one paper."""
+    paper_stem = Path(pdf_path).stem
+    return Path(outdir) / "papers" / paper_stem / "table_profiles.json"
 
 
 def _llm_table_definition_output_path(pdf_path: str, outdir: str) -> Path:

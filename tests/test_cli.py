@@ -85,6 +85,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     captured = capsys.readouterr()
     extracted_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "extracted_tables.json"
     normalized_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "normalized_tables.json"
+    table_profile_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_profiles.json"
     table_definition_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions.json"
     parsed_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "parsed_tables.json"
     paper_markdown_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "paper_markdown.md"
@@ -95,6 +96,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert calls["extract"] == 1
     assert extracted_path.exists()
     assert normalized_path.exists()
+    assert table_profile_path.exists()
     assert table_definition_path.exists()
     assert parsed_path.exists()
     assert paper_markdown_path.exists()
@@ -102,6 +104,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert table_context_path.exists()
     assert json.loads(extracted_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(normalized_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert json.loads(table_profile_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(table_definition_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(parsed_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
@@ -109,6 +112,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert json.loads(table_context_path.read_text(encoding="utf-8"))["table_id"] == "tbl-1"
     assert "Wrote parseTable1.out/papers/paper/extracted_tables.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/normalized_tables.json" in captured.out
+    assert "Wrote parseTable1.out/papers/paper/table_profiles.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/table_definitions.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/parsed_tables.json" in captured.out
     assert "Wrote parseTable1.out/papers/paper/paper_markdown.md" in captured.out
@@ -223,6 +227,90 @@ def test_cli_parse_warns_and_skips_semantic_llm_when_configuration_is_missing(tm
     assert not llm_path.exists()
     assert "LLM semantic interpretation skipped:" in captured.out
     assert "Use --no-llm-semantic to suppress this warning." in captured.out
+
+
+def test_cli_parse_skips_semantic_llm_for_estimate_result_tables(tmp_path, monkeypatch, capsys) -> None:
+    """Estimate-result tables should route away from semantic LLM even when configuration exists."""
+    monkeypatch.chdir(tmp_path)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    parse_calls = {"count": 0}
+
+    estimate_table = ExtractedTable(
+        table_id="tbl-est",
+        source_pdf="paper.pdf",
+        page_num=1,
+        title="Table 3. Adjusted hazard ratios for CKD progression",
+        caption="Multivariable regression results",
+        n_rows=3,
+        n_cols=3,
+        cells=[
+            TableCell(row_idx=0, col_idx=0, text="Variable"),
+            TableCell(row_idx=0, col_idx=1, text="Adjusted HR (95% CI)"),
+            TableCell(row_idx=0, col_idx=2, text="P-value"),
+            TableCell(row_idx=1, col_idx=0, text="Proteinuria"),
+            TableCell(row_idx=1, col_idx=1, text="1.42 (1.10, 1.83)"),
+            TableCell(row_idx=1, col_idx=2, text="<0.001"),
+            TableCell(row_idx=2, col_idx=0, text="eGFR"),
+            TableCell(row_idx=2, col_idx=1, text="0.78 (0.65, 0.94)"),
+            TableCell(row_idx=2, col_idx=2, text="0.01"),
+        ],
+        extraction_backend="pymupdf4llm",
+    )
+
+    class FakeExtractor:
+        def extract(self, _: str) -> list[ExtractedTable]:
+            return [estimate_table]
+
+    class FakeSemanticParser:
+        def __init__(self, client: object) -> None:
+            self.client = client
+
+        def parse(self, table: object, definition: object, context: object) -> LLMSemanticTableDefinition:
+            parse_calls["count"] += 1
+            return LLMSemanticTableDefinition(
+                table_id=definition.table_id,
+                variables=[],
+                column_definition={"columns": []},
+                notes=["semantic"],
+                overall_confidence=0.9,
+            )
+
+    monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
+    monkeypatch.setattr(cli, "extract_paper_markdown", lambda _: "# Methods\nExample study population.")
+    monkeypatch.setattr(
+        cli,
+        "parse_markdown_sections",
+        lambda _: [PaperSection(section_id="section_0", order=0, heading="Methods", level=1, role_hint="methods_like", content="Example study population.")],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_table_contexts",
+        lambda sections, definitions: [
+            TableContext(
+                table_id=definitions[0].table_id,
+                table_index=0,
+                table_label="Table 3",
+                title=definitions[0].title,
+                caption=definitions[0].caption,
+                methods_like_section_ids=[sections[0].section_id],
+            )
+        ],
+    )
+    monkeypatch.setattr(cli, "build_llm_client", lambda settings=None: object())
+    monkeypatch.setattr(cli, "LLMSemanticTableDefinitionParser", FakeSemanticParser)
+
+    exit_code = cli.main(["parse", str(pdf_path)])
+
+    captured = capsys.readouterr()
+    llm_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions_llm.json"
+    profile_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_profiles.json"
+
+    assert exit_code == 0
+    assert parse_calls["count"] == 0
+    assert llm_path.exists() is False
+    assert json.loads(profile_path.read_text(encoding="utf-8"))[0]["table_family"] == "estimate_results"
+    assert "Wrote parseTable1.out/papers/paper/table_profiles.json" in captured.out
 
 
 def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:

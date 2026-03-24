@@ -24,6 +24,7 @@ from table1_parser.schemas import (
     TableCell,
     TableContext,
     TableDefinition,
+    TableProfile,
     ValueRecord,
 )
 
@@ -177,6 +178,25 @@ def test_table_definition_creation_and_serialization() -> None:
 
     assert dumped["variables"][0]["levels"][0]["level_label"] == "Male"
     assert dumped["column_definition"]["columns"][0]["inferred_role"] == "overall"
+
+
+def test_table_profile_creation_and_serialization() -> None:
+    """TableProfile schemas should serialize deterministic route decisions correctly."""
+    profile = TableProfile(
+        table_id="tbl-route",
+        title="Table 1",
+        caption="Baseline characteristics",
+        table_family="descriptive_characteristics",
+        should_run_llm_semantics=True,
+        family_confidence=0.9,
+        evidence=["title_or_caption_mentions_characteristics"],
+        notes=["baseline_route"],
+    )
+
+    dumped = profile.model_dump(mode="json")
+
+    assert dumped["table_family"] == "descriptive_characteristics"
+    assert dumped["should_run_llm_semantics"] is True
 
 
 def test_llm_contract_models_create_without_llm_logic() -> None:

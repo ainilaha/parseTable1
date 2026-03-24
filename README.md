@@ -73,6 +73,7 @@ By default this writes:
 ```text
 parseTable1.out/papers/<paper_stem>/extracted_tables.json
 parseTable1.out/papers/<paper_stem>/normalized_tables.json
+parseTable1.out/papers/<paper_stem>/table_profiles.json
 parseTable1.out/papers/<paper_stem>/table_definitions.json
 parseTable1.out/papers/<paper_stem>/parsed_tables.json
 parseTable1.out/papers/<paper_stem>/paper_markdown.md
@@ -203,6 +204,7 @@ parseTable1.out/
     cobaltpaper/
       extracted_tables.json
       normalized_tables.json
+      table_profiles.json
       table_definitions.json
       parsed_tables.json
       table_definitions_llm.json
@@ -220,10 +222,11 @@ The `parse` command is intended to populate this directory with every available 
 The easiest way to inspect one paper is:
 
 1. start with `normalized_tables.json` to see the cleaned table structure
-2. read `table_definitions.json` to see the deterministic row and column interpretation
-3. read `parsed_tables.json` to see the final structured values
-4. read `table_definitions_llm.json` when present to see the context-aware semantic interpretation
-5. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
+2. read `table_profiles.json` to see how each table was routed
+3. read `table_definitions.json` to see the deterministic row and column interpretation
+4. read `parsed_tables.json` to see the final structured values
+5. read `table_definitions_llm.json` when present to see the context-aware semantic interpretation
+6. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
 
 In practice:
 
@@ -233,6 +236,8 @@ In practice:
   best for stable row and column indices
 - `table_definitions.json`
   best for the syntax-first semantic baseline
+- `table_profiles.json`
+  best for understanding whether a table was treated as descriptive, estimate-like, or unknown
 - `parsed_tables.json`
   best for the final structured row, column, and value output
 - `table_definitions_llm.json`
