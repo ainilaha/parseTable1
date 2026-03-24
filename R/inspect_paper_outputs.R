@@ -80,8 +80,31 @@ table_definitions_by_index <- function(outputs, table_index = 0L) {
   if (is.null(deterministic)) {
     stop(sprintf("No deterministic table definition found for table_index=%s.", table_index), call. = FALSE)
   }
-  llm <- outputs$table_definitions_llm[[idx]] %||% NULL
+  llm <- NULL
+  if (!is.null(outputs$table_definitions_llm) && length(outputs$table_definitions_llm) >= idx) {
+    llm <- outputs$table_definitions_llm[[idx]] %||% NULL
+  }
+  if (is.null(llm) && !is.null(outputs$table_definitions_llm)) {
+    llm_matches <- Filter(
+      function(x) identical(as.character(x$table_id %||% ""), as.character(deterministic$table_id %||% "")),
+      outputs$table_definitions_llm
+    )
+    llm <- llm_matches[[1]] %||% NULL
+  }
   list(deterministic = deterministic, llm = llm)
+}
+
+table_definition_variant_by_index <- function(outputs, table_index = 0L, variant = c("deterministic", "llm")) {
+  variant <- match.arg(variant)
+  definitions <- table_definitions_by_index(outputs, table_index)
+  definition <- definitions[[variant]] %||% NULL
+  if (is.null(definition)) {
+    stop(
+      sprintf("No %s table definition found for table_index=%s.", variant, as.integer(table_index)),
+      call. = FALSE
+    )
+  }
+  definition
 }
 
 normalize_variable_rows <- function(variables, source) {
@@ -143,19 +166,19 @@ normalize_column_rows <- function(columns, source) {
   do.call(rbind, rows)
 }
 
-compare_rows <- function(deterministic, llm, key_col, compare_cols) {
-  merged <- merge(deterministic, llm, by = key_col, all = TRUE, suffixes = c("_deterministic", "_llm"), sort = TRUE)
+compare_rows <- function(left, right, key_col, compare_cols, left_suffix = "deterministic", right_suffix = "llm") {
+  merged <- merge(left, right, by = key_col, all = TRUE, suffixes = c(paste0("_", left_suffix), paste0("_", right_suffix)), sort = TRUE)
   status <- character(nrow(merged))
   for (i in seq_len(nrow(merged))) {
-    if (is.na(merged[[paste0(compare_cols[[1]], "_deterministic")]][i])) {
-      status[i] <- "llm_only"
-    } else if (is.na(merged[[paste0(compare_cols[[1]], "_llm")]][i])) {
-      status[i] <- "deterministic_only"
+    if (is.na(merged[[paste0(compare_cols[[1]], "_", left_suffix)]][i])) {
+      status[i] <- paste0(right_suffix, "_only")
+    } else if (is.na(merged[[paste0(compare_cols[[1]], "_", right_suffix)]][i])) {
+      status[i] <- paste0(left_suffix, "_only")
     } else {
       same <- all(vapply(compare_cols, function(col) {
         identical(
-          merged[[paste0(col, "_deterministic")]][i] %||% "",
-          merged[[paste0(col, "_llm")]][i] %||% ""
+          merged[[paste0(col, "_", left_suffix)]][i] %||% "",
+          merged[[paste0(col, "_", right_suffix)]][i] %||% ""
         )
       }, logical(1)))
       status[i] <- if (same) "same" else "different"
@@ -182,32 +205,86 @@ compare_table_definitions <- function(paper_dir, table_index = 0L) {
   if (is.null(definitions$llm)) {
     stop("No table_definitions_llm.json found for this paper.", call. = FALSE)
   }
+  compare_table_definition_runs(
+    paper_dir_a = paper_dir,
+    paper_dir_b = paper_dir,
+    table_index = table_index,
+    variant_a = "deterministic",
+    variant_b = "llm",
+    label_a = "deterministic",
+    label_b = "llm"
+  )
+}
+
+compare_table_definition_runs <- function(
+  paper_dir_a,
+  paper_dir_b,
+  table_index = 0L,
+  variant_a = c("deterministic", "llm"),
+  variant_b = c("deterministic", "llm"),
+  label_a = NULL,
+  label_b = NULL
+) {
+  variant_a <- match.arg(variant_a)
+  variant_b <- match.arg(variant_b)
+
+  outputs_a <- load_paper_outputs(paper_dir_a)
+  outputs_b <- load_paper_outputs(paper_dir_b)
+  definition_a <- table_definition_variant_by_index(outputs_a, table_index = table_index, variant = variant_a)
+  definition_b <- table_definition_variant_by_index(outputs_b, table_index = table_index, variant = variant_b)
+
+  label_a <- label_a %||% sprintf("run_a_%s", variant_a)
+  label_b <- label_b %||% sprintf("run_b_%s", variant_b)
 
   variables <- compare_rows(
-    normalize_variable_rows(definitions$deterministic$variables, "deterministic"),
-    normalize_variable_rows(definitions$llm$variables, "llm"),
+    normalize_variable_rows(definition_a$variables, label_a),
+    normalize_variable_rows(definition_b$variables, label_b),
     "key",
-    c("variable_label", "variable_type")
+    c("variable_label", "variable_type"),
+    left_suffix = "left",
+    right_suffix = "right"
   )
   levels <- compare_rows(
-    normalize_level_rows(definitions$deterministic$variables, "deterministic"),
-    normalize_level_rows(definitions$llm$variables, "llm"),
+    normalize_level_rows(definition_a$variables, label_a),
+    normalize_level_rows(definition_b$variables, label_b),
     "key",
-    c("level_label", "parent_label")
+    c("level_label", "parent_label"),
+    left_suffix = "left",
+    right_suffix = "right"
   )
   columns <- compare_rows(
-    normalize_column_rows(definitions$deterministic$column_definition$columns, "deterministic"),
-    normalize_column_rows(definitions$llm$column_definition$columns, "llm"),
+    normalize_column_rows(definition_a$column_definition$columns, label_a),
+    normalize_column_rows(definition_b$column_definition$columns, label_b),
     "key",
-    c("column_label", "inferred_role", "grouping_variable_hint")
+    c("column_label", "inferred_role", "grouping_variable_hint"),
+    left_suffix = "left",
+    right_suffix = "right"
   )
 
-  cat(sprintf("Table comparison for table_index=%s\n\n", as.integer(table_index)))
+  cat(sprintf("Table comparison for table_index=%s\n", as.integer(table_index)))
+  cat(sprintf("Left: %s (%s)\n", label_a, variant_a))
+  cat(sprintf("Right: %s (%s)\n\n", label_b, variant_b))
+
   print_comparison_block("Variables", variables)
   print_comparison_block("Levels", levels)
   print_comparison_block("Columns", columns)
 
-  invisible(list(variables = variables, levels = levels, columns = columns))
+  invisible(
+    list(
+      variables = variables,
+      levels = levels,
+      columns = columns,
+      metadata = list(
+        paper_dir_a = normalizePath(paper_dir_a, winslash = "/", mustWork = TRUE),
+        paper_dir_b = normalizePath(paper_dir_b, winslash = "/", mustWork = TRUE),
+        table_index = as.integer(table_index),
+        variant_a = variant_a,
+        variant_b = variant_b,
+        label_a = label_a,
+        label_b = label_b
+      )
+    )
+  )
 }
 
 show_table_context <- function(paper_dir, table_index = 0L, match_type = NULL) {

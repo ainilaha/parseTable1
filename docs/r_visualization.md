@@ -82,6 +82,7 @@ Public functions:
 
 - `load_paper_outputs(paper_dir)`
 - `compare_table_definitions(paper_dir, table_index = 0L)`
+- `compare_table_definition_runs(paper_dir_a, paper_dir_b, table_index = 0L, variant_a = "deterministic", variant_b = "llm", label_a = NULL, label_b = NULL)`
 - `show_table_context(paper_dir, table_index = 0L, match_type = NULL)`
 - `show_llm_evidence(paper_dir, table_index = 0L)`
 
@@ -96,6 +97,15 @@ source("R/inspect_paper_outputs.R")
 
 x <- load_paper_outputs("parseTable1.out/papers/cobaltpaper")
 compare_table_definitions("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+compare_table_definition_runs(
+  "parse_runs/nephro_no_llm/papers/Nephro",
+  "parse_runs/nephro_with_llm/papers/Nephro",
+  table_index = 0L,
+  variant_a = "deterministic",
+  variant_b = "llm",
+  label_a = "no_llm",
+  label_b = "with_llm_llm"
+)
 show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L, match_type = "table_reference")
 show_llm_evidence("parseTable1.out/papers/cobaltpaper", table_index = 0L)
 ```
@@ -104,6 +114,8 @@ What these are for:
 
 - `compare_table_definitions(...)`
   compare deterministic syntax-first semantics with the LLM semantic interpretation
+- `compare_table_definition_runs(...)`
+  compare any two saved `table_definitions` variants, including cross-run comparisons such as `no_llm` deterministic vs `with_llm` semantic LLM
 - `show_table_context(...)`
   inspect the retrieved passages for one table
 - `show_llm_evidence(...)`
