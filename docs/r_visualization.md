@@ -83,6 +83,8 @@ Public functions:
 - `load_paper_outputs(paper_dir)`
 - `compare_table_definitions(paper_dir, table_index = 0L)`
 - `compare_table_definition_runs(paper_dir_a, paper_dir_b, table_index = 0L, variant_a = "deterministic", variant_b = "llm", label_a = NULL, label_b = NULL)`
+- `list_llm_semantic_debug_runs(paper_dir)`
+- `summarize_llm_semantic_monitoring(paper_dir, run_id = NULL)`
 - `show_table_context(paper_dir, table_index = 0L, match_type = NULL)`
 - `show_llm_evidence(paper_dir, table_index = 0L)`
 
@@ -106,6 +108,8 @@ compare_table_definition_runs(
   label_a = "no_llm",
   label_b = "with_llm_llm"
 )
+list_llm_semantic_debug_runs("parse_runs/nephro_with_llm/papers/Nephro")
+summarize_llm_semantic_monitoring("parse_runs/nephro_with_llm/papers/Nephro")
 show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L, match_type = "table_reference")
 show_llm_evidence("parseTable1.out/papers/cobaltpaper", table_index = 0L)
 ```
@@ -116,6 +120,10 @@ What these are for:
   compare deterministic syntax-first semantics with the LLM semantic interpretation
 - `compare_table_definition_runs(...)`
   compare any two saved `table_definitions` variants, including cross-run comparisons such as `no_llm` deterministic vs `with_llm` semantic LLM
+- `list_llm_semantic_debug_runs(...)`
+  list timestamped semantic-debug runs written when `LLM_DEBUG=true`
+- `summarize_llm_semantic_monitoring(...)`
+  print a compact table of per-table semantic LLM status, elapsed time, payload size, and error fields for one debug run
 - `show_table_context(...)`
   inspect the retrieved passages for one table
 - `show_llm_evidence(...)`

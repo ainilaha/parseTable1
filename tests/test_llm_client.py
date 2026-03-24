@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from types import SimpleNamespace
 
@@ -48,6 +49,7 @@ def test_settings_reads_llm_environment_variables(monkeypatch) -> None:
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "30")
     monkeypatch.setenv("LLM_MAX_RETRIES", "4")
     monkeypatch.setenv("LLM_DEBUG", "true")
+    monkeypatch.setenv("LLM_SDK_DEBUG", "true")
 
     settings = Settings()
 
@@ -59,6 +61,7 @@ def test_settings_reads_llm_environment_variables(monkeypatch) -> None:
     assert settings.llm_timeout_seconds == 30
     assert settings.llm_max_retries == 4
     assert settings.llm_debug is True
+    assert settings.llm_sdk_debug is True
 
 
 def test_build_llm_client_requires_openai_configuration(monkeypatch) -> None:
@@ -98,6 +101,37 @@ def test_build_llm_client_returns_openai_client_with_fake_sdk(monkeypatch) -> No
     assert client._client.timeout == 15  # type: ignore[attr-defined]
     assert client._client.max_retries == 3  # type: ignore[attr-defined]
     assert client._client.responses.calls[0]["model"] == "gpt-4.1-mini"  # type: ignore[attr-defined]
+    assert client.sdk_debug is False
+
+
+def test_build_llm_client_separates_sdk_debug_from_artifact_debug(monkeypatch) -> None:
+    """SDK logging should only activate from LLM_SDK_DEBUG, not from LLM_DEBUG."""
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=_FakeOpenAI))
+    monkeypatch.delenv("OPENAI_LOG", raising=False)
+    client = build_llm_client(
+        settings=Settings(
+            llm_provider="openai",
+            openai_api_key="test-key",
+            openai_model="gpt-4.1-mini",
+            llm_debug=True,
+            llm_sdk_debug=False,
+        )
+    )
+
+    assert client.sdk_debug is False
+    assert "OPENAI_LOG" not in os.environ
+
+    build_llm_client(
+        settings=Settings(
+            llm_provider="openai",
+            openai_api_key="test-key",
+            openai_model="gpt-4.1-mini",
+            llm_debug=False,
+            llm_sdk_debug=True,
+        )
+    )
+
+    assert os.environ["OPENAI_LOG"] == "debug"
 
 
 def test_openai_client_raises_provider_error_when_no_parsed_payload(monkeypatch) -> None:

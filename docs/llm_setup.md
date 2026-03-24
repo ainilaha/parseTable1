@@ -16,6 +16,7 @@ Optional:
 - `LLM_TIMEOUT_SECONDS`
 - `LLM_MAX_RETRIES`
 - `LLM_DEBUG`
+- `LLM_SDK_DEBUG`
 
 ## Example setup on macOS/Linux
 
@@ -27,6 +28,7 @@ export LLM_TEMPERATURE=0
 export LLM_TIMEOUT_SECONDS=60
 export LLM_MAX_RETRIES=2
 export LLM_DEBUG=false
+export LLM_SDK_DEBUG=false
 ```
 
 ## Example setup on Windows PowerShell
@@ -39,7 +41,15 @@ $env:LLM_TEMPERATURE = "0"
 $env:LLM_TIMEOUT_SECONDS = "60"
 $env:LLM_MAX_RETRIES = "2"
 $env:LLM_DEBUG = "false"
+$env:LLM_SDK_DEBUG = "false"
 ```
+
+Meaning of the two debug flags:
+
+- `LLM_DEBUG=true`
+  write timestamped semantic-debug JSON artifacts to disk during `parse`
+- `LLM_SDK_DEBUG=true`
+  enable verbose provider/SDK logging in the terminal
 
 ## Install requirement
 

@@ -13,6 +13,8 @@ from table1_parser.schemas import (
     ExtractedTable,
     LLMTableContext,
     LLMTableParseResponse,
+    LLMSemanticCallRecord,
+    LLMSemanticMonitoringReport,
     NormalizedTable,
     PaperSection,
     ParsedColumn,
@@ -197,6 +199,33 @@ def test_table_profile_creation_and_serialization() -> None:
 
     assert dumped["table_family"] == "descriptive_characteristics"
     assert dumped["should_run_llm_semantics"] is True
+
+
+def test_llm_semantic_monitoring_creation_and_serialization() -> None:
+    """Semantic LLM monitoring schemas should serialize debug timing cleanly."""
+    report = LLMSemanticMonitoringReport(
+        report_timestamp="2026-03-24T10:15:00Z",
+        llm_disabled=False,
+        provider="openai",
+        model="gpt-4.1-mini",
+        items=[
+            LLMSemanticCallRecord(
+                table_id="tbl-1",
+                table_index=0,
+                table_family="descriptive_characteristics",
+                should_run_llm_semantics=True,
+                status="success",
+                elapsed_seconds=12.4,
+                prompt_char_count=1800,
+                response_char_count=900,
+            )
+        ],
+    )
+
+    dumped = report.model_dump(mode="json")
+
+    assert dumped["items"][0]["status"] == "success"
+    assert dumped["items"][0]["elapsed_seconds"] == 12.4
 
 
 def test_llm_contract_models_create_without_llm_logic() -> None:

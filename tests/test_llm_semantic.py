@@ -202,6 +202,7 @@ def test_semantic_parser_validates_safe_structured_response(tmp_path) -> None:
     assert result.table_id == "tbl-semantic"
     assert result.variables[1].levels[0].level_label == "Male"
     assert (tmp_path / "table_definition_llm_input.json").exists()
+    assert (tmp_path / "table_definition_llm_metrics.json").exists()
     assert (tmp_path / "table_definition_llm_output.json").exists()
     assert (tmp_path / "table_definition_llm_interpretation.json").exists()
 
@@ -275,4 +276,7 @@ def test_semantic_trace_preserves_raw_response(tmp_path) -> None:
     LLMSemanticTableDefinitionParser(client).parse(table, definition, context, trace_dir=tmp_path)
 
     llm_output = json.loads((tmp_path / "table_definition_llm_output.json").read_text())
+    llm_metrics = json.loads((tmp_path / "table_definition_llm_metrics.json").read_text())
     assert llm_output["response"] == response
+    assert llm_metrics["status"] == "success"
+    assert llm_metrics["prompt_char_count"] > 0

@@ -14,6 +14,7 @@ def test_settings_defaults(monkeypatch) -> None:
     monkeypatch.delenv("LLM_TIMEOUT_SECONDS", raising=False)
     monkeypatch.delenv("LLM_MAX_RETRIES", raising=False)
     monkeypatch.delenv("LLM_DEBUG", raising=False)
+    monkeypatch.delenv("LLM_SDK_DEBUG", raising=False)
     settings = Settings()
 
     assert settings.default_extraction_backend == "pymupdf4llm"
@@ -26,5 +27,6 @@ def test_settings_defaults(monkeypatch) -> None:
     assert settings.llm_timeout_seconds == 60.0
     assert settings.llm_max_retries == 2
     assert settings.llm_debug is False
+    assert settings.llm_sdk_debug is False
     assert settings.max_table_candidates == 10
     assert settings.heuristic_confidence_threshold == 0.7

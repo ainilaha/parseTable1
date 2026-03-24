@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = Field(default=60.0, validation_alias="LLM_TIMEOUT_SECONDS", gt=0.0)
     llm_max_retries: int = Field(default=2, validation_alias="LLM_MAX_RETRIES", ge=0)
     llm_debug: bool = Field(default=False, validation_alias="LLM_DEBUG")
+    llm_sdk_debug: bool = Field(default=False, validation_alias="LLM_SDK_DEBUG")
     max_table_candidates: int = Field(default=10, ge=1)
     heuristic_confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
 

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from table1_parser import cli
 from table1_parser.llm.client import LLMConfigurationError
 from table1_parser.llm.semantic_schemas import LLMSemanticTableDefinition
-from table1_parser.schemas import PaperSection, TableContext
+from table1_parser.schemas import LLMSemanticCallRecord, PaperSection, TableContext
 from table1_parser.schemas import ExtractedTable, TableCell
 
 
@@ -135,13 +136,26 @@ def test_cli_parse_writes_semantic_llm_output_when_available(tmp_path, monkeypat
         def __init__(self, client: object) -> None:
             self.client = client
 
-        def parse(self, table: object, definition: object, context: object) -> LLMSemanticTableDefinition:
-            return LLMSemanticTableDefinition(
+        def parse_with_monitoring(self, table: object, definition: object, context: object, *, trace_dir=None) -> object:
+            result = LLMSemanticTableDefinition(
                 table_id=definition.table_id,
                 variables=[],
                 column_definition={"columns": []},
                 notes=["semantic"],
                 overall_confidence=0.9,
+            )
+            return SimpleNamespace(
+                result=result,
+                error=None,
+                monitoring=LLMSemanticCallRecord(
+                    table_id=definition.table_id,
+                    table_index=context.table_index,
+                    should_run_llm_semantics=True,
+                    status="success",
+                    elapsed_seconds=0.25,
+                    trace_dir=str(trace_dir) if trace_dir is not None else None,
+                    prompt_char_count=100,
+                ),
             )
 
     monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
@@ -266,14 +280,26 @@ def test_cli_parse_skips_semantic_llm_for_estimate_result_tables(tmp_path, monke
         def __init__(self, client: object) -> None:
             self.client = client
 
-        def parse(self, table: object, definition: object, context: object) -> LLMSemanticTableDefinition:
+        def parse_with_monitoring(self, table: object, definition: object, context: object, *, trace_dir=None) -> object:
             parse_calls["count"] += 1
-            return LLMSemanticTableDefinition(
-                table_id=definition.table_id,
-                variables=[],
-                column_definition={"columns": []},
-                notes=["semantic"],
-                overall_confidence=0.9,
+            return SimpleNamespace(
+                result=LLMSemanticTableDefinition(
+                    table_id=definition.table_id,
+                    variables=[],
+                    column_definition={"columns": []},
+                    notes=["semantic"],
+                    overall_confidence=0.9,
+                ),
+                error=None,
+                monitoring=LLMSemanticCallRecord(
+                    table_id=definition.table_id,
+                    table_index=context.table_index,
+                    should_run_llm_semantics=True,
+                    status="success",
+                    elapsed_seconds=0.25,
+                    trace_dir=str(trace_dir) if trace_dir is not None else None,
+                    prompt_char_count=100,
+                ),
             )
 
     monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
@@ -311,6 +337,89 @@ def test_cli_parse_skips_semantic_llm_for_estimate_result_tables(tmp_path, monke
     assert llm_path.exists() is False
     assert json.loads(profile_path.read_text(encoding="utf-8"))[0]["table_family"] == "estimate_results"
     assert "Wrote parseTable1.out/papers/paper/table_profiles.json" in captured.out
+
+
+def test_cli_parse_writes_semantic_debug_monitoring_when_llm_debug_enabled(tmp_path, monkeypatch, capsys) -> None:
+    """Semantic debug artifacts should be written only when LLM_DEBUG is enabled."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM_DEBUG", "true")
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+
+    class FakeExtractor:
+        def extract(self, _: str) -> list[ExtractedTable]:
+            return [_build_extracted_table()]
+
+    class FakeSemanticParser:
+        def __init__(self, client: object) -> None:
+            self.client = client
+
+        def parse_with_monitoring(self, table: object, definition: object, context: object, *, trace_dir=None) -> object:
+            if trace_dir is not None:
+                trace_path = Path(trace_dir)
+                trace_path.mkdir(parents=True, exist_ok=True)
+                (trace_path / "table_definition_llm_input.json").write_text("{}", encoding="utf-8")
+                (trace_path / "table_definition_llm_output.json").write_text("{}", encoding="utf-8")
+                (trace_path / "table_definition_llm_interpretation.json").write_text("{}", encoding="utf-8")
+                (trace_path / "table_definition_llm_metrics.json").write_text("{}", encoding="utf-8")
+            return SimpleNamespace(
+                result=LLMSemanticTableDefinition(
+                    table_id=definition.table_id,
+                    variables=[],
+                    column_definition={"columns": []},
+                    notes=["semantic"],
+                    overall_confidence=0.9,
+                ),
+                error=None,
+                monitoring=LLMSemanticCallRecord(
+                    table_id=definition.table_id,
+                    table_index=context.table_index,
+                    should_run_llm_semantics=True,
+                    status="success",
+                    elapsed_seconds=0.5,
+                    trace_dir=str(trace_dir) if trace_dir is not None else None,
+                    prompt_char_count=120,
+                    output_column_count=0,
+                    output_variable_count=0,
+                ),
+            )
+
+    monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
+    monkeypatch.setattr(cli, "extract_paper_markdown", lambda _: "# Methods\nExample study population.")
+    monkeypatch.setattr(
+        cli,
+        "parse_markdown_sections",
+        lambda _: [PaperSection(section_id="section_0", order=0, heading="Methods", level=1, role_hint="methods_like", content="Example study population.")],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_table_contexts",
+        lambda sections, definitions: [
+            TableContext(
+                table_id=definitions[0].table_id,
+                table_index=0,
+                table_label="Table 1",
+                title=definitions[0].title,
+                caption=definitions[0].caption,
+                methods_like_section_ids=[sections[0].section_id],
+            )
+        ],
+    )
+    monkeypatch.setattr(cli, "build_llm_client", lambda settings=None: object())
+    monkeypatch.setattr(cli, "LLMSemanticTableDefinitionParser", FakeSemanticParser)
+
+    exit_code = cli.main(["parse", str(pdf_path)])
+
+    captured = capsys.readouterr()
+    debug_root = tmp_path / "parseTable1.out" / "papers" / "paper" / "llm_semantic_debug"
+    monitoring_paths = sorted(debug_root.glob("*/llm_semantic_monitoring.json"))
+
+    assert exit_code == 0
+    assert len(monitoring_paths) == 1
+    monitoring_payload = json.loads(monitoring_paths[0].read_text(encoding="utf-8"))
+    assert monitoring_payload["items"][0]["status"] == "success"
+    assert "Wrote" in captured.out
+    assert str(monitoring_paths[0].relative_to(tmp_path)) in captured.out
 
 
 def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:

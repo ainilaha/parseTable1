@@ -327,6 +327,7 @@ export LLM_TEMPERATURE=0
 export LLM_TIMEOUT_SECONDS=60
 export LLM_MAX_RETRIES=2
 export LLM_DEBUG=false
+export LLM_SDK_DEBUG=false
 ```
 
 More detail:

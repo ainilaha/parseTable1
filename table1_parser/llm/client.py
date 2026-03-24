@@ -65,14 +65,14 @@ class OpenAIClient(LLMClient):
         temperature: float = 0.0,
         timeout_seconds: float = 60.0,
         max_retries: int = 2,
-        debug: bool = False,
+        sdk_debug: bool = False,
     ) -> None:
         self.model = model
         self.temperature = temperature
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
-        self.debug = debug
-        if self.debug:
+        self.sdk_debug = sdk_debug
+        if self.sdk_debug:
             os.environ.setdefault("OPENAI_LOG", "debug")
 
         try:
@@ -161,5 +161,5 @@ def build_llm_client(settings: Settings | None = None) -> LLMClient:
         temperature=settings.llm_temperature,
         timeout_seconds=settings.llm_timeout_seconds,
         max_retries=settings.llm_max_retries,
-        debug=settings.llm_debug,
+        sdk_debug=settings.llm_sdk_debug,
     )

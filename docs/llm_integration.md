@@ -24,12 +24,19 @@ export LLM_TEMPERATURE=0
 export LLM_TIMEOUT_SECONDS=60
 export LLM_MAX_RETRIES=2
 export LLM_DEBUG=false
+export LLM_SDK_DEBUG=false
 ```
 
 Required for OpenAI:
 
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+
+Debug note:
+
+- set `LLM_DEBUG=true` to write timestamped semantic-LLM debug artifacts during `table1-parser parse`
+- these artifacts include per-table timing, payload-size summaries, raw structured responses, and validated interpretations when available
+- set `LLM_SDK_DEBUG=true` only if you want verbose OpenAI SDK/provider logging in the terminal
 
 ## Python usage
 

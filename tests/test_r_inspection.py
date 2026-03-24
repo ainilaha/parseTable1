@@ -218,6 +218,48 @@ def _write_sample_paper_outputs(paper_dir: Path, *, include_llm: bool) -> None:
     )
 
 
+def _write_sample_llm_semantic_debug_run(paper_dir: Path, run_id: str = "20260324T101500Z") -> None:
+    debug_dir = paper_dir / "llm_semantic_debug" / run_id
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    (debug_dir / "llm_semantic_monitoring.json").write_text(
+        json.dumps(
+            {
+                "report_timestamp": "2026-03-24T10:15:00Z",
+                "llm_disabled": False,
+                "provider": "openai",
+                "model": "gpt-4.1-mini",
+                "items": [
+                    {
+                        "table_id": "tbl-1",
+                        "table_index": 0,
+                        "table_family": "descriptive_characteristics",
+                        "should_run_llm_semantics": True,
+                        "status": "success",
+                        "elapsed_seconds": 12.4,
+                        "retrieved_passage_count": 3,
+                        "deterministic_variable_count": 2,
+                        "deterministic_column_count": 3,
+                        "prompt_char_count": 1820,
+                        "response_char_count": 640,
+                    },
+                    {
+                        "table_id": "tbl-2",
+                        "table_index": 1,
+                        "table_family": "estimate_results",
+                        "should_run_llm_semantics": False,
+                        "status": "skipped_not_eligible",
+                        "retrieved_passage_count": 0,
+                        "deterministic_variable_count": 0,
+                        "deterministic_column_count": 0,
+                    },
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_r_inspection_helpers_compare_and_resolve_context(tmp_path) -> None:
     """The paper-output inspection helpers should compare semantics and resolve evidence passages."""
     if not _r_dependencies_available():
@@ -490,3 +532,35 @@ def test_r_inspection_resolves_sparse_llm_definitions_by_table_id(tmp_path) -> N
     assert result.returncode == 0, result.stderr
     assert "Age at baseline" in result.stdout
     assert "Overall cohort" in result.stdout
+
+
+def test_r_inspection_summarizes_llm_semantic_debug_run(tmp_path) -> None:
+    """The R helper should summarize one timestamped semantic-debug monitoring run."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "debug" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_llm=True)
+    _write_sample_llm_semantic_debug_run(paper_dir)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'cat(length(list_llm_semantic_debug_runs("{paper_dir}")), "\\n"); '
+                f'summarize_llm_semantic_monitoring("{paper_dir}")'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Semantic LLM monitoring summary" in result.stdout
+    assert "gpt-4.1-mini" in result.stdout
+    assert "success" in result.stdout
+    assert "skipped_not_eligible" in result.stdout

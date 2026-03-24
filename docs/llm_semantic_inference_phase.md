@@ -105,6 +105,20 @@ parseTable1.out/papers/<paper_stem>/
 
 This keeps all paper-specific artifacts together and avoids recomputing markdown extraction.
 
+When `LLM_DEBUG=true`, semantic-LLM debug artifacts should be written under a timestamped run directory inside the paper output directory, for example:
+
+```text
+parseTable1.out/papers/<paper_stem>/llm_semantic_debug/20260324T101500Z/
+  llm_semantic_monitoring.json
+  table_0/
+    table_definition_llm_input.json
+    table_definition_llm_metrics.json
+    table_definition_llm_output.json
+    table_definition_llm_interpretation.json
+```
+
+This keeps debug monitoring opt-in and prevents one debug run from overwriting another.
+
 ## Context Retrieval
 
 For each `Table X`, retrieve:
@@ -180,6 +194,13 @@ Keep the LLM phase split into small modules:
   row/column safety checks for LLM output
 
 Do not combine retrieval, prompting, adjudication, and validation into one file.
+
+Monitoring expectation:
+
+- semantic debug output should record per-table timing
+- it should record payload-size proxies such as row counts, passage counts, and prompt character counts
+- it should preserve raw structured LLM responses when a provider call succeeds
+- it should preserve failure status and error text when a call times out or validation fails
 
 ## LLM Outputs
 

@@ -3,6 +3,7 @@
 from table1_parser.schemas.document_context import PaperSection, RetrievedPassage, TableContext
 from table1_parser.schemas.extracted_table import ExtractedTable, TableCell
 from table1_parser.schemas.llm_contracts import LLMTableContext, LLMTableParseResponse
+from table1_parser.schemas.llm_semantic_monitoring import LLMSemanticCallRecord, LLMSemanticMonitoringReport
 from table1_parser.schemas.normalized_table import NormalizedTable, RowView
 from table1_parser.schemas.parsed_table import (
     ParsedColumn,
@@ -24,6 +25,8 @@ __all__ = [
     "ExtractedTable",
     "LLMTableContext",
     "LLMTableParseResponse",
+    "LLMSemanticCallRecord",
+    "LLMSemanticMonitoringReport",
     "NormalizedTable",
     "PaperSection",
     "ColumnDefinition",

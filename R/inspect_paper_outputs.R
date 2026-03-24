@@ -28,6 +28,7 @@ paper_output_paths <- function(paper_dir) {
     normalized = file.path(paper_dir, "normalized_tables.json"),
     deterministic = file.path(paper_dir, "table_definitions.json"),
     llm = file.path(paper_dir, "table_definitions_llm.json"),
+    llm_debug_dir = file.path(paper_dir, "llm_semantic_debug"),
     paper_markdown = file.path(paper_dir, "paper_markdown.md"),
     paper_sections = file.path(paper_dir, "paper_sections.json"),
     table_context_dir = file.path(paper_dir, "table_contexts")
@@ -63,6 +64,33 @@ load_paper_outputs <- function(paper_dir) {
     paper_sections = read_json_file(paths$paper_sections),
     table_contexts = read_table_contexts(paths$table_context_dir)
   )
+}
+
+list_llm_semantic_debug_runs <- function(paper_dir) {
+  debug_root <- paper_output_paths(paper_dir)$llm_debug_dir
+  if (!dir.exists(debug_root)) {
+    return(character())
+  }
+  run_dirs <- sort(list.dirs(debug_root, full.names = TRUE, recursive = FALSE))
+  run_dirs[file.exists(file.path(run_dirs, "llm_semantic_monitoring.json"))]
+}
+
+read_llm_semantic_monitoring <- function(paper_dir, run_id = NULL) {
+  run_dirs <- list_llm_semantic_debug_runs(paper_dir)
+  if (length(run_dirs) == 0) {
+    stop("No llm_semantic_debug runs found for this paper.", call. = FALSE)
+  }
+  selected_dir <- if (is.null(run_id)) {
+    run_dirs[[length(run_dirs)]]
+  } else {
+    candidates <- run_dirs[basename(run_dirs) == run_id]
+    if (length(candidates) == 0) {
+      stop(sprintf("No llm_semantic_debug run found for run_id=%s.", run_id), call. = FALSE)
+    }
+    candidates[[1]]
+  }
+  payload <- read_json_file(file.path(selected_dir, "llm_semantic_monitoring.json"))
+  list(run_dir = selected_dir, monitoring = payload)
 }
 
 table_context_by_index <- function(outputs, table_index = 0L) {
@@ -285,6 +313,57 @@ compare_table_definition_runs <- function(
       )
     )
   )
+}
+
+summarize_llm_semantic_monitoring <- function(paper_dir, run_id = NULL) {
+  loaded <- read_llm_semantic_monitoring(paper_dir, run_id = run_id)
+  report <- loaded$monitoring
+  items <- report$items %||% list()
+  rows <- lapply(items, function(x) {
+    data.frame(
+      table_index = as.integer(x$table_index %||% -1L),
+      table_id = as.character(x$table_id %||% ""),
+      table_family = as.character(x$table_family %||% ""),
+      should_run_llm_semantics = as.logical(x$should_run_llm_semantics %||% FALSE),
+      status = as.character(x$status %||% ""),
+      elapsed_seconds = as.numeric(x$elapsed_seconds %||% NA_real_),
+      prompt_char_count = as.numeric(x$prompt_char_count %||% NA_real_),
+      response_char_count = as.numeric(x$response_char_count %||% NA_real_),
+      retrieved_passage_count = as.integer(x$retrieved_passage_count %||% 0L),
+      deterministic_variable_count = as.integer(x$deterministic_variable_count %||% 0L),
+      deterministic_column_count = as.integer(x$deterministic_column_count %||% 0L),
+      error_message = as.character(x$error_message %||% ""),
+      stringsAsFactors = FALSE
+    )
+  })
+  summary_df <- if (length(rows) == 0) {
+    data.frame(
+      table_index = integer(),
+      table_id = character(),
+      table_family = character(),
+      should_run_llm_semantics = logical(),
+      status = character(),
+      elapsed_seconds = numeric(),
+      prompt_char_count = numeric(),
+      response_char_count = numeric(),
+      retrieved_passage_count = integer(),
+      deterministic_variable_count = integer(),
+      deterministic_column_count = integer(),
+      error_message = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    do.call(rbind, rows)
+  }
+
+  cat(sprintf("Semantic LLM monitoring summary: %s\n", loaded$run_dir))
+  cat(sprintf("report_timestamp=%s provider=%s model=%s\n\n", report$report_timestamp %||% "", report$provider %||% "", report$model %||% ""))
+  if (nrow(summary_df) == 0) {
+    cat("[No rows]\n")
+    return(invisible(summary_df))
+  }
+  print(summary_df, row.names = FALSE, right = FALSE)
+  invisible(summary_df)
 }
 
 show_table_context <- function(paper_dir, table_index = 0L, match_type = NULL) {

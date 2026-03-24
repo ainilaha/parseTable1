@@ -50,6 +50,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
 | Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles |
 | Semantic LLM table definition | `LLMSemanticTableDefinition` | Written now as `table_definitions_llm.json` by `parse` when LLM config is available | Persist value-free semantic interpretation grounded in table indices and retrieved paper context |
+| Semantic LLM debug monitoring | `LLMSemanticMonitoringReport`, `LLMSemanticCallRecord` | Written only when `LLM_DEBUG=true` as `llm_semantic_debug/<timestamp>/llm_semantic_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence |
 | Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
 | LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
 | LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
@@ -385,6 +386,23 @@ Design intent:
 - keep row and column references tied to the normalized table index space
 - validate the LLM output before writing this file
 - keep per-variable `units_hint` and `summary_style_hint` out of the semantic LLM contract for now
+
+Debug-only companion artifacts:
+
+- when `LLM_DEBUG=true`, `parse` also writes a timestamped debug run under:
+
+```text
+parseTable1.out/papers/<paper_stem>/llm_semantic_debug/<timestamp>/
+  llm_semantic_monitoring.json
+  table_0/
+    table_definition_llm_input.json
+    table_definition_llm_metrics.json
+    table_definition_llm_output.json
+    table_definition_llm_interpretation.json
+```
+
+- `llm_semantic_monitoring.json` summarizes every table's semantic-LLM status, including skipped tables
+- per-table trace files are written only for tables that actually reached the semantic LLM call path
 
 ## 6. `heuristics.json`
 
