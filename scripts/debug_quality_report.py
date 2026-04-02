@@ -19,7 +19,7 @@ _bootstrap_repo_root()
 from table1_parser.config import Settings
 from table1_parser.diagnostics import build_parse_quality_report
 from table1_parser.extract import build_extractor
-from table1_parser.extract.pdf_loader import open_pdf
+from table1_parser.extract.pymupdf_page_adapter import open_pymupdf_document
 from table1_parser.extract.table_detector import detect_table_candidates
 from table1_parser.extract.table_selector import select_top_candidates
 from table1_parser.heuristics import classify_rows, detect_column_roles, group_variable_blocks
@@ -32,8 +32,13 @@ def main() -> int:
     args = parser.parse_args()
 
     settings = Settings()
-    with open_pdf(args.pdf_path) as pdf:
+    pdf = open_pymupdf_document(args.pdf_path)
+    try:
         candidates = detect_table_candidates(pdf)
+    finally:
+        close = getattr(pdf, "close", None)
+        if callable(close):
+            close()
     if not candidates:
         print("No tables found.")
         return 0

@@ -18,7 +18,7 @@ _bootstrap_repo_root()
 
 from table1_parser.config import Settings
 from table1_parser.extract import build_extractor
-from table1_parser.extract.pdf_loader import open_pdf
+from table1_parser.extract.pymupdf_page_adapter import open_pymupdf_document
 from table1_parser.extract.table_detector import detect_table_candidates
 from table1_parser.extract.table_selector import select_top_candidates
 from table1_parser.heuristics import classify_rows, detect_column_roles, group_variable_blocks
@@ -27,8 +27,13 @@ from table1_parser.normalize import normalize_extracted_table
 
 
 def _print_detected_tables(pdf_path: str) -> list[object]:
-    with open_pdf(pdf_path) as pdf:
+    pdf = open_pymupdf_document(pdf_path)
+    try:
         candidates = detect_table_candidates(pdf)
+    finally:
+        close = getattr(pdf, "close", None)
+        if callable(close):
+            close()
     print("detected tables")
     if not candidates:
         print("  none")
@@ -38,6 +43,8 @@ def _print_detected_tables(pdf_path: str) -> list[object]:
         label = candidate.caption or "no caption"
         print(f"  idx={candidate.table_index} page={candidate.page_num} dims={dims} caption={label!r}")
     return candidates
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Debug the current table1_parser pipeline.")
     parser.add_argument("pdf_path", help="Path to a PDF file.")
