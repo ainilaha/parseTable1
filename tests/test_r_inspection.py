@@ -265,7 +265,7 @@ def test_r_inspection_helpers_compare_and_resolve_context(tmp_path) -> None:
     if not _r_dependencies_available():
         return
 
-    paper_dir = tmp_path / "parseTable1.out" / "papers" / "paper"
+    paper_dir = tmp_path / "outputs" / "papers" / "paper"
     _write_sample_paper_outputs(paper_dir, include_llm=True)
 
     result = subprocess.run(

@@ -27,7 +27,7 @@ from table1_parser.normalize import normalize_extracted_tables, normalized_table
 from table1_parser.parse import build_parsed_tables, parsed_tables_to_payload
 from table1_parser.schemas import LLMSemanticCallRecord, LLMSemanticMonitoringReport
 
-DEFAULT_OUTPUT_DIR = Path("parseTable1.out")
+DEFAULT_OUTPUT_DIR = Path("outputs")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract_parser.add_argument(
         "--outdir",
         default=str(DEFAULT_OUTPUT_DIR),
-        help="Root output directory. Defaults to parseTable1.out.",
+        help="Root output directory. Defaults to outputs.",
     )
     extract_parser.add_argument(
         "--stdout",
@@ -54,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     normalize_parser.add_argument(
         "--outdir",
         default=str(DEFAULT_OUTPUT_DIR),
-        help="Root output directory. Defaults to parseTable1.out.",
+        help="Root output directory. Defaults to outputs.",
     )
     normalize_parser.add_argument(
         "--stdout",
@@ -68,7 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     parse_parser.add_argument(
         "--outdir",
         default=str(DEFAULT_OUTPUT_DIR),
-        help="Root output directory. Defaults to parseTable1.out.",
+        help="Root output directory. Defaults to outputs.",
     )
     parse_parser.add_argument(
         "--no-llm-semantic",

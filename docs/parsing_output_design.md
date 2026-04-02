@@ -81,7 +81,7 @@ This stability is important because the LLM layer is required to reference exist
 Current CLI path:
 
 ```text
-parseTable1.out/papers/<paper_stem>/extracted_tables.json
+outputs/papers/<paper_stem>/extracted_tables.json
 ```
 
 This file is written by:
@@ -141,7 +141,7 @@ Current status:
 Current CLI path:
 
 ```text
-parseTable1.out/papers/<paper_stem>/normalized_tables.json
+outputs/papers/<paper_stem>/normalized_tables.json
 ```
 
 This file is written by:
@@ -212,7 +212,7 @@ Current status:
 Current CLI path:
 
 ```text
-parseTable1.out/papers/<paper_stem>/table_definitions.json
+outputs/papers/<paper_stem>/table_definitions.json
 ```
 
 Top-level shape:
@@ -289,9 +289,9 @@ Current status:
 Current CLI paths:
 
 ```text
-parseTable1.out/papers/<paper_stem>/paper_markdown.md
-parseTable1.out/papers/<paper_stem>/paper_sections.json
-parseTable1.out/papers/<paper_stem>/table_contexts/table_<n>_context.json
+outputs/papers/<paper_stem>/paper_markdown.md
+outputs/papers/<paper_stem>/paper_sections.json
+outputs/papers/<paper_stem>/table_contexts/table_<n>_context.json
 ```
 
 Canonical models:
@@ -354,7 +354,7 @@ Current status:
 Current CLI path:
 
 ```text
-parseTable1.out/papers/<paper_stem>/table_definitions_llm.json
+outputs/papers/<paper_stem>/table_definitions_llm.json
 ```
 
 Canonical model:
@@ -392,7 +392,7 @@ Debug-only companion artifacts:
 - when `LLM_DEBUG=true`, `parse` also writes a timestamped debug run under:
 
 ```text
-parseTable1.out/papers/<paper_stem>/llm_semantic_debug/<timestamp>/
+outputs/papers/<paper_stem>/llm_semantic_debug/<timestamp>/
   llm_semantic_monitoring.json
   table_0/
     table_definition_llm_input.json
@@ -616,7 +616,7 @@ This should be treated as the main downstream table representation.
 Current CLI path:
 
 ```text
-parseTable1.out/papers/<paper_stem>/parsed_tables.json
+outputs/papers/<paper_stem>/parsed_tables.json
 ```
 
 This file is written by:

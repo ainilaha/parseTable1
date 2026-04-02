@@ -35,7 +35,7 @@ def main() -> int:
     parser.add_argument("--table-index", type=int, default=0, help="Extracted table index to trace.")
     parser.add_argument(
         "--trace-dir",
-        help="Directory for trace artifacts. Defaults to trace_output/<pdf_stem>/table_<index>.",
+        help="Directory for trace artifacts. Defaults to outputs/traces/<pdf_stem>/table_<index>.",
     )
     parser.add_argument(
         "--response-json",
@@ -60,7 +60,11 @@ def main() -> int:
 
     table = tables[args.table_index]
     normalized = normalize_extracted_table(table)
-    trace_dir = Path(args.trace_dir) if args.trace_dir else Path("trace_output") / Path(args.pdf_path).stem / f"table_{args.table_index}"
+    trace_dir = (
+        Path(args.trace_dir)
+        if args.trace_dir
+        else Path("outputs") / "traces" / Path(args.pdf_path).stem / f"table_{args.table_index}"
+    )
     if args.use_configured_client and args.response_json:
         print("Use either --use-configured-client or --response-json, not both.")
         return 1

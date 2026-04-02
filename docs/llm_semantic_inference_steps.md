@@ -51,7 +51,7 @@ This document lists the implementation steps for the LLM semantic inference phas
 All of these should live under:
 
 ```text
-parseTable1.out/papers/<paper_stem>/
+outputs/papers/<paper_stem>/
 ```
 
 ## 8. Add CLI wiring

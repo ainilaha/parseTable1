@@ -95,7 +95,7 @@ Add a new canonical schema:
 
 and a new persisted file:
 
-- `parseTable1.out/papers/<paper_stem>/table_profiles.json`
+- `outputs/papers/<paper_stem>/table_profiles.json`
 
 Each profile should contain at least:
 
@@ -202,7 +202,7 @@ Add a new canonical schema:
 
 and a new persisted file:
 
-- `parseTable1.out/papers/<paper_stem>/estimate_table_definitions.json`
+- `outputs/papers/<paper_stem>/estimate_table_definitions.json`
 
 This schema should describe table semantics without storing parsed numeric values.
 
@@ -270,7 +270,7 @@ Add a new canonical schema:
 
 and a new persisted file:
 
-- `parseTable1.out/papers/<paper_stem>/parsed_estimate_tables.json`
+- `outputs/papers/<paper_stem>/parsed_estimate_tables.json`
 
 Suggested top-level fields:
 

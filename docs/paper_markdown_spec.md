@@ -26,7 +26,7 @@ No other PDF backend should be used for this artifact.
 ## Output Path
 
 ```text
-parseTable1.out/papers/<paper_stem>/paper_markdown.md
+outputs/papers/<paper_stem>/paper_markdown.md
 ```
 
 ## Design Rules

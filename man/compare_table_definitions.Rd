@@ -17,6 +17,6 @@ Invisibly returns a list with \code{variables}, \code{levels}, and \code{columns
 \examples{
 \dontrun{
 source("R/inspect_paper_outputs.R")
-compare_table_definitions("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
 }
 }

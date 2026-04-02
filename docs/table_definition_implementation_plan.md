@@ -40,7 +40,7 @@ Add a new canonical schema:
 
 and a new persisted file:
 
-- `parseTable1.out/papers/<paper_stem>/table_definitions.json`
+- `outputs/papers/<paper_stem>/table_definitions.json`
 
 The file should be a JSON array of direct `TableDefinition.model_dump(mode="json")` payloads.
 

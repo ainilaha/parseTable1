@@ -46,7 +46,7 @@ Do not implement:
 Use the existing paper-oriented output root:
 
 ```text
-parseTable1.out/
+outputs/
   papers/
     <paper_stem>/
       extracted_tables.json
@@ -145,7 +145,7 @@ Update docs to reflect that users can now find:
 
 Be explicit that:
 
-- heuristic and LLM trace outputs still live separately under `trace_output/`
+- heuristic and LLM trace outputs still live separately under `outputs/traces/`
 - `ParsedTable` export is still not implemented
 
 ## Deliverable

@@ -2,7 +2,7 @@
 \alias{load_paper_outputs}
 \title{Load one paper output directory}
 \description{
-Reads the main parser outputs for one paper directory under \code{parseTable1.out/papers/<paper_stem>/}.
+Reads the main parser outputs for one paper directory under \code{outputs/papers/<paper_stem>/}.
 }
 \usage{
 load_paper_outputs(paper_dir)
@@ -17,7 +17,7 @@ paper markdown, paper sections, and per-table contexts.
 \examples{
 \dontrun{
 source("R/inspect_paper_outputs.R")
-x <- load_paper_outputs("parseTable1.out/papers/cobaltpaper")
+x <- load_paper_outputs("outputs/papers/cobaltpaper")
 names(x)
 }
 }

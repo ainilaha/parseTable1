@@ -84,14 +84,14 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     exit_code = cli.main(["parse", str(pdf_path), "--no-llm-semantic"])
 
     captured = capsys.readouterr()
-    extracted_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "extracted_tables.json"
-    normalized_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "normalized_tables.json"
-    table_profile_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_profiles.json"
-    table_definition_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions.json"
-    parsed_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "parsed_tables.json"
-    paper_markdown_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "paper_markdown.md"
-    paper_sections_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "paper_sections.json"
-    table_context_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_contexts" / "table_0_context.json"
+    extracted_path = tmp_path / "outputs" / "papers" / "paper" / "extracted_tables.json"
+    normalized_path = tmp_path / "outputs" / "papers" / "paper" / "normalized_tables.json"
+    table_profile_path = tmp_path / "outputs" / "papers" / "paper" / "table_profiles.json"
+    table_definition_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions.json"
+    parsed_path = tmp_path / "outputs" / "papers" / "paper" / "parsed_tables.json"
+    paper_markdown_path = tmp_path / "outputs" / "papers" / "paper" / "paper_markdown.md"
+    paper_sections_path = tmp_path / "outputs" / "papers" / "paper" / "paper_sections.json"
+    table_context_path = tmp_path / "outputs" / "papers" / "paper" / "table_contexts" / "table_0_context.json"
 
     assert exit_code == 0
     assert calls["extract"] == 1
@@ -111,14 +111,14 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
     assert json.loads(paper_sections_path.read_text(encoding="utf-8"))[0]["section_id"] == "section_0"
     assert json.loads(table_context_path.read_text(encoding="utf-8"))["table_id"] == "tbl-1"
-    assert "Wrote parseTable1.out/papers/paper/extracted_tables.json" in captured.out
-    assert "Wrote parseTable1.out/papers/paper/normalized_tables.json" in captured.out
-    assert "Wrote parseTable1.out/papers/paper/table_profiles.json" in captured.out
-    assert "Wrote parseTable1.out/papers/paper/table_definitions.json" in captured.out
-    assert "Wrote parseTable1.out/papers/paper/parsed_tables.json" in captured.out
-    assert "Wrote parseTable1.out/papers/paper/paper_markdown.md" in captured.out
-    assert "Wrote parseTable1.out/papers/paper/paper_sections.json" in captured.out
-    assert "Wrote parseTable1.out/papers/paper/table_contexts" in captured.out
+    assert "Wrote outputs/papers/paper/extracted_tables.json" in captured.out
+    assert "Wrote outputs/papers/paper/normalized_tables.json" in captured.out
+    assert "Wrote outputs/papers/paper/table_profiles.json" in captured.out
+    assert "Wrote outputs/papers/paper/table_definitions.json" in captured.out
+    assert "Wrote outputs/papers/paper/parsed_tables.json" in captured.out
+    assert "Wrote outputs/papers/paper/paper_markdown.md" in captured.out
+    assert "Wrote outputs/papers/paper/paper_sections.json" in captured.out
+    assert "Wrote outputs/papers/paper/table_contexts" in captured.out
     assert "LLM semantic interpretation skipped:" not in captured.out
 
 
@@ -185,12 +185,12 @@ def test_cli_parse_writes_semantic_llm_output_when_available(tmp_path, monkeypat
     exit_code = cli.main(["parse", str(pdf_path)])
 
     captured = capsys.readouterr()
-    llm_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions_llm.json"
+    llm_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions_llm.json"
 
     assert exit_code == 0
     assert llm_path.exists()
     assert json.loads(llm_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
-    assert "Wrote parseTable1.out/papers/paper/table_definitions_llm.json" in captured.out
+    assert "Wrote outputs/papers/paper/table_definitions_llm.json" in captured.out
 
 
 def test_cli_parse_warns_and_skips_semantic_llm_when_configuration_is_missing(tmp_path, monkeypatch, capsys) -> None:
@@ -233,8 +233,8 @@ def test_cli_parse_warns_and_skips_semantic_llm_when_configuration_is_missing(tm
     exit_code = cli.main(["parse", str(pdf_path)])
 
     captured = capsys.readouterr()
-    llm_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions_llm.json"
-    table_definition_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions.json"
+    llm_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions_llm.json"
+    table_definition_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions.json"
 
     assert exit_code == 0
     assert table_definition_path.exists()
@@ -329,14 +329,14 @@ def test_cli_parse_skips_semantic_llm_for_estimate_result_tables(tmp_path, monke
     exit_code = cli.main(["parse", str(pdf_path)])
 
     captured = capsys.readouterr()
-    llm_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_definitions_llm.json"
-    profile_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "table_profiles.json"
+    llm_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions_llm.json"
+    profile_path = tmp_path / "outputs" / "papers" / "paper" / "table_profiles.json"
 
     assert exit_code == 0
     assert parse_calls["count"] == 0
     assert llm_path.exists() is False
     assert json.loads(profile_path.read_text(encoding="utf-8"))[0]["table_family"] == "estimate_results"
-    assert "Wrote parseTable1.out/papers/paper/table_profiles.json" in captured.out
+    assert "Wrote outputs/papers/paper/table_profiles.json" in captured.out
 
 
 def test_cli_parse_writes_semantic_debug_monitoring_when_llm_debug_enabled(tmp_path, monkeypatch, capsys) -> None:
@@ -411,7 +411,7 @@ def test_cli_parse_writes_semantic_debug_monitoring_when_llm_debug_enabled(tmp_p
     exit_code = cli.main(["parse", str(pdf_path)])
 
     captured = capsys.readouterr()
-    debug_root = tmp_path / "parseTable1.out" / "papers" / "paper" / "llm_semantic_debug"
+    debug_root = tmp_path / "outputs" / "papers" / "paper" / "llm_semantic_debug"
     monitoring_paths = sorted(debug_root.glob("*/llm_semantic_monitoring.json"))
 
     assert exit_code == 0
@@ -423,7 +423,7 @@ def test_cli_parse_writes_semantic_debug_monitoring_when_llm_debug_enabled(tmp_p
 
 
 def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:
-    """The extract command should write JSON under parseTable1.out/papers/<paper>/ by default."""
+    """The extract command should write JSON under outputs/papers/<paper>/ by default."""
     monkeypatch.chdir(tmp_path)
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
@@ -437,9 +437,9 @@ def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -
     exit_code = cli.main(["extract", str(pdf_path)])
 
     captured = capsys.readouterr()
-    output_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "extracted_tables.json"
+    output_path = tmp_path / "outputs" / "papers" / "paper" / "extracted_tables.json"
     assert exit_code == 0
-    assert "Wrote parseTable1.out/papers/paper/extracted_tables.json" in captured.out
+    assert "Wrote outputs/papers/paper/extracted_tables.json" in captured.out
     assert json.loads(output_path.read_text(encoding="utf-8")) == []
 
 
@@ -466,7 +466,7 @@ def test_cli_extract_stdout_preserves_json_output(tmp_path, monkeypatch, capsys)
 
 
 def test_cli_normalize_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:
-    """The normalize command should write JSON under parseTable1.out/papers/<paper>/ by default."""
+    """The normalize command should write JSON under outputs/papers/<paper>/ by default."""
     monkeypatch.chdir(tmp_path)
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
@@ -480,11 +480,11 @@ def test_cli_normalize_writes_default_output_file(tmp_path, monkeypatch, capsys)
     exit_code = cli.main(["normalize", str(pdf_path)])
 
     captured = capsys.readouterr()
-    output_path = tmp_path / "parseTable1.out" / "papers" / "paper" / "normalized_tables.json"
+    output_path = tmp_path / "outputs" / "papers" / "paper" / "normalized_tables.json"
     payload = json.loads(output_path.read_text(encoding="utf-8"))
 
     assert exit_code == 0
-    assert f"Wrote {Path('parseTable1.out') / 'papers' / 'paper' / 'normalized_tables.json'}" in captured.out
+    assert f"Wrote {Path('outputs') / 'papers' / 'paper' / 'normalized_tables.json'}" in captured.out
     assert payload[0]["table_id"] == "tbl-1"
     assert payload[0]["header_rows"] == [0]
     assert payload[0]["body_rows"] == [1, 2]

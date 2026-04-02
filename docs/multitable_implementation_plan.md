@@ -65,7 +65,7 @@ Add a new canonical schema:
 
 Add a new persisted file:
 
-- `parseTable1.out/papers/<paper_stem>/table_profiles.json`
+- `outputs/papers/<paper_stem>/table_profiles.json`
 
 The file should be a JSON array of direct `TableProfile.model_dump(mode="json")` payloads.
 
@@ -215,7 +215,7 @@ After routing is stable, add a value-free semantic schema for estimate-result ta
 Add:
 
 - `table1_parser/schemas/estimate_table_definition.py`
-- `parseTable1.out/papers/<paper_stem>/estimate_table_definitions.json`
+- `outputs/papers/<paper_stem>/estimate_table_definitions.json`
 
 ### Focus
 
@@ -253,7 +253,7 @@ After value-free estimate semantics are stable, add the final parsed estimate ou
 Add:
 
 - `table1_parser/schemas/parsed_estimate_table.py`
-- `parseTable1.out/papers/<paper_stem>/parsed_estimate_tables.json`
+- `outputs/papers/<paper_stem>/parsed_estimate_tables.json`
 
 ### Parsing Goals
 

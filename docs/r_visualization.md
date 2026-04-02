@@ -23,7 +23,7 @@ It is intended only for human inspection.
 ## Command-line usage
 
 ```bash
-Rscript R/visualize_table_from_json.R parseTable1.out/papers/cobaltpaper/normalized_tables.json
+Rscript R/visualize_table_from_json.R outputs/papers/cobaltpaper/normalized_tables.json
 ```
 
 ## Interactive R usage
@@ -33,8 +33,8 @@ From the repo root:
 ```r
 source("R/visualize_table_from_json.R")
 options(width = 200)
-visualize_table_from_json("trace_output/cobaltpaper/table_0/llm_input.json")
-visualize_table_from_json("parseTable1.out/papers/cobaltpaper/normalized_tables.json")
+visualize_table_from_json("outputs/traces/cobaltpaper/table_0/llm_input.json")
+visualize_table_from_json("outputs/papers/cobaltpaper/normalized_tables.json")
 ```
 
 From inside the `R/` directory:
@@ -42,7 +42,7 @@ From inside the `R/` directory:
 ```r
 source("visualize_table_from_json.R")
 options(width = 200)
-visualize_table_from_json("../trace_output/cobaltpaper/table_0/llm_input.json")
+visualize_table_from_json("../outputs/traces/cobaltpaper/table_0/llm_input.json")
 ```
 
 ## Variable Extraction Helper
@@ -70,7 +70,7 @@ From the repo root:
 
 ```r
 source("R/extract_variables_from_final_interpretation.R")
-x <- extract_variables_from_output_dir("trace_output/cobaltpaper/table_0")
+x <- extract_variables_from_output_dir("outputs/traces/cobaltpaper/table_0")
 print_variable_structure(x)
 ```
 
@@ -97,21 +97,21 @@ From the repo root:
 ```r
 source("R/inspect_paper_outputs.R")
 
-x <- load_paper_outputs("parseTable1.out/papers/cobaltpaper")
-compare_table_definitions("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+x <- load_paper_outputs("outputs/papers/cobaltpaper")
+compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
 compare_table_definition_runs(
-  "parse_runs/nephro_no_llm/papers/Nephro",
-  "parse_runs/nephro_with_llm/papers/Nephro",
+  "outputs/no_llm/papers/Nephro",
+  "outputs/with_llm/papers/Nephro",
   table_index = 0L,
   variant_a = "deterministic",
   variant_b = "llm",
   label_a = "no_llm",
   label_b = "with_llm_llm"
 )
-list_llm_semantic_debug_runs("parse_runs/nephro_with_llm/papers/Nephro")
-summarize_llm_semantic_monitoring("parse_runs/nephro_with_llm/papers/Nephro")
-show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L, match_type = "table_reference")
-show_llm_evidence("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+list_llm_semantic_debug_runs("outputs/with_llm/papers/Nephro")
+summarize_llm_semantic_monitoring("outputs/with_llm/papers/Nephro")
+show_table_context("outputs/papers/cobaltpaper", table_index = 0L, match_type = "table_reference")
+show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 ```
 
 What these are for:
@@ -167,19 +167,19 @@ python3 scripts/debug_llm_trace.py testpapers/OPEandRA.pdf --use-configured-clie
 This creates a directory such as:
 
 ```text
-trace_output/OPEandRA/table_0/
+outputs/traces/OPEandRA/table_0/
 ```
 
 2. Inspect the table payload visually:
 
 ```bash
-Rscript R/visualize_table_from_json.R trace_output/OPEandRA/table_0/llm_input.json
+Rscript R/visualize_table_from_json.R outputs/traces/OPEandRA/table_0/llm_input.json
 ```
 
 3. Read the final interpreted variables:
 
 ```bash
-Rscript -e 'source("R/extract_variables_from_final_interpretation.R"); x <- extract_variables_from_output_dir("trace_output/OPEandRA/table_0"); print_variable_structure(x)'
+Rscript -e 'source("R/extract_variables_from_final_interpretation.R"); x <- extract_variables_from_output_dir("outputs/traces/OPEandRA/table_0"); print_variable_structure(x)'
 ```
 
 4. Do the same in interactive R if preferred:
@@ -189,8 +189,8 @@ source("R/visualize_table_from_json.R")
 source("R/extract_variables_from_final_interpretation.R")
 options(width = 200)
 
-visualize_table_from_json("trace_output/OPEandRA/table_0/llm_input.json")
-x <- extract_variables_from_output_dir("trace_output/OPEandRA/table_0")
+visualize_table_from_json("outputs/traces/OPEandRA/table_0/llm_input.json")
+x <- extract_variables_from_output_dir("outputs/traces/OPEandRA/table_0")
 print_variable_structure(x)
 ```
 

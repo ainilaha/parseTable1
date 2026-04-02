@@ -18,7 +18,7 @@ Invisibly returns the filtered passage list.
 \examples{
 \dontrun{
 source("R/inspect_paper_outputs.R")
-show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L)
-show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L, match_type = "table_reference")
+show_table_context("outputs/papers/cobaltpaper", table_index = 0L)
+show_table_context("outputs/papers/cobaltpaper", table_index = 0L, match_type = "table_reference")
 }
 }

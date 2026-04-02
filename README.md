@@ -71,20 +71,20 @@ table1-parser parse path/to/paper.pdf
 By default this writes:
 
 ```text
-parseTable1.out/papers/<paper_stem>/extracted_tables.json
-parseTable1.out/papers/<paper_stem>/normalized_tables.json
-parseTable1.out/papers/<paper_stem>/table_profiles.json
-parseTable1.out/papers/<paper_stem>/table_definitions.json
-parseTable1.out/papers/<paper_stem>/parsed_tables.json
-parseTable1.out/papers/<paper_stem>/paper_markdown.md
-parseTable1.out/papers/<paper_stem>/paper_sections.json
-parseTable1.out/papers/<paper_stem>/table_contexts/table_0_context.json
+outputs/papers/<paper_stem>/extracted_tables.json
+outputs/papers/<paper_stem>/normalized_tables.json
+outputs/papers/<paper_stem>/table_profiles.json
+outputs/papers/<paper_stem>/table_definitions.json
+outputs/papers/<paper_stem>/parsed_tables.json
+outputs/papers/<paper_stem>/paper_markdown.md
+outputs/papers/<paper_stem>/paper_sections.json
+outputs/papers/<paper_stem>/table_contexts/table_0_context.json
 ```
 
 If semantic LLM configuration is available, it also writes:
 
 ```text
-parseTable1.out/papers/<paper_stem>/table_definitions_llm.json
+outputs/papers/<paper_stem>/table_definitions_llm.json
 ```
 
 For example:
@@ -110,7 +110,7 @@ table1-parser extract path/to/paper.pdf
 By default this writes JSON to:
 
 ```bash
-parseTable1.out/papers/<paper_stem>/extracted_tables.json
+outputs/papers/<paper_stem>/extracted_tables.json
 ```
 
 For example:
@@ -122,7 +122,7 @@ table1-parser extract testpapers/cobaltpaper.pdf
 produces:
 
 ```text
-parseTable1.out/papers/cobaltpaper/extracted_tables.json
+outputs/papers/cobaltpaper/extracted_tables.json
 ```
 
 If you want the JSON on stdout instead of a file:
@@ -152,7 +152,7 @@ table1-parser normalize path/to/paper.pdf
 By default this writes JSON to:
 
 ```bash
-parseTable1.out/papers/<paper_stem>/normalized_tables.json
+outputs/papers/<paper_stem>/normalized_tables.json
 ```
 
 ## R Visualization
@@ -160,7 +160,7 @@ parseTable1.out/papers/<paper_stem>/normalized_tables.json
 The repository includes small base-R helpers for visual inspection of normalized, parsed, and trace-oriented JSON files.
 
 ```bash
-Rscript R/visualize_table_from_json.R parseTable1.out/papers/cobaltpaper/normalized_tables.json
+Rscript R/visualize_table_from_json.R outputs/papers/cobaltpaper/normalized_tables.json
 ```
 
 From an interactive R session:
@@ -168,7 +168,7 @@ From an interactive R session:
 ```r
 source("R/visualize_table_from_json.R")
 options(width = 200)
-visualize_table_from_json("parseTable1.out/papers/cobaltpaper/normalized_tables.json")
+visualize_table_from_json("outputs/papers/cobaltpaper/normalized_tables.json")
 ```
 
 More detail:
@@ -181,9 +181,9 @@ For paper-level inspection there is also:
 
 ```r
 source("R/inspect_paper_outputs.R")
-compare_table_definitions("parseTable1.out/papers/cobaltpaper", table_index = 0L)
-show_table_context("parseTable1.out/papers/cobaltpaper", table_index = 0L)
-show_llm_evidence("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
+show_table_context("outputs/papers/cobaltpaper", table_index = 0L)
+show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 ```
 
 These helpers are meant to make it easier to compare deterministic syntax-first semantics with LLM semantics and to inspect the retrieved supporting passages.
@@ -193,13 +193,13 @@ These helpers are meant to make it easier to compare deterministic syntax-first 
 The default root output directory is:
 
 ```text
-parseTable1.out
+outputs
 ```
 
 Under that, outputs are organized by paper:
 
 ```text
-parseTable1.out/
+outputs/
   papers/
     cobaltpaper/
       extracted_tables.json
@@ -216,6 +216,7 @@ parseTable1.out/
 
 This keeps outputs for each paper in a separate directory and leaves room for trace and interpretation-stage outputs.
 The `parse` command is intended to populate this directory with every available stage output from a single pipeline run.
+Standalone trace scripts default to `outputs/traces/<paper_stem>/...`.
 
 ## How To Read The Outputs
 
@@ -365,7 +366,7 @@ The trace script writes:
 - `final_interpretation.json`
 - `diff.txt`
 
-These trace artifacts live under `trace_output/` and are separate from the paper-oriented artifacts under `parseTable1.out/`.
+These trace artifacts live under `outputs/traces/` and are separate from the paper-oriented artifacts under `outputs/papers/`.
 
 ## JSON Contracts
 

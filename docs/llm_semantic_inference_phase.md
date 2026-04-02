@@ -92,7 +92,7 @@ The persisted markdown artifact is `paper_markdown.md`. Its design intent and va
 The document-context artifacts should live in the same per-paper output directory as the table artifacts:
 
 ```text
-parseTable1.out/papers/<paper_stem>/
+outputs/papers/<paper_stem>/
   extracted_tables.json
   normalized_tables.json
   table_definitions.json
@@ -108,7 +108,7 @@ This keeps all paper-specific artifacts together and avoids recomputing markdown
 When `LLM_DEBUG=true`, semantic-LLM debug artifacts should be written under a timestamped run directory inside the paper output directory, for example:
 
 ```text
-parseTable1.out/papers/<paper_stem>/llm_semantic_debug/20260324T101500Z/
+outputs/papers/<paper_stem>/llm_semantic_debug/20260324T101500Z/
   llm_semantic_monitoring.json
   table_0/
     table_definition_llm_input.json

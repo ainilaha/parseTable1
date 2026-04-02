@@ -46,7 +46,7 @@ LLM semantic interpretation skipped: missing OPENAI_API_KEY or OPENAI_MODEL. Use
 When semantic LLM inference runs, write:
 
 ```text
-parseTable1.out/papers/<paper_stem>/table_definitions_llm.json
+outputs/papers/<paper_stem>/table_definitions_llm.json
 ```
 
 This file should be a list of validated `LLMSemanticTableDefinition` objects, one per table.

@@ -50,7 +50,7 @@ table = extractor.extract("testpapers/cobaltpaper.pdf")[0]
 normalized = normalize_extracted_table(table)
 result = parse_table_with_configured_llm(
     normalized,
-    trace_dir="trace_output/cobaltpaper/table_0",
+    trace_dir="outputs/traces/cobaltpaper/table_0",
 )
 ```
 
@@ -80,4 +80,4 @@ The Phase 5 trace path writes:
 - `final_interpretation.json`
 - `diff.txt`
 
-These are intended for inspection and should not be committed. `trace_output/` is ignored by Git.
+These are intended for inspection and should not be committed. `outputs/` is ignored by Git.

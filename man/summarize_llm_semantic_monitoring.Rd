@@ -17,6 +17,6 @@ Invisibly returns a data frame with one row per monitored table.
 \examples{
 \dontrun{
 source("R/inspect_paper_outputs.R")
-summarize_llm_semantic_monitoring("parse_runs/nephro_with_llm/papers/Nephro")
+summarize_llm_semantic_monitoring("outputs/with_llm/papers/Nephro")
 }
 }

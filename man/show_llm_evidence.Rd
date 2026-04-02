@@ -17,6 +17,6 @@ Invisibly returns the semantic LLM table definition used for the display.
 \examples{
 \dontrun{
 source("R/inspect_paper_outputs.R")
-show_llm_evidence("parseTable1.out/papers/cobaltpaper", table_index = 0L)
+show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 }
 }

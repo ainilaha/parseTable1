@@ -31,8 +31,8 @@ Invisibly returns a list with \code{variables}, \code{levels}, \code{columns}, a
 \dontrun{
 source("R/inspect_paper_outputs.R")
 compare_table_definition_runs(
-  "parse_runs/nephro_no_llm/papers/Nephro",
-  "parse_runs/nephro_with_llm/papers/Nephro",
+  "outputs/no_llm/papers/Nephro",
+  "outputs/with_llm/papers/Nephro",
   table_index = 0L,
   variant_a = "deterministic",
   variant_b = "llm",
