@@ -101,6 +101,13 @@ class FakePDF:
         return None
 
 
+class FakeTableFinder:
+    """Simple wrapper mimicking PyMuPDF's TableFinder.tables shape."""
+
+    def __init__(self, tables: list[FakeTable]) -> None:
+        self.tables = tables
+
+
 class FakePyMuPage:
     """Simple PyMuPDF page test double."""
 
@@ -481,6 +488,20 @@ def test_detect_table_candidates_scores_tables_on_a_page() -> None:
     assert len(candidates) == 1
     assert candidates[0].page_num == 1
     assert candidates[0].score > 0.7
+
+
+def test_detect_page_candidates_supports_tablefinder_wrapper() -> None:
+    """Table detection should support PyMuPDF find_tables() wrappers with a .tables attribute."""
+    page = FakePage(
+        text="Table 1. Baseline characteristics",
+        tables=[],
+    )
+    page.find_tables = lambda: FakeTableFinder([FakeTable([["Variable", "Overall"], ["Age", "52.1"]])])  # type: ignore[method-assign]
+
+    candidates = detect_table_candidates(FakePDF(pages=[page]))
+
+    assert len(candidates) == 1
+    assert candidates[0].caption == "Table 1. Baseline characteristics"
 
 
 def test_detect_table_candidates_supports_pymupdf_style_documents() -> None:

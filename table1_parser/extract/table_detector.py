@@ -234,7 +234,7 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
 
     page_text = _safe_extract_text(page)
     rule_segments = _page_rule_segments(page)
-    raw_tables = page.find_tables() if hasattr(page, "find_tables") else []
+    raw_tables = _normalize_find_tables_result(page.find_tables()) if hasattr(page, "find_tables") else []
     candidates: list[DetectedTableCandidate] = []
     if raw_tables:
         table_count = len(raw_tables)
@@ -298,6 +298,19 @@ def detect_table_candidates(pdf: Any) -> list[DetectedTableCandidate]:
     for page_num, page in enumerate(_iter_pdf_pages(pdf), start=1):
         candidates.extend(detect_page_candidates(page, page_num))
     return candidates
+
+
+def _normalize_find_tables_result(raw_tables: Any) -> list[Any]:
+    """Normalize PyMuPDF `find_tables()` output across list and TableFinder shapes."""
+    if raw_tables is None:
+        return []
+    tables_attr = getattr(raw_tables, "tables", None)
+    if tables_attr is not None:
+        return list(tables_attr)
+    try:
+        return list(raw_tables)
+    except TypeError:
+        return []
 
 
 def _iter_pdf_pages(pdf: Any) -> list[Any]:
