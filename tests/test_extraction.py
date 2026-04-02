@@ -483,6 +483,26 @@ def test_detect_table_candidates_scores_tables_on_a_page() -> None:
     assert candidates[0].score > 0.7
 
 
+def test_detect_table_candidates_supports_pymupdf_style_documents() -> None:
+    """Table detection should also support page_count/load_page style PDF documents."""
+    pdf = FakePyMuDoc(
+        pages=[
+            FakePyMuPage(
+                text="Table 1. Baseline characteristics",
+                words=[],
+            )
+        ]
+    )
+    pdf.load_page(0).find_tables = lambda: [FakeTable([["Variable", "Overall"], ["Age", "52.1"]])]  # type: ignore[attr-defined]
+    pdf.load_page(0).extract_text = lambda: pdf.load_page(0).text  # type: ignore[attr-defined]
+    pdf.load_page(0).crop = lambda _: FakeCroppedPage(pdf.load_page(0).text)  # type: ignore[attr-defined]
+
+    candidates = detect_table_candidates(pdf)
+
+    assert len(candidates) == 1
+    assert candidates[0].page_num == 1
+
+
 def test_detect_table_candidates_assigns_page_caption_lines_by_order() -> None:
     """Candidates on the same page should use caption lines in reading order."""
     pdf = FakePDF(

@@ -295,6 +295,20 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
 def detect_table_candidates(pdf: Any) -> list[DetectedTableCandidate]:
     """Detect and score table candidates across the entire PDF."""
     candidates: list[DetectedTableCandidate] = []
-    for page_num, page in enumerate(pdf.pages, start=1):
+    for page_num, page in enumerate(_iter_pdf_pages(pdf), start=1):
         candidates.extend(detect_page_candidates(page, page_num))
     return candidates
+
+
+def _iter_pdf_pages(pdf: Any) -> list[Any]:
+    """Return PDF pages across both legacy test doubles and real PyMuPDF documents."""
+    pages_attr = getattr(pdf, "pages", None)
+    if pages_attr is not None and not callable(pages_attr):
+        return list(pages_attr)
+    page_count = getattr(pdf, "page_count", None)
+    load_page = getattr(pdf, "load_page", None)
+    if isinstance(page_count, int) and callable(load_page):
+        return [load_page(index) for index in range(page_count)]
+    if callable(pages_attr):
+        return list(pages_attr())
+    raise TypeError("Unsupported PDF object: expected iterable pages or page_count/load_page().")
