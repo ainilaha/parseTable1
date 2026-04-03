@@ -173,9 +173,9 @@ visualize_table_from_json("outputs/papers/cobaltpaper/normalized_tables.json")
 
 More detail:
 
-- [`docs/parsing_process.md`](docs/parsing_process.md)
+- [`docs/design/parsing_process.md`](docs/design/parsing_process.md)
 - [`docs/r_visualization.md`](docs/r_visualization.md)
-- [`docs/parsing_output_design.md`](docs/parsing_output_design.md)
+- [`docs/design/parsing_output_design.md`](docs/design/parsing_output_design.md)
 
 For paper-level inspection there is also:
 
@@ -333,8 +333,8 @@ export LLM_SDK_DEBUG=false
 
 More detail:
 
-- [`docs/llm_integration.md`](docs/llm_integration.md)
-- [`docs/llm_setup.md`](docs/llm_setup.md)
+- [`docs/design/llm_integration.md`](docs/design/llm_integration.md)
+- [`docs/implementation/llm_setup.md`](docs/implementation/llm_setup.md)
 
 ## Developer Tools
 
@@ -372,7 +372,7 @@ These trace artifacts live under `outputs/traces/` and are separate from the pap
 
 The repository keeps the table pipeline JSON-first. The current output and intermediate JSON design is documented in:
 
-- [`docs/parsing_output_design.md`](docs/parsing_output_design.md)
+- [`docs/design/parsing_output_design.md`](docs/design/parsing_output_design.md)
 
 For the Phase 5 LLM input payload specifically:
 

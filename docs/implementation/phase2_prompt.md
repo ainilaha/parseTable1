@@ -1,7 +1,7 @@
 Read:
 
 AGENTS.md  
-docs/codex_build_spec.md  
+docs/design/codex_build_spec.md  
 
 Implement Phase 2 only.
 

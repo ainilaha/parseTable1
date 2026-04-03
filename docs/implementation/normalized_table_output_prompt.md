@@ -1,8 +1,8 @@
 Read:
 
 - `AGENTS.md`
-- `docs/codex_build_spec.md`
-- `docs/design_index.md`
+- `docs/design/codex_build_spec.md`
+- `docs/design/design_index.md`
 
 Implement a focused feature to make `NormalizedTable` a persisted, user-visible artifact.
 
@@ -67,7 +67,7 @@ Add or update only the small set needed for this feature:
 - `table1_parser/normalize/interpretation_view.py`
 - `R/visualize_table_from_json.R`
 - `README.md`
-- `docs/parsing_output_design.md`
+- `docs/design/parsing_output_design.md`
 - tests as needed
 
 You may add one small helper module if useful, for example:

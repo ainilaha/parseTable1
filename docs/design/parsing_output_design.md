@@ -16,8 +16,8 @@ The short version is:
 Before changing JSON outputs or schemas, always read:
 
 - `AGENTS.md`
-- `docs/codex_build_spec.md`
-- `docs/paper_markdown_spec.md` when changing markdown-context outputs
+- `docs/design/codex_build_spec.md`
+- `docs/design/paper_markdown_spec.md` when changing markdown-context outputs
 
 Those files define the main development criteria:
 
@@ -343,7 +343,7 @@ Variation note:
 
 - papers may use different section names, heading levels, and table-reference styles
 - that variation should be handled in section parsing and retrieval, not by redefining the meaning of `paper_markdown.md`
-- `docs/paper_markdown_spec.md` is the design reference for this artifact
+- `docs/design/paper_markdown_spec.md` is the design reference for this artifact
 
 ## 5. `table_definitions_llm.json`
 

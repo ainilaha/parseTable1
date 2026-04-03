@@ -2,7 +2,7 @@
 
 Read the full architecture spec:
 
-docs/codex_build_spec.md
+docs/design/codex_build_spec.md
 
 Also read project constraints in:
 

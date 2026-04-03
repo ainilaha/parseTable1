@@ -11,13 +11,13 @@ The system works as a multi-stage parser:
 
 The full architecture specification is in:
 
-docs/codex_build_spec.md
+docs/design/codex_build_spec.md
 
 Agents should always read that file before implementing features.
 
 For parsing design intentions and newer semantic-table planning notes, also read:
 
-docs/design_index.md
+docs/design/design_index.md
 
 When changing CLI behavior, persisted outputs, schema shape, markdown-context handling, or design assumptions, update the relevant `docs/*.md` files in the same change. Keep the design docs current.
 
@@ -125,7 +125,7 @@ Avoid unstructured dictionaries where possible.
 
 Follow the structure defined in:
 
-docs/codex_build_spec.md
+docs/design/codex_build_spec.md
 
 Do not collapse modules into one file.
 

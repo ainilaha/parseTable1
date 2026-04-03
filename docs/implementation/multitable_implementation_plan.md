@@ -4,8 +4,8 @@ This document turns the multitable routing spec into an implementation sequence 
 
 It is intended to follow:
 
-- `docs/multitable_architecture_spec.md`
-- `docs/parsing_output_design.md`
+- `docs/design/multitable_architecture_spec.md`
+- `docs/design/parsing_output_design.md`
 
 The immediate goal is not to solve all table families at once. The first goal is to stop applying Table 1-oriented semantics and unnecessary LLM work to tables that are obviously estimate-result tables.
 

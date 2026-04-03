@@ -23,7 +23,7 @@ For mixed-table papers, the planned future pipeline adds a routing stage:
 PDF -> ExtractedTable -> NormalizedTable -> TableProfile -> family-specific definition -> family-specific parsed output
 ```
 
-See `docs/multitable_architecture_spec.md`.
+See `docs/design/multitable_architecture_spec.md`.
 
 For CLI use, `table1-parser parse` is intended to be the main user command. It should run the pipeline once and write every currently available stage artifact for the paper.
 

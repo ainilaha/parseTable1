@@ -4,7 +4,7 @@ This document scopes the next phase: using an LLM to interpret table semantics f
 
 See also:
 
-- `docs/paper_markdown_spec.md`
+- `docs/design/paper_markdown_spec.md`
 
 ## Goal
 
@@ -85,7 +85,7 @@ Markdown should be used for document context because it is easier to:
 
 It should not replace the structured table extraction path.
 
-The persisted markdown artifact is `paper_markdown.md`. Its design intent and variation rules are defined in `docs/paper_markdown_spec.md`.
+The persisted markdown artifact is `paper_markdown.md`. Its design intent and variation rules are defined in `docs/design/paper_markdown_spec.md`.
 
 ## Output Layout
 
