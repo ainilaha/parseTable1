@@ -275,3 +275,11 @@ For this phase, the repository should gain:
 - package-oriented R helpers for JSON loading and `ObservedTableOne` construction
 
 This is enough to establish the R-side component without changing the Python parser or its JSON schema.
+
+Initial package-oriented repository files that should now exist:
+
+- `DESCRIPTION`
+- `NAMESPACE`
+- `.Rbuildignore`
+
+These are intentionally minimal and should expand as the R package becomes less provisional.

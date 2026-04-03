@@ -1,0 +1,27 @@
+Package: parseTable1
+Type: Package
+Title: R Tools for Observed Table 1 Semantics from Parser JSON
+Version: 0.0.0.9000
+Maintainer: Laha Ale <ainilaha@gmail.com>, Robert Gentleman <rgentlem@gmail.com>, Deepayan Sarkar <deepayan.sarkar@gmail.com>
+Authors@R: 
+    c(person("Laha", "Ale", , "ainilaha@gmail.com", role = c("aut", "cre"),
+             comment = c(ORCID = "0000-0002-4070-5289")),
+      person("Robert", "Gentleman", , "rgentlem@gmail.com", role = "aut"),
+      person("Deepayan", "Sarkar", , "deepayan.sarkar@gmail.com", role = "aut"))
+Author: Laha Ale [aut, cre], Robert Gentleman [aut], Deepayan Sarkar [aut]
+Description: Provides R-side tools for consuming parseTable1 JSON outputs and
+    constructing print-canonical Table 1 semantic objects grounded in the
+    observed table rather than reconstructed subject-level data.
+License: Artistic-2.0 | file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.0)
+Imports:
+    jsonlite
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
