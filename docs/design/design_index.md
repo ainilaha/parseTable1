@@ -35,6 +35,9 @@ Then use the documents below as needed.
 - `docs/design/table_definition_schema.md`
   Proposed Pydantic schema design for `TableDefinition` and related models.
 
+- `docs/design/observed_tableone_component.md`
+  Design for the downstream R-first, print-canonical semantic object built from parser JSON outputs.
+
 - `docs/implementation/table_definition_implementation_plan.md`
   Implementation plan for the SQL-query-oriented `TableDefinition` phase, including row-variable, categorical-level, and column-definition goals.
 
@@ -78,6 +81,9 @@ Then use the documents below as needed.
 
 - If you are working on the new value-free semantic stage for database matching:
   read `docs/design/table_definition_scope.md`, `docs/design/table_definition_schema.md`, and `docs/implementation/table_definition_implementation_plan.md`.
+
+- If you are working on the downstream R-side component that consumes `table_definitions.json` and `parsed_tables.json`:
+  read `docs/design/observed_tableone_component.md` and `docs/implementation/observed_tableone_r_plan.md`.
 
 - If you are updating user-facing explanations of the pipeline:
   read `docs/design/parsing_process.md`.

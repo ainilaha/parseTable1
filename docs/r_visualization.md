@@ -7,6 +7,8 @@ File:
 - [`R/visualize_table_from_json.R`](../R/visualize_table_from_json.R)
 - [`R/inspect_paper_outputs.R`](../R/inspect_paper_outputs.R)
 - [`R/extract_variables_from_final_interpretation.R`](../R/extract_variables_from_final_interpretation.R)
+- [`R/pt1_json_io.R`](../R/pt1_json_io.R)
+- [`R/observed_table_one.R`](../R/observed_table_one.R)
 - manual pages in [`man/`](../man)
 
 ## Table Display Helper
@@ -133,6 +135,32 @@ Current limitation:
 
 - the context helpers currently expose `section_id`, `heading`, `passage_id`, and passage text
 - they do not yet expose page-number or line-number anchors
+
+## Observed TableOne Helper
+
+The repository now also includes package-oriented R helpers for constructing an observed, print-canonical semantic object from parser JSON outputs.
+
+Main functions:
+
+- `build_observed_table_one(table_definition, parsed_table, normalized_table = NULL, provenance = NULL)`
+- `build_observed_table_one_from_paper_dir(paper_dir, table_index = 0L)`
+
+Purpose:
+
+- consume `table_definitions.json` and `parsed_tables.json`
+- preserve printed row and column semantics in R
+- separate continuous, categorical, and statistic blocks
+- avoid pretending that the original subject-level dataset can be recovered
+
+Example:
+
+```r
+source("R/pt1_json_io.R")
+source("R/observed_table_one.R")
+
+x <- build_observed_table_one_from_paper_dir("outputs/papers/cobaltpaper", table_index = 0L)
+print(x)
+```
 
 Example output:
 
