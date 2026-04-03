@@ -41,6 +41,9 @@ Then use the documents below as needed.
 - `docs/implementation/column_grouping_semantics_plan.md`
   Focused implementation plan for the newer grouped-column semantics work inside deterministic `TableDefinition` assembly.
 
+- `docs/implementation/normalized_column_repair_plan.md`
+  Focused implementation plan for conservative normalization-time repair of split value columns and missed header rows.
+
 ## Supporting References
 
 - `docs/design/paper_markdown_spec.md`

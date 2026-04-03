@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from table1_parser.heuristics.variable_grouper import group_variable_blocks
+from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.normalize.cleaner import clean_text
 from table1_parser.normalize.header_detector import detect_header_rows_with_metadata
 from table1_parser.normalize.row_signature import build_row_signature
@@ -13,6 +15,8 @@ from table1_parser.schemas.normalized_table import RowView
 
 ALPHA_PATTERN = re.compile(r"[A-Za-z]")
 ALNUM_PATTERN = re.compile(r"[A-Za-z0-9]")
+COUNT_PCT_STYLE_PATTERN = re.compile(r"\bn\s*\(\s*%\s*\)")
+PERCENT_FRAGMENT_PATTERN = re.compile(r"^\(\s*\d+(?:\.\d+)?%\s*\)$")
 
 
 def _is_noninformative_cell(value: str) -> bool:
@@ -104,6 +108,85 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
         )
         for row_idx in body_rows
     ]
+    provisional_table = NormalizedTable(
+        table_id=table.table_id,
+        title=table.title,
+        caption=table.caption,
+        header_rows=header_rows,
+        body_rows=body_rows,
+        row_views=row_views,
+        n_rows=table.n_rows,
+        n_cols=len(raw_rows[0]) if raw_rows else 0,
+        metadata={},
+    )
+    count_pct_rows: set[int] = set()
+    for block in group_variable_blocks(provisional_table):
+        parent_label = clean_text(block.variable_label).lower()
+        if COUNT_PCT_STYLE_PATTERN.search(parent_label):
+            count_pct_rows.update(block.level_row_indices or [block.variable_row_idx])
+    merged_columns: list[dict[str, int]] = []
+    for col_idx in range(1, len(raw_rows[0]) if raw_rows else 0):
+        supporting_rows = 0
+        nonempty_body_values = 0
+        disqualifying_values = 0
+        for row_idx in body_rows:
+            right = cleaned_rows[row_idx][col_idx]
+            if not right:
+                continue
+            nonempty_body_values += 1
+            if (
+                row_idx in count_pct_rows
+                and PERCENT_FRAGMENT_PATTERN.fullmatch(right)
+                and detect_value_pattern(cleaned_rows[row_idx][col_idx - 1]).pattern == "n_only"
+            ):
+                supporting_rows += 1
+            else:
+                disqualifying_values += 1
+        if supporting_rows < 2 or supporting_rows * 2 < nonempty_body_values or disqualifying_values > 1:
+            continue
+        merged_row_count = 0
+        for row_idx in range(len(raw_rows)):
+            left_clean = cleaned_rows[row_idx][col_idx - 1]
+            right_clean = cleaned_rows[row_idx][col_idx]
+            if row_idx in header_rows:
+                if not left_clean and right_clean:
+                    raw_rows[row_idx][col_idx - 1] = raw_rows[row_idx][col_idx]
+                    cleaned_rows[row_idx][col_idx - 1] = right_clean
+                    raw_rows[row_idx][col_idx] = ""
+                    cleaned_rows[row_idx][col_idx] = ""
+                continue
+            if (
+                row_idx in count_pct_rows
+                and PERCENT_FRAGMENT_PATTERN.fullmatch(right_clean)
+                and detect_value_pattern(left_clean).pattern == "n_only"
+            ):
+                raw_rows[row_idx][col_idx - 1] = clean_text(f"{raw_rows[row_idx][col_idx - 1]} {raw_rows[row_idx][col_idx]}")
+                cleaned_rows[row_idx][col_idx - 1] = clean_text(f"{left_clean} {right_clean}")
+                raw_rows[row_idx][col_idx] = ""
+                cleaned_rows[row_idx][col_idx] = ""
+                merged_row_count += 1
+        merged_columns.append({"from_col_idx": col_idx, "to_col_idx": col_idx - 1, "merged_row_count": merged_row_count})
+    dropped_repaired_cols: list[int] = []
+    if raw_rows:
+        keep_indices = [col_idx for col_idx in range(len(raw_rows[0])) if any(cleaned_rows[row_idx][col_idx] for row_idx in range(len(cleaned_rows)))]
+        dropped_repaired_cols = [col_idx for col_idx in range(len(raw_rows[0])) if col_idx not in keep_indices]
+        if dropped_repaired_cols:
+            raw_rows = [[row[col_idx] for col_idx in keep_indices] for row in raw_rows]
+            cleaned_rows = [[row[col_idx] for col_idx in keep_indices] for row in cleaned_rows]
+            header_rows, body_rows, header_detection = detect_header_rows_with_metadata(
+                cleaned_rows,
+                row_bounds=row_bounds,
+                horizontal_rules=horizontal_rules,
+            )
+            row_views = [
+                build_row_signature(
+                    row_idx,
+                    raw_rows[row_idx],
+                    first_cell_bbox=first_column_bboxes.get(row_idx),
+                    base_x0=base_x0,
+                )
+                for row_idx in body_rows
+            ]
     indent_levels = [row_view.indent_level for row_view in row_views if row_view.indent_level is not None]
     if len(indent_levels) < 3:
         indentation_informative = False
@@ -119,6 +202,10 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
         "cleaned_rows": cleaned_rows,
         "dropped_leading_cols": dropped_leading_cols,
         "dropped_trailing_cols": dropped_trailing_cols,
+        "column_repairs": {
+            "merged_columns": merged_columns,
+            "dropped_empty_columns_after_repair": dropped_repaired_cols,
+        },
         "header_detection": header_detection,
         "indentation_informative": indentation_informative,
     }

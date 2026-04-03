@@ -201,6 +201,14 @@ Design intent:
 - `cleaned_rows` may support later prompting and debugging, but raw cell text still lives in extraction output
 - `row_views` are the compact per-row features that later heuristic and LLM stages consume
 - saved normalized tables can be reloaded as formal downstream input
+- normalization may apply conservative structural repairs when extraction has clearly split one logical value across adjacent columns
+- those repairs should be driven by row-style expectations and body-value patterns, not by paper-specific header templates
+
+Conservative repair rule:
+
+- when a categorical block implies `n (%)` values and adjacent cells are strongly consistent with `count` plus parenthesized percent fragments, normalization may merge those fragments back into one cell before later semantic stages run
+- when that repair reveals a strongly header-like first body row, normalization may promote that row into `header_rows`
+- repair diagnostics should live in `metadata` rather than replacing the canonical `NormalizedTable` fields
 
 ## 3. `table_definitions.json`
 

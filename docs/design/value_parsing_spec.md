@@ -20,6 +20,7 @@ They do not change the rule that raw extracted text must be preserved.
 - parse common Table 1 `n (%)` cells into structured numeric fields
 - add soft consistency checks that are useful for classic baseline-characteristics tables
 - avoid overfitting the parser to one paper or one journal style
+- allow row-label-derived expected value styles to support conservative structural repair of malformed normalized grids
 
 ## Non-Goals
 
@@ -162,6 +163,23 @@ This heuristic should not run on:
 - median/IQR rows
 - free-text note rows
 - p-value columns
+
+### Row-Style Inheritance Rule
+
+Expected value style is sometimes defined by a parent variable row rather than by each printed level row.
+
+Examples:
+
+- `Education level, n (%)`
+- level rows such as `<High school`, `High school`, `>High school`
+
+Design rule:
+
+- when a categorical variable row indicates a summary style such as `n (%)`, that expected style should be inherited by its level rows for downstream parsing and soft structural checks
+- the parent variable row itself may legitimately have no values
+- this inherited expectation may be used earlier in normalization to repair obviously split adjacent cells such as `594` plus `(34.4%)`
+
+This remains a soft heuristic. It should support structural repair and confidence adjustment, not hard rejection.
 
 ### Column Semantics Rule
 

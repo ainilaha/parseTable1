@@ -17,6 +17,7 @@ GROUP_COMPARISON_TOKENS = {"control", "controls", "reference"}
 STAT_P_VALUE_PATTERN = re.compile(r"\bp(?:[\s-]*value)?\b", re.IGNORECASE)
 STAT_TREND_PATTERN = re.compile(r"\btrend\b", re.IGNORECASE)
 STAT_SMD_PATTERN = re.compile(r"\b(?:smd|standardized mean difference)\b", re.IGNORECASE)
+RANGE_LEVEL_PATTERN = re.compile(r"^(?:[<>]=?\s*)?-?\d+(?:\.\d+)?(?:\s*-\s*-?\d+(?:\.\d+)?)?$")
 
 
 @dataclass(slots=True)
@@ -120,12 +121,41 @@ def _build_grouping_analysis(table: NormalizedTable, descriptors: list[HeaderDes
         shared_contexts = {descriptor.shared_context_label for descriptor in grouped_descriptors if descriptor.shared_context_label}
         if len(shared_contexts) == 1:
             grouping_label = shared_contexts.pop()
+    if grouping_label is None and descriptors:
+        label_header = descriptors[label_col_idx].column_label
+        if label_header and clean_text(label_header).lower() not in LABEL_COLUMN_TOKENS:
+            grouping_label = label_header
     grouping_name = normalize_label_text(grouping_label) if grouping_label else None
     group_levels = {
         descriptor.col_idx: GroupLevelGuess(
             col_idx=descriptor.col_idx,
-            level_label=descriptor.leaf_label or descriptor.column_label,
-            level_name=normalize_label_text(descriptor.leaf_label or descriptor.column_label) or descriptor.column_name,
+            level_label=(
+                descriptor.shared_context_label
+                if descriptor.shared_context_label
+                and (
+                    RANGE_LEVEL_PATTERN.fullmatch(descriptor.leaf_label.strip())
+                    or (
+                        any(char.isdigit() for char in descriptor.leaf_label)
+                        and not any(char.isalpha() for char in descriptor.leaf_label)
+                    )
+                )
+                else descriptor.leaf_label or descriptor.column_label
+            ),
+            level_name=normalize_label_text(
+                (
+                    descriptor.shared_context_label
+                    if descriptor.shared_context_label
+                    and (
+                        RANGE_LEVEL_PATTERN.fullmatch(descriptor.leaf_label.strip())
+                        or (
+                            any(char.isdigit() for char in descriptor.leaf_label)
+                            and not any(char.isalpha() for char in descriptor.leaf_label)
+                        )
+                    )
+                    else descriptor.leaf_label or descriptor.column_label
+                )
+            )
+            or descriptor.column_name,
             order=order,
             confidence=0.9 if descriptor.shared_context_label else 0.82,
         )
@@ -181,9 +211,9 @@ def build_column_definition(table: NormalizedTable) -> ColumnDefinition:
     analysis = _build_grouping_analysis(table, descriptors)
     columns: list[DefinedColumn] = []
     for descriptor in descriptors:
-        lowered = clean_text(descriptor.column_label).lower()
-        if descriptor.col_idx == analysis.label_col_idx and (not lowered or lowered in LABEL_COLUMN_TOKENS):
+        if descriptor.col_idx == analysis.label_col_idx:
             continue
+        lowered = clean_text(descriptor.column_label).lower()
         role = "unknown"
         confidence = 0.45
         grouping_variable_hint = None

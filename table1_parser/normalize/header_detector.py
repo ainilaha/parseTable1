@@ -6,8 +6,9 @@ import re
 
 
 NUMERIC_PATTERN = re.compile(r"\d")
-HEADER_KEYWORD_PATTERN = re.compile(r"\b(overall|p-?value|total|n|%)\b", re.IGNORECASE)
+HEADER_KEYWORD_PATTERN = re.compile(r"\b(overall|p[\s-]?value|total|n|%)\b", re.IGNORECASE)
 COUNT_ROW_LABEL_PATTERN = re.compile(r"^(n|N|no\.?|number)$")
+RANGE_LABEL_PATTERN = re.compile(r"^(?:[<>]=?\s*)?-?\d+(?:\.\d+)?(?:\s*-\s*-?\d+(?:\.\d+)?)?$")
 TOP_RULE_GAP = 12.0
 BOUNDARY_RULE_TOLERANCE = 3.0
 MAX_HEADER_ROWS = 3
@@ -26,12 +27,19 @@ def header_score(row: list[str], row_idx: int) -> float:
     """Score a row for header-likeness using simple deterministic signals."""
     joined = " ".join(cell for cell in row if cell)
     first_cell = next((cell for cell in row if cell), "")
+    populated = [cell for cell in row if cell]
     score = 0.0
     if row_idx < 2:
         score += 0.25
     if HEADER_KEYWORD_PATTERN.search(joined):
         score += 0.4
-    populated = [cell for cell in row if cell]
+    if (
+        row_idx < 2
+        and len(populated) >= 2
+        and all(any(char.isalpha() for char in cell) for cell in populated)
+        and max(len(cell.strip()) for cell in populated) <= 4
+    ):
+        score += 0.35
     text_density = (
         len([cell for cell in populated if any(char.isalpha() for char in cell)]) / len(populated)
         if populated
@@ -111,12 +119,27 @@ def detect_header_rows_with_metadata(
         header_rows = content_headers
         source = "content"
 
+    promoted_header_rows: list[int] = []
+    next_row_idx = len(header_rows)
+    if header_rows == list(range(len(header_rows))) and next_row_idx < min(len(rows), MAX_HEADER_ROWS):
+        next_row = rows[next_row_idx]
+        joined = " ".join(cell for cell in next_row if cell)
+        populated = [cell for cell in next_row if cell]
+        range_like_cells = sum(bool(RANGE_LABEL_PATTERN.fullmatch(cell.strip())) for cell in populated)
+        if header_score(next_row, next_row_idx) >= 0.45 and (
+            HEADER_KEYWORD_PATTERN.search(joined) or range_like_cells >= 2
+        ):
+            header_rows = [*header_rows, next_row_idx]
+            promoted_header_rows = [next_row_idx]
+            source = f"{source}+promotion"
+
     body_rows = [row_idx for row_idx in range(len(rows)) if row_idx not in header_rows]
     metadata = {
         "source": source,
         "rule_strength": rule_strength,
         "rule_based_headers": rule_based_headers,
         "content_based_headers": content_headers,
+        "promoted_header_rows": promoted_header_rows,
         "rule_content_disagreement": bool(rule_based_headers and rule_based_headers != content_headers),
     }
     return header_rows, body_rows, metadata

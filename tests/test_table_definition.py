@@ -282,3 +282,36 @@ def test_build_table_definition_supports_grouped_levels_without_known_grouping_v
     assert definition.column_definition.group_count == 2
     assert [column.inferred_role for column in definition.column_definition.columns] == ["overall", "group", "group"]
     assert [column.group_level_label for column in definition.column_definition.columns] == [None, "Never", "Current"]
+
+
+def test_build_table_definition_uses_label_column_header_as_grouping_fallback() -> None:
+    """When grouped columns have distinct upper labels, the label-column header can define the grouping variable."""
+    table = NormalizedTable(
+        table_id="tbl-cobalt-repaired",
+        header_rows=[0, 1],
+        body_rows=[2],
+        row_views=[_build_row(2, "Age (yrs), mean±SD", ["60.3±12.0", "58.1±11.2", "60.0±11.4", "61.4±11.6", "<.001"])],
+        n_rows=3,
+        n_cols=7,
+        metadata={
+            "cleaned_rows": [
+                ["", "", "Q1", "Q2", "Q3", "Q4", "P value"],
+                ["Cobalt quartiles (mg/l)", "All", "<=0.12", "0.13-0.14", "0.15-0.18", ">=0.19", "P for trend"],
+                ["Age (yrs), mean±SD", "60.3±12.0", "58.1±11.2", "60.0±11.4", "61.4±11.6", "61.7±13.2", "<.001"],
+            ]
+        },
+    )
+
+    definition = build_table_definition(table)
+
+    assert definition.column_definition.grouping_label == "Cobalt quartiles (mg/l)"
+    assert definition.column_definition.group_count == 4
+    assert [column.group_level_label for column in definition.column_definition.columns] == [
+        None,
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        None,
+    ]
+    assert definition.column_definition.columns[-1].statistic_subtype == "p_trend"
