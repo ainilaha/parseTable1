@@ -70,8 +70,12 @@ def test_build_table_definition_derives_variables_levels_and_columns() -> None:
     assert definition.variables[1].variable_type == "binary"
     assert [level.level_label for level in definition.variables[1].levels] == ["Male", "Female"]
     assert definition.column_definition.grouping_label == "RA status"
+    assert definition.column_definition.group_count == 1
     assert [column.column_label for column in definition.column_definition.columns] == ["Overall", "RA", "P-value"]
     assert [column.inferred_role for column in definition.column_definition.columns] == ["overall", "group", "p_value"]
+    assert definition.column_definition.columns[1].group_level_label == "RA"
+    assert definition.column_definition.columns[1].group_order == 1
+    assert definition.column_definition.columns[2].statistic_subtype == "p_value"
 
 
 def test_build_table_definition_carries_rotated_layout_note() -> None:
@@ -215,3 +219,66 @@ def test_validate_table_definition_rejects_invalid_level_row() -> None:
 
     with pytest.raises(ValueError):
         validate_table_definition(definition, table)
+
+
+def test_build_table_definition_infers_general_grouping_structure_from_multirow_headers() -> None:
+    """Grouped columns should carry group levels, ordering, and statistic subtypes."""
+    table = NormalizedTable(
+        table_id="tbl-cobalt",
+        title="Baseline characteristics",
+        caption="Participant characteristics",
+        header_rows=[0, 1],
+        body_rows=[2],
+        row_views=[_build_row(2, "Age, years", ["52.3 (14.1)", "50.4 (13.5)", "51.1 (12.8)", "0.03", "0.01"])],
+        n_rows=3,
+        n_cols=6,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "", "Cobalt quartile", "Cobalt quartile", "", ""],
+                ["", "Overall", "Q1", "Q2", "P-value", "P for trend"],
+                ["Age, years", "52.3 (14.1)", "50.4 (13.5)", "51.1 (12.8)", "0.03", "0.01"],
+            ]
+        },
+    )
+
+    definition = build_table_definition(table)
+
+    assert definition.column_definition.grouping_label == "Cobalt quartile"
+    assert definition.column_definition.grouping_name == "Cobalt quartile"
+    assert definition.column_definition.group_count == 2
+    assert [column.inferred_role for column in definition.column_definition.columns] == [
+        "overall",
+        "group",
+        "group",
+        "p_value",
+        "p_value",
+    ]
+    assert [column.group_level_label for column in definition.column_definition.columns[:3]] == [None, "Q1", "Q2"]
+    assert [column.group_order for column in definition.column_definition.columns[:3]] == [None, 1, 2]
+    assert definition.column_definition.columns[3].statistic_subtype == "p_value"
+    assert definition.column_definition.columns[4].statistic_subtype == "p_trend"
+
+
+def test_build_table_definition_supports_grouped_levels_without_known_grouping_variable() -> None:
+    """Grouped columns should still be represented when the grouping variable is unclear."""
+    table = NormalizedTable(
+        table_id="tbl-smoking",
+        header_rows=[0],
+        body_rows=[1],
+        row_views=[_build_row(1, "Body mass index, kg/m2", ["26.1 (5.3)", "24.3 (4.9)", "27.8 (5.8)"])],
+        n_rows=2,
+        n_cols=4,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall", "Never", "Current"],
+                ["Body mass index, kg/m2", "26.1 (5.3)", "24.3 (4.9)", "27.8 (5.8)"],
+            ]
+        },
+    )
+
+    definition = build_table_definition(table)
+
+    assert definition.column_definition.grouping_label is None
+    assert definition.column_definition.group_count == 2
+    assert [column.inferred_role for column in definition.column_definition.columns] == ["overall", "group", "group"]
+    assert [column.group_level_label for column in definition.column_definition.columns] == [None, "Never", "Current"]

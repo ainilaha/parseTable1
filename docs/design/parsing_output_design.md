@@ -260,6 +260,7 @@ Top-level design components:
 
 - `grouping_label`
 - `grouping_name`
+- `group_count`
 - `columns`
 - `confidence`
 
@@ -270,6 +271,10 @@ Top-level design components:
 - `column_label`
 - `inferred_role`
 - `grouping_variable_hint`
+- `group_level_label`
+- `group_level_name`
+- `group_order`
+- `statistic_subtype`
 - `confidence`
 
 Design intent:
@@ -280,6 +285,8 @@ Design intent:
 - provide a deterministic baseline before optional LLM refinement is introduced
 - keep `variable_name` search-oriented for variable rows, including stripping summary/unit decorations where useful
 - keep `level_name` semantically distinct for categorical levels, preserving threshold and range syntax such as `< 1.3`, `1.3-1.8`, and `>1.8`
+- model grouped columns explicitly enough to distinguish the overall population column, grouped data columns, and trailing statistic columns
+- preserve grouped-column level labels and left-to-right order so downstream matching can reconstruct the table's column grouping structure
 
 ## 4. Paper Context Artifacts
 

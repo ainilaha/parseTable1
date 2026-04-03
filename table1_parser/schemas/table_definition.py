@@ -42,6 +42,10 @@ class DefinedColumn(BaseModel):
     column_label: str
     inferred_role: DefinedColumnRole = "unknown"
     grouping_variable_hint: str | None = None
+    group_level_label: str | None = None
+    group_level_name: str | None = None
+    group_order: int | None = Field(default=None, ge=1)
+    statistic_subtype: str | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
@@ -50,6 +54,7 @@ class ColumnDefinition(BaseModel):
 
     grouping_label: str | None = None
     grouping_name: str | None = None
+    group_count: int | None = Field(default=None, ge=0)
     columns: list[DefinedColumn] = Field(default_factory=list)
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
 

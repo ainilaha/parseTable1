@@ -25,11 +25,17 @@ def detect_column_roles(table: NormalizedTable) -> list[ColumnRoleGuess]:
         lowered = label.lower()
         if not label:
             role, confidence = "unknown", 0.4
-        elif "p-value" in lowered or "p value" in lowered or lowered.startswith("pvalue") or lowered == "p":
+        elif (
+            "p-value" in lowered
+            or "p value" in lowered
+            or lowered.startswith("pvalue")
+            or lowered == "p"
+            or ("trend" in lowered and "p" in lowered)
+        ):
             role, confidence = "p_value", 0.98
         elif "smd" in lowered:
             role, confidence = "smd", 0.98
-        elif "overall" in lowered or lowered == "all":
+        elif "overall" in lowered or lowered in {"all", "total"}:
             role, confidence = "overall", 0.95
         elif lowered in {"control", "controls"}:
             role, confidence = "comparison_group", 0.92

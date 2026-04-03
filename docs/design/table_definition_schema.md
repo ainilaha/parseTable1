@@ -60,6 +60,10 @@ Suggested fields:
 - `column_label: str`
 - `inferred_role: Literal["overall", "group", "comparison_group", "p_value", "smd", "unknown"] = "unknown"`
 - `grouping_variable_hint: str | None = None`
+- `group_level_label: str | None = None`
+- `group_level_name: str | None = None`
+- `group_order: int | None = None`
+- `statistic_subtype: str | None = None`
 - `confidence: float | None = None`
 
 Notes:
@@ -67,6 +71,10 @@ Notes:
 - `column_label` preserves the printed header
 - `column_name` is the normalized matching-friendly form
 - `grouping_variable_hint` is the best guess for what defines the subgrouping, such as `ra_status`
+- `group_level_label` preserves the paper-facing label for one grouped column, such as `RA`, `non-RA`, `Q1`, or `Q4`
+- `group_level_name` is the matching-friendly grouped-column level form
+- `group_order` preserves the left-to-right order of grouped columns
+- `statistic_subtype` keeps multiple test columns distinct, for example `p_value` versus `p_trend`
 
 ### `ColumnDefinition`
 
@@ -76,6 +84,7 @@ Suggested fields:
 
 - `grouping_label: str | None = None`
 - `grouping_name: str | None = None`
+- `group_count: int | None = None`
 - `columns: list[DefinedColumn] = []`
 - `confidence: float | None = None`
 
@@ -83,6 +92,7 @@ Notes:
 
 - this allows the table to carry a table-level guess like `RA status` or `Diabetes status`
 - individual `DefinedColumn` records still preserve per-column roles and labels
+- `group_count` records how many grouped data columns were inferred, separate from any overall or statistic columns
 
 ### `TableDefinition`
 

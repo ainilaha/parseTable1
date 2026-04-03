@@ -38,6 +38,9 @@ Then use the documents below as needed.
 - `docs/implementation/table_definition_implementation_plan.md`
   Implementation plan for the SQL-query-oriented `TableDefinition` phase, including row-variable, categorical-level, and column-definition goals.
 
+- `docs/implementation/column_grouping_semantics_plan.md`
+  Focused implementation plan for the newer grouped-column semantics work inside deterministic `TableDefinition` assembly.
+
 ## Supporting References
 
 - `docs/design/paper_markdown_spec.md`

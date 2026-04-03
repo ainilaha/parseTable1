@@ -74,6 +74,8 @@ Each column should preserve both:
 
 - the printed column label
 - a normalized label suitable for matching to a database grouping variable
+- grouped-column level metadata when a table has subgroup columns
+- distinct statistic-column semantics when multiple trailing test columns are present
 
 ## Scope for This Phase
 
@@ -146,12 +148,27 @@ Use normalized header rows and column text to infer:
 - `smd`
 - `unknown`
 
+Column inference should first build a general grouping analysis that partitions columns into:
+
+- the row-label column
+- any overall/full-sample column
+- grouped data columns
+- trailing statistic/test columns
+
 Also try to infer the grouping concept, such as:
 
 - disease status
 - exposure category
 - case/control status
 - quartile group
+
+The output should carry, when inferable:
+
+- a grouping variable label and normalized name
+- the number of grouped columns
+- a paper-facing and normalized grouped-column level for each grouped column
+- a left-to-right group order
+- a statistic subtype for trailing test columns such as `p_value`, `p_trend`, or `smd`
 
 The result should support downstream matching to the database field that created the table columns.
 
