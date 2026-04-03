@@ -10,6 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 R_SCRIPT = REPO_ROOT / "R" / "inspect_paper_outputs.R"
+R_COMPARE_SCRIPT = REPO_ROOT / "R" / "compare_normalized_rows_to_definition.R"
 
 
 def _r_dependencies_available() -> bool:
@@ -332,6 +333,222 @@ def test_r_inspection_helper_compares_two_runs_at_table_definition_stage(tmp_pat
     assert "Age at baseline" in result.stdout
     assert "DKD case status" in result.stdout
     assert "different" in result.stdout
+
+
+def test_r_compare_normalized_rows_to_definition_supports_one_based_table_index(tmp_path) -> None:
+    """The standalone R helper should compare normalized labels to definition labels for any saved table."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "compare_rows" / "papers" / "paper"
+    context_dir = paper_dir / "table_contexts"
+    context_dir.mkdir(parents=True)
+
+    (paper_dir / "extracted_tables.json").write_text(
+        json.dumps(
+            [
+                {
+                    "table_id": "tbl-1",
+                    "source_pdf": "paper.pdf",
+                    "page_num": 5,
+                    "title": "Table 1",
+                    "caption": "Example one",
+                    "n_rows": 3,
+                    "n_cols": 2,
+                    "cells": [],
+                    "extraction_backend": "pymupdf4llm",
+                },
+                {
+                    "table_id": "tbl-2",
+                    "source_pdf": "paper.pdf",
+                    "page_num": 6,
+                    "title": "Table 2",
+                    "caption": "Example two",
+                    "n_rows": 4,
+                    "n_cols": 2,
+                    "cells": [],
+                    "extraction_backend": "pymupdf4llm",
+                },
+            ],
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (paper_dir / "normalized_tables.json").write_text(
+        json.dumps(
+            [
+                {
+                    "table_id": "tbl-1",
+                    "title": "Table 1",
+                    "caption": "Example one",
+                    "header_rows": [0],
+                    "body_rows": [1],
+                    "row_views": [
+                        {
+                            "row_idx": 1,
+                            "raw_cells": ["Age, years", "52.1"],
+                            "first_cell_raw": "Age, years",
+                            "first_cell_normalized": "Age years",
+                            "first_cell_alpha_only": "Age years",
+                            "nonempty_cell_count": 2,
+                            "numeric_cell_count": 1,
+                            "has_trailing_values": True,
+                            "indent_level": 0,
+                            "likely_role": "variable",
+                        }
+                    ],
+                    "n_rows": 3,
+                    "n_cols": 2,
+                    "metadata": {"cleaned_rows": [["Characteristic", "Overall"], ["Age, years", "52.1"]]},
+                },
+                {
+                    "table_id": "tbl-2",
+                    "title": "Table 2",
+                    "caption": "Example two",
+                    "header_rows": [0],
+                    "body_rows": [1, 2, 3],
+                    "row_views": [
+                        {
+                            "row_idx": 1,
+                            "raw_cells": ["Body mass index (kg/m2), mean (SD)", "27.5"],
+                            "first_cell_raw": "Body mass index (kg/m2), mean (SD)",
+                            "first_cell_normalized": "Body mass index kg m2 mean SD",
+                            "first_cell_alpha_only": "Body mass index kg m mean SD",
+                            "nonempty_cell_count": 2,
+                            "numeric_cell_count": 1,
+                            "has_trailing_values": True,
+                            "indent_level": 0,
+                            "likely_role": "variable",
+                        },
+                        {
+                            "row_idx": 2,
+                            "raw_cells": ["Smoking status, n (%)", ""],
+                            "first_cell_raw": "Smoking status, n (%)",
+                            "first_cell_normalized": "Smoking status n",
+                            "first_cell_alpha_only": "Smoking status n",
+                            "nonempty_cell_count": 1,
+                            "numeric_cell_count": 0,
+                            "has_trailing_values": False,
+                            "indent_level": 0,
+                            "likely_role": "variable",
+                        },
+                        {
+                            "row_idx": 3,
+                            "raw_cells": ["Current", "14"],
+                            "first_cell_raw": "Current",
+                            "first_cell_normalized": "Current",
+                            "first_cell_alpha_only": "Current",
+                            "nonempty_cell_count": 2,
+                            "numeric_cell_count": 1,
+                            "has_trailing_values": True,
+                            "indent_level": 2,
+                            "likely_role": "level",
+                        },
+                    ],
+                    "n_rows": 4,
+                    "n_cols": 2,
+                    "metadata": {
+                        "cleaned_rows": [
+                            ["Characteristic", "Overall"],
+                            ["Body mass index (kg/m2), mean (SD)", "27.5"],
+                            ["Smoking status, n (%)", ""],
+                            ["Current", "14"],
+                        ]
+                    },
+                },
+            ],
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (paper_dir / "table_definitions.json").write_text(
+        json.dumps(
+            [
+                {
+                    "table_id": "tbl-1",
+                    "title": "Table 1",
+                    "caption": "Example one",
+                    "variables": [
+                        {
+                            "variable_name": "Age years",
+                            "variable_label": "Age, years",
+                            "variable_type": "continuous",
+                            "row_start": 1,
+                            "row_end": 1,
+                            "levels": [],
+                            "confidence": 0.9,
+                        }
+                    ],
+                    "column_definition": {"columns": [], "confidence": 0.9},
+                    "notes": [],
+                    "overall_confidence": 0.9,
+                },
+                {
+                    "table_id": "tbl-2",
+                    "title": "Table 2",
+                    "caption": "Example two",
+                    "variables": [
+                        {
+                            "variable_name": "Body mass index",
+                            "variable_label": "Body mass index (kg/m2), mean (SD)",
+                            "variable_type": "continuous",
+                            "row_start": 1,
+                            "row_end": 1,
+                            "levels": [],
+                            "confidence": 0.9,
+                        },
+                        {
+                            "variable_name": "Smoking status",
+                            "variable_label": "Smoking status, n (%)",
+                            "variable_type": "categorical",
+                            "row_start": 2,
+                            "row_end": 3,
+                            "levels": [
+                                {
+                                    "level_name": "Current",
+                                    "level_label": "Current",
+                                    "row_idx": 3,
+                                    "confidence": 0.9,
+                                }
+                            ],
+                            "confidence": 0.9,
+                        },
+                    ],
+                    "column_definition": {"columns": [], "confidence": 0.9},
+                    "notes": [],
+                    "overall_confidence": 0.9,
+                },
+            ],
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (paper_dir / "paper_sections.json").write_text("[]", encoding="utf-8")
+    (paper_dir / "paper_markdown.md").write_text("", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_COMPARE_SCRIPT}"); '
+                f'cmp <- compare_normalized_rows_to_definition("{paper_dir}", table_index = 2L); '
+                'print(cmp)'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Body mass index kg m2 mean SD" in result.stdout
+    assert "Body mass index (kg/m2), mean (SD)" in result.stdout
+    assert "Body mass index" in result.stdout
+    assert "Smoking status n" in result.stdout
+    assert "Smoking status" in result.stdout
+    assert "Current" in result.stdout
 
 
 def test_r_inspection_resolves_sparse_llm_definitions_by_table_id(tmp_path) -> None:
