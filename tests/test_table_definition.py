@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from table1_parser.heuristics.table_definition_builder import build_table_definition
+from table1_parser.heuristics.table_definition_rows import _level_name, _variable_name
 from table1_parser.schemas import NormalizedTable, RowView, TableDefinition
 from table1_parser.validation.table_definition import validate_table_definition
 
@@ -91,6 +92,76 @@ def test_build_table_definition_carries_rotated_layout_note() -> None:
     definition = build_table_definition(table)
 
     assert "rotated_table_layout" in definition.notes
+
+
+def test_build_table_definition_preserves_numeric_threshold_and_range_level_names() -> None:
+    """Level names should preserve comparator and range syntax, unlike variable names."""
+    table = NormalizedTable(
+        table_id="tbl-thresholds",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Protein/creatinine ratio, n (%)", []),
+            _build_row(2, "< 1.3", ["12 (10.0)"], indent_level=2),
+            _build_row(3, "1.3-1.8", ["25 (20.8)"], indent_level=2),
+            _build_row(4, ">1.8", ["83 (69.2)"], indent_level=2),
+        ],
+        n_rows=5,
+        n_cols=2,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall"],
+                ["Protein/creatinine ratio, n (%)", ""],
+                ["< 1.3", "12 (10.0)"],
+                ["1.3-1.8", "25 (20.8)"],
+                [">1.8", "83 (69.2)"],
+            ]
+        },
+    )
+
+    definition = build_table_definition(table)
+
+    assert definition.variables[0].variable_name == "Protein creatinine ratio"
+    assert [level.level_name for level in definition.variables[0].levels] == ["< 1.3", "1.3-1.8", ">1.8"]
+    assert [level.level_label for level in definition.variables[0].levels] == ["< 1.3", "1.3-1.8", ">1.8"]
+
+
+def test_build_table_definition_preserves_textual_comparator_level_names() -> None:
+    """Level names should keep comparator-prefixed textual categories distinct."""
+    table = NormalizedTable(
+        table_id="tbl-education",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Education, n (%)", []),
+            _build_row(2, "<High school", ["15 (12.0)"], indent_level=2),
+            _build_row(3, ">High school", ["110 (88.0)"], indent_level=2),
+        ],
+        n_rows=4,
+        n_cols=2,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall"],
+                ["Education, n (%)", ""],
+                ["<High school", "15 (12.0)"],
+                [">High school", "110 (88.0)"],
+            ]
+        },
+    )
+
+    definition = build_table_definition(table)
+
+    assert definition.variables[0].variable_name == "Education"
+    assert [level.level_name for level in definition.variables[0].levels] == ["<High school", ">High school"]
+    assert [level.level_label for level in definition.variables[0].levels] == ["<High school", ">High school"]
+
+
+def test_variable_and_level_name_helpers_use_different_normalization_rules() -> None:
+    """Variable-row names strip summary/unit noise, while level names preserve semantic punctuation."""
+    assert _variable_name("Age, years, mean (SD)") == "Age years"
+    assert _level_name("< 1.3") == "< 1.3"
+    assert _level_name("1.3-1.8") == "1.3-1.8"
+    assert _level_name(">High school") == ">High school"
 
 
 def test_validate_table_definition_rejects_invalid_level_row() -> None:

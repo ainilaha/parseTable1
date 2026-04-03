@@ -20,7 +20,9 @@ Suggested fields:
 Notes:
 
 - `level_label` preserves the paper-facing label
-- `level_name` is the normalized matching-friendly form
+- `level_name` is the matching-friendly form used for downstream level matching
+- unlike `variable_name`, `level_name` must preserve meaning-bearing comparator and range syntax such as `< 1.3`, `1.3-1.8`, and `>1.8`
+- this also applies to comparator-prefixed textual levels such as `<High school` and `>High school`
 
 ### `DefinedVariable`
 
@@ -42,6 +44,8 @@ Notes:
 
 - `variable_label` is the printed label from the paper
 - `variable_name` is the normalized label used for downstream matching
+- `variable_name` may strip summary/unit decorations from variable rows, such as `n (%)`, `mean (SD)`, or parenthetical unit suffixes, before normalization
+- this variable-row stripping behavior does not apply to `level_name`
 - `units_hint` can capture things like `years` or `kg/m2`
 - `summary_style_hint` can capture cues such as `mean_sd`, `median_iqr`, or `count_pct`
 

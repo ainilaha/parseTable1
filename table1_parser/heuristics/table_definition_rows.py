@@ -33,7 +33,7 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
         parent_row = row_views_by_idx[block.variable_row_idx]
         levels = [
             DefinedLevel(
-                level_name=_variable_name(row_views_by_idx[row_idx].first_cell_raw),
+                level_name=_level_name(row_views_by_idx[row_idx].first_cell_raw),
                 level_label=row_views_by_idx[row_idx].first_cell_raw,
                 row_idx=row_idx,
                 confidence=0.92,
@@ -58,7 +58,7 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
 
 
 def _variable_name(label: str) -> str:
-    """Return a matching-friendly variable or level name."""
+    """Return a matching-friendly variable name for parent variable rows."""
     cleaned = clean_text(label)
     without_suffix = SUMMARY_SUFFIX_PATTERN.sub("", cleaned).strip(" ,")
     without_paren_units = PAREN_UNITS_PATTERN.sub("", without_suffix).strip(" ,")
@@ -66,6 +66,11 @@ def _variable_name(label: str) -> str:
     if normalized:
         return normalized
     return normalize_label_text(cleaned)
+
+
+def _level_name(label: str) -> str:
+    """Return a level name while preserving punctuation that changes category meaning."""
+    return clean_text(label)
 
 
 def _units_hint(label: str) -> str | None:
@@ -106,7 +111,11 @@ def _variable_type(variable_kind: str, levels: list[DefinedLevel]) -> str:
     if variable_kind == "continuous":
         return "continuous"
     if levels:
-        level_names = {level.level_name.lower() for level in levels}
+        level_names = {
+            normalize_label_text(level.level_name).lower()
+            for level in levels
+            if normalize_label_text(level.level_name)
+        }
         if frozenset(level_names) in KNOWN_BINARY_LEVELS:
             return "binary"
         return "categorical"

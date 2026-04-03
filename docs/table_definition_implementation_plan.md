@@ -62,11 +62,13 @@ Each row variable should preserve both:
 
 - the printed label from the paper
 - a normalized label suitable for matching to database fields
+- for variable rows, that matching label may strip summary-style and unit decorations such as `n (%)`, `mean (SD)`, or parenthetical units
 
 Each categorical level should preserve both:
 
 - the printed level label
 - a normalized label suitable for matching to coded category values
+- that level matching label must still preserve meaning-bearing comparator and range syntax such as `< 1.3`, `1.3-1.8`, `>1.8`, `<High school`, and `>High school`
 
 Each column should preserve both:
 
@@ -120,6 +122,11 @@ Infer at least:
 - level rows
 - section/header-like rows inside the body
 - count rows such as `n`
+
+Row-name normalization should differ by row role:
+
+- variable-row matching names may simplify paper labels for search and downstream matching
+- level-row matching names must not collapse semantically distinct thresholds, ranges, or comparator-prefixed categories
 
 Expected row outcomes:
 

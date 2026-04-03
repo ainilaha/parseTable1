@@ -56,6 +56,7 @@ For categorical variables, it should include:
 - parent variable label
 - level labels
 - source row indices
+- level matching names that do not collapse semantically distinct thresholds, ranges, or comparator-prefixed categories
 
 For columns, it should include:
 
@@ -90,6 +91,7 @@ That downstream tool should be able to use `TableDefinition` to:
 - preserve source row and column indices
 - preserve original printed labels
 - include normalized labels for matching
+- preserve meaning-bearing comparator and range syntax in categorical level matching names
 - remain independent from cell-value extraction
 - remain compatible with deterministic-first parsing
 - allow later LLM refinement only for semantic ambiguity

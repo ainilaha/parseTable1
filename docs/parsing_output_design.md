@@ -278,6 +278,8 @@ Design intent:
 - stay value-free so database-matching and query-building can happen before value parsing
 - keep row and column references tied to the normalized table index space
 - provide a deterministic baseline before optional LLM refinement is introduced
+- keep `variable_name` search-oriented for variable rows, including stripping summary/unit decorations where useful
+- keep `level_name` semantically distinct for categorical levels, preserving threshold and range syntax such as `< 1.3`, `1.3-1.8`, and `>1.8`
 
 ## 4. Paper Context Artifacts
 
