@@ -6,21 +6,16 @@ from pathlib import Path
 from typing import Any
 
 
-def _import_pymupdf() -> Any:
-    """Import pymupdf lazily so package imports remain lightweight."""
-    try:
-        import pymupdf
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError("pymupdf is required for PyMuPDF geometry extraction.") from exc
-    return pymupdf
-
-
 def open_pymupdf_document(pdf_path: str) -> Any:
     """Open a PDF with PyMuPDF."""
     path = Path(pdf_path)
     if not path.exists():
         raise FileNotFoundError(f"PDF not found: {pdf_path}")
-    return _import_pymupdf().open(path)
+    try:
+        import pymupdf
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError("pymupdf is required for PyMuPDF geometry extraction.") from exc
+    return pymupdf.open(path)
 
 
 def extract_page_text(page: Any) -> str:
@@ -65,7 +60,15 @@ def extract_page_chars(page: Any) -> list[dict[str, object]]:
         for line in block.get("lines", []):
             for span in line.get("spans", []):
                 for char in span.get("chars", []):
-                    bbox = _coerce_rect(char.get("bbox"))
+                    bbox_value = char.get("bbox")
+                    if bbox_value is None:
+                        bbox = None
+                    elif all(hasattr(bbox_value, attr) for attr in ("x0", "y0", "x1", "y1")):
+                        bbox = (float(bbox_value.x0), float(bbox_value.y0), float(bbox_value.x1), float(bbox_value.y1))
+                    elif isinstance(bbox_value, (list, tuple)) and len(bbox_value) == 4:
+                        bbox = tuple(float(part) for part in bbox_value)
+                    else:
+                        bbox = None
                     if bbox is None:
                         continue
                     chars.append(
@@ -88,11 +91,24 @@ def extract_page_rule_segments(page: Any) -> list[tuple[float, float, float, flo
         return []
     segments: list[tuple[float, float, float, float]] = []
     for drawing in drawings:
-        rect = _coerce_rect(drawing.get("rect"))
+        rect_value = drawing.get("rect")
+        if rect_value is None:
+            rect = None
+        elif all(hasattr(rect_value, attr) for attr in ("x0", "y0", "x1", "y1")):
+            rect = (float(rect_value.x0), float(rect_value.y0), float(rect_value.x1), float(rect_value.y1))
+        elif isinstance(rect_value, (list, tuple)) and len(rect_value) == 4:
+            rect = (float(rect_value[0]), float(rect_value[1]), float(rect_value[2]), float(rect_value[3]))
+        else:
+            rect = None
         if rect is not None:
             segments.append(rect)
         for item in drawing.get("items", []):
-            segment = _coerce_line_item(item)
+            if not isinstance(item, tuple) or len(item) < 3 or item[0] != "l":
+                segment = None
+            else:
+                start = _coerce_point(item[1])
+                end = _coerce_point(item[2])
+                segment = None if start is None or end is None else (start[0], start[1], end[0], end[1])
             if segment is not None:
                 segments.append(segment)
     return segments
@@ -117,28 +133,6 @@ def extract_clipped_line_directions(
                 continue
             directions.append((float(direction[0]), float(direction[1])))
     return directions
-
-
-def _coerce_rect(value: Any) -> tuple[float, float, float, float] | None:
-    """Convert a rect-like object to a tuple."""
-    if value is None:
-        return None
-    if all(hasattr(value, attr) for attr in ("x0", "y0", "x1", "y1")):
-        return (float(value.x0), float(value.y0), float(value.x1), float(value.y1))
-    if isinstance(value, (list, tuple)) and len(value) == 4:
-        return tuple(float(part) for part in value)
-    return None
-
-
-def _coerce_line_item(item: Any) -> tuple[float, float, float, float] | None:
-    """Convert a PyMuPDF drawing line item to a segment tuple."""
-    if not isinstance(item, tuple) or len(item) < 3 or item[0] != "l":
-        return None
-    start = _coerce_point(item[1])
-    end = _coerce_point(item[2])
-    if start is None or end is None:
-        return None
-    return (start[0], start[1], end[0], end[1])
 
 
 def _coerce_point(value: Any) -> tuple[float, float] | None:

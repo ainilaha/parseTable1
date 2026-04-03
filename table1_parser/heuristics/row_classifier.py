@@ -33,16 +33,6 @@ def _trailing_cells(row_view: RowView) -> list[str]:
     return [clean_text(cell) for cell in row_view.raw_cells[1:] if clean_text(cell)]
 
 
-def _trailing_numeric_count(row_view: RowView) -> int:
-    """Count numeric-looking trailing cells without relying on full parsing."""
-    return sum(any(char.isdigit() for char in cell) for cell in row_view.raw_cells[1:] if cell)
-
-
-def _nonempty_trailing_count(row_view: RowView) -> int:
-    """Count populated trailing cells after the first label column."""
-    return len(_trailing_cells(row_view))
-
-
 def _has_categorical_parent_cue(row_view: RowView) -> bool:
     """Return whether the row text explicitly signals a categorical parent."""
     return bool(CATEGORICAL_PARENT_CUE_PATTERN.search(row_view.first_cell_raw))
@@ -51,27 +41,6 @@ def _has_categorical_parent_cue(row_view: RowView) -> bool:
 def _summary_like_trailing_count(trailing_cells: Sequence[str]) -> int:
     """Count trailing cells that look like summary statistics rather than category counts."""
     return sum("±" in cell or bool(DECIMAL_SUMMARY_PATTERN.match(cell)) for cell in trailing_cells)
-
-
-def _integer_only_trailing_count(trailing_cells: Sequence[str]) -> int:
-    """Count trailing cells that contain plain integer values."""
-    return sum(bool(INTEGER_VALUE_PATTERN.match(cell)) for cell in trailing_cells)
-
-
-def _count_like_trailing_count(trailing_cells: Sequence[str]) -> int:
-    """Count trailing cells that look like plain integer-like counts."""
-    return sum(bool(COUNT_LIKE_VALUE_PATTERN.match(cell)) for cell in trailing_cells)
-
-
-def _has_continuous_cue(row_view: RowView) -> bool:
-    """Return whether the row text or values resemble a continuous summary."""
-    trailing_cells = _trailing_cells(row_view)
-    if CONTINUOUS_TEXT_CUE_PATTERN.search(row_view.first_cell_raw):
-        return True
-    if CONTINUOUS_TEXT_CUE_PATTERN.search(" ".join(trailing_cells)):
-        return True
-    summary_like_cells = _summary_like_trailing_count(trailing_cells)
-    return bool(trailing_cells) and summary_like_cells >= max(1, len(trailing_cells) // 2 + 1)
 
 
 def _has_strong_continuous_cue(row_view: RowView) -> bool:
@@ -84,50 +53,6 @@ def _has_strong_continuous_layout(row_view: RowView) -> bool:
     return _has_strong_continuous_cue(row_view) or _summary_like_trailing_count(_trailing_cells(row_view)) >= 2
 
 
-def _looks_n_count_row(
-    row_view: RowView,
-    child_level_count: int = 0,
-    has_categorical_parent_cue: bool = False,
-) -> bool:
-    """Return whether a compact n/N row should behave as a one-row count summary."""
-    label = row_view.first_cell_normalized.strip()
-    trailing_cells = _trailing_cells(row_view)
-    count_like_cells = _count_like_trailing_count(trailing_cells)
-    return (
-        row_view.has_trailing_values
-        and bool(trailing_cells)
-        and COUNT_LABEL_PATTERN.fullmatch(label) is not None
-        and count_like_cells >= max(1, len(trailing_cells) - 1)
-        and child_level_count <= 1
-        and not has_categorical_parent_cue
-        and not _has_strong_continuous_layout(row_view)
-    )
-
-
-def _looks_inline_category_summary(
-    row_view: RowView,
-    previous_classification: str | None,
-    child_level_count: int = 0,
-) -> bool:
-    """Return whether a row is a complete inline category summary, not a parent block."""
-    raw_label = row_view.first_cell_raw
-    trailing_cells = _trailing_cells(row_view)
-    return (
-        row_view.has_trailing_values
-        and bool(trailing_cells)
-        and INLINE_CATEGORY_SUMMARY_PATTERN.search(raw_label) is not None
-        and ("%" in raw_label or "=" in raw_label)
-        and child_level_count == 0
-        and previous_classification not in {"variable_header", "level_row"}
-        and not _has_strong_continuous_layout(row_view)
-    )
-
-
-def _trailing_is_sparse(row_view: RowView) -> bool:
-    """Return whether the row leaves most trailing cells empty."""
-    return _nonempty_trailing_count(row_view) <= 1
-
-
 def _is_more_indented(row_view: RowView, reference_row: RowView | None) -> bool:
     """Return whether a row is more indented than a nearby reference row."""
     return (
@@ -138,9 +63,12 @@ def _is_more_indented(row_view: RowView, reference_row: RowView | None) -> bool:
     )
 
 
-def _indentation_is_informative_from_rows(row_views: Sequence[RowView]) -> bool:
-    """Return whether indentation varies enough to be useful for this table."""
-    indent_levels = [row_view.indent_level for row_view in row_views if row_view.indent_level is not None]
+def indentation_is_informative(table: NormalizedTable) -> bool:
+    """Return whether indentation should influence heuristics for this table."""
+    configured = table.metadata.get("indentation_informative")
+    if isinstance(configured, bool):
+        return configured
+    indent_levels = [row_view.indent_level for row_view in table.row_views if row_view.indent_level is not None]
     if len(indent_levels) < 3:
         return False
     baseline = min(indent_levels)
@@ -148,75 +76,6 @@ def _indentation_is_informative_from_rows(row_views: Sequence[RowView]) -> bool:
     if len(meaningful_offsets) < 2:
         return False
     return len(set(indent_levels)) >= 2
-
-
-def indentation_is_informative(table: NormalizedTable) -> bool:
-    """Return whether indentation should influence heuristics for this table."""
-    configured = table.metadata.get("indentation_informative")
-    if isinstance(configured, bool):
-        return configured
-    return _indentation_is_informative_from_rows(table.row_views)
-
-
-def _is_strong_variable_boundary(row_view: RowView) -> bool:
-    """Return whether a row strongly suggests the start of a different variable block."""
-    return (
-        not row_view.has_trailing_values
-        or _has_categorical_parent_cue(row_view)
-        or _has_strong_continuous_cue(row_view)
-    )
-
-
-def _count_plausible_child_levels(following_row_views: Sequence[RowView]) -> int:
-    """Count plausible child levels until the next strong variable boundary."""
-    child_level_count = 0
-    for next_row in following_row_views:
-        if is_likely_level_row(next_row):
-            child_level_count += 1
-            continue
-        if child_level_count > 0 or _is_strong_variable_boundary(next_row):
-            break
-    return child_level_count
-
-
-def _count_more_indented_child_levels(
-    parent_row_view: RowView,
-    following_row_views: Sequence[RowView],
-) -> int:
-    """Count plausible child levels that are also more indented than the parent."""
-    child_level_count = 0
-    for next_row in following_row_views:
-        if is_likely_level_row(next_row):
-            if _is_more_indented(next_row, parent_row_view):
-                child_level_count += 1
-            continue
-        if child_level_count > 0 or _is_strong_variable_boundary(next_row):
-            break
-    return child_level_count
-
-
-def _looks_continuous(
-    row_view: RowView,
-    child_level_count: int = 0,
-    has_categorical_parent_cue: bool = False,
-) -> bool:
-    """Return whether a row resembles a one-line continuous-variable summary."""
-    label = row_view.first_cell_normalized
-    trailing_cells = _trailing_cells(row_view)
-    trailing_numeric = _trailing_numeric_count(row_view)
-    strong_continuous_layout = _has_strong_continuous_layout(row_view)
-    return (
-        row_view.has_trailing_values
-        and bool(trailing_cells)
-        and (strong_continuous_layout or child_level_count < 2)
-        and not has_categorical_parent_cue
-        and _has_continuous_cue(row_view)
-        and (
-            trailing_numeric >= max(2, len(trailing_cells) // 2 + 1)
-            or (len(trailing_cells) == 1 and "(" in trailing_cells[0])
-        )
-        and not is_common_level_label(label)
-    )
 
 
 def _looks_scalar_count_row(
@@ -227,7 +86,7 @@ def _looks_scalar_count_row(
     """Return whether a short label with integer counts should behave as a one-row variable."""
     label = row_view.first_cell_normalized
     trailing_cells = _trailing_cells(row_view)
-    integer_only_count = _integer_only_trailing_count(trailing_cells)
+    integer_only_count = sum(bool(INTEGER_VALUE_PATTERN.match(cell)) for cell in trailing_cells)
     word_count = len(label.split())
     return (
         row_view.has_trailing_values
@@ -239,28 +98,6 @@ def _looks_scalar_count_row(
         and word_count <= 2
         and len(label) <= 16
         and integer_only_count == len(trailing_cells)
-    )
-
-
-def _looks_like_level_continuation(
-    row_view: RowView,
-    child_level_count: int,
-    strong_continuous_layout: bool,
-    categorical_parent_cue: bool,
-) -> bool:
-    """Return whether a row should continue an existing categorical run."""
-    trailing_numeric = _trailing_numeric_count(row_view)
-    sparse_trailing = _trailing_is_sparse(row_view)
-    return (
-        row_view.has_trailing_values
-        and not categorical_parent_cue
-        and not strong_continuous_layout
-        and not _looks_scalar_count_row(
-            row_view,
-            child_level_count=child_level_count,
-            has_categorical_parent_cue=categorical_parent_cue,
-        )
-        and not (sparse_trailing and child_level_count >= 2 and trailing_numeric > 0)
     )
 
 
@@ -276,27 +113,74 @@ def classify_row(
     label = row_view.first_cell_normalized
     word_count = len(label.split())
     trailing_cells = _trailing_cells(row_view)
-    trailing_numeric = _trailing_numeric_count(row_view)
+    trailing_numeric = sum(any(char.isdigit() for char in cell) for cell in row_view.raw_cells[1:] if cell)
     next_is_level_like = bool(next_row_view and is_likely_level_row(next_row_view))
     categorical_parent_cue = _has_categorical_parent_cue(row_view)
-    child_level_count = _count_plausible_child_levels(following_row_views or [])
+    child_level_count = 0
+    for next_row in following_row_views or []:
+        if is_likely_level_row(next_row):
+            child_level_count += 1
+            continue
+        if (
+            child_level_count > 0
+            or not next_row.has_trailing_values
+            or _has_categorical_parent_cue(next_row)
+            or _has_strong_continuous_cue(next_row)
+        ):
+            break
     indented_child_level_count = (
-        _count_more_indented_child_levels(row_view, following_row_views or [])
+        sum(
+            1
+            for next_row in following_row_views or []
+            if is_likely_level_row(next_row) and _is_more_indented(next_row, row_view)
+        )
         if indentation_informative
         else 0
     )
     strong_continuous_layout = _has_strong_continuous_layout(row_view)
-    sparse_trailing = _trailing_is_sparse(row_view)
+    sparse_trailing = len(trailing_cells) <= 1
     more_indented_than_previous = indentation_informative and _is_more_indented(row_view, previous_row_view)
+    looks_n_count_row = (
+        row_view.has_trailing_values
+        and bool(trailing_cells)
+        and COUNT_LABEL_PATTERN.fullmatch(label.strip()) is not None
+        and sum(bool(COUNT_LIKE_VALUE_PATTERN.match(cell)) for cell in trailing_cells) >= max(1, len(trailing_cells) - 1)
+        and child_level_count <= 1
+        and not categorical_parent_cue
+        and not strong_continuous_layout
+    )
+    looks_inline_category_summary = (
+        row_view.has_trailing_values
+        and bool(trailing_cells)
+        and INLINE_CATEGORY_SUMMARY_PATTERN.search(row_view.first_cell_raw) is not None
+        and ("%" in row_view.first_cell_raw or "=" in row_view.first_cell_raw)
+        and child_level_count == 0
+        and previous_classification not in {"variable_header", "level_row"}
+        and not strong_continuous_layout
+    )
+    has_continuous_cue = (
+        bool(CONTINUOUS_TEXT_CUE_PATTERN.search(row_view.first_cell_raw))
+        or bool(CONTINUOUS_TEXT_CUE_PATTERN.search(" ".join(trailing_cells)))
+        or (
+            bool(trailing_cells)
+            and _summary_like_trailing_count(trailing_cells) >= max(1, len(trailing_cells) // 2 + 1)
+        )
+    )
+    looks_like_level_continuation = (
+        row_view.has_trailing_values
+        and not categorical_parent_cue
+        and not strong_continuous_layout
+        and not _looks_scalar_count_row(
+            row_view,
+            child_level_count=child_level_count,
+            has_categorical_parent_cue=categorical_parent_cue,
+        )
+        and not (sparse_trailing and child_level_count >= 2 and trailing_numeric > 0)
+    )
 
     if (
         previous_classification in {"variable_header", "level_row"}
-        and _looks_like_level_continuation(
-            row_view,
-            child_level_count=child_level_count,
-            strong_continuous_layout=strong_continuous_layout,
-            categorical_parent_cue=categorical_parent_cue,
-        )
+        and looks_like_level_continuation
     ):
         return RowClassification(
             row_idx=row_view.row_idx,
@@ -311,22 +195,14 @@ def classify_row(
             confidence=0.92,
         )
 
-    if _looks_n_count_row(
-        row_view,
-        child_level_count=child_level_count,
-        has_categorical_parent_cue=categorical_parent_cue,
-    ):
+    if looks_n_count_row:
         return RowClassification(
             row_idx=row_view.row_idx,
             classification="continuous_variable_row",
             confidence=0.84,
         )
 
-    if _looks_inline_category_summary(
-        row_view,
-        previous_classification=previous_classification,
-        child_level_count=child_level_count,
-    ):
+    if looks_inline_category_summary:
         return RowClassification(
             row_idx=row_view.row_idx,
             classification="continuous_variable_row",
@@ -357,10 +233,17 @@ def classify_row(
             confidence=0.9 if categorical_parent_cue and child_level_count >= 2 else (0.88 if indented_child_level_count >= 2 else 0.84),
         )
 
-    if _looks_continuous(
-        row_view,
-        child_level_count=child_level_count,
-        has_categorical_parent_cue=categorical_parent_cue,
+    if (
+        row_view.has_trailing_values
+        and bool(trailing_cells)
+        and (strong_continuous_layout or child_level_count < 2)
+        and not categorical_parent_cue
+        and has_continuous_cue
+        and (
+            trailing_numeric >= max(2, len(trailing_cells) // 2 + 1)
+            or (len(trailing_cells) == 1 and "(" in trailing_cells[0])
+        )
+        and not is_common_level_label(label)
     ):
         return RowClassification(
             row_idx=row_view.row_idx,

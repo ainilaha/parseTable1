@@ -38,7 +38,49 @@ def build_llm_semantic_input_payload(
         caption=table.caption,
         header_rows=header_rows,
         body_rows=body_rows,
-        deterministic_table_definition=_semantic_definition_input(deterministic_table_definition),
+        deterministic_table_definition=TableDefinition(
+            table_id=deterministic_table_definition.table_id,
+            title=deterministic_table_definition.title,
+            caption=deterministic_table_definition.caption,
+            variables=[
+                DefinedVariable(
+                    variable_name=variable.variable_name,
+                    variable_label=variable.variable_label,
+                    variable_type=variable.variable_type,
+                    row_start=variable.row_start,
+                    row_end=variable.row_end,
+                    levels=[
+                        DefinedLevel(
+                            level_name=level.level_name,
+                            level_label=level.level_label,
+                            row_idx=level.row_idx,
+                            confidence=level.confidence,
+                        )
+                        for level in variable.levels
+                    ],
+                    confidence=variable.confidence,
+                )
+                for variable in deterministic_table_definition.variables
+            ],
+            column_definition=ColumnDefinition(
+                grouping_label=deterministic_table_definition.column_definition.grouping_label,
+                grouping_name=deterministic_table_definition.column_definition.grouping_name,
+                columns=[
+                    DefinedColumn(
+                        col_idx=column.col_idx,
+                        column_name=column.column_name,
+                        column_label=column.column_label,
+                        inferred_role=column.inferred_role,
+                        grouping_variable_hint=column.grouping_variable_hint,
+                        confidence=column.confidence,
+                    )
+                    for column in deterministic_table_definition.column_definition.columns
+                ],
+                confidence=deterministic_table_definition.column_definition.confidence,
+            ),
+            notes=list(deterministic_table_definition.notes),
+            overall_confidence=deterministic_table_definition.overall_confidence,
+        ),
         retrieved_context=retrieved_context,
     )
 
@@ -64,50 +106,3 @@ def _indexed_rows(cleaned_rows: object, row_indices: list[int]) -> list[LLMIndex
         for row_idx in row_indices
         if row_idx < len(cleaned_rows) and isinstance(cleaned_rows[row_idx], list)
     ]
-
-
-def _semantic_definition_input(definition: TableDefinition) -> TableDefinition:
-    """Strip deterministic hints that the semantic LLM should not spend effort re-deriving."""
-    return TableDefinition(
-        table_id=definition.table_id,
-        title=definition.title,
-        caption=definition.caption,
-        variables=[
-            DefinedVariable(
-                variable_name=variable.variable_name,
-                variable_label=variable.variable_label,
-                variable_type=variable.variable_type,
-                row_start=variable.row_start,
-                row_end=variable.row_end,
-                levels=[
-                    DefinedLevel(
-                        level_name=level.level_name,
-                        level_label=level.level_label,
-                        row_idx=level.row_idx,
-                        confidence=level.confidence,
-                    )
-                    for level in variable.levels
-                ],
-                confidence=variable.confidence,
-            )
-            for variable in definition.variables
-        ],
-        column_definition=ColumnDefinition(
-            grouping_label=definition.column_definition.grouping_label,
-            grouping_name=definition.column_definition.grouping_name,
-            columns=[
-                DefinedColumn(
-                    col_idx=column.col_idx,
-                    column_name=column.column_name,
-                    column_label=column.column_label,
-                    inferred_role=column.inferred_role,
-                    grouping_variable_hint=column.grouping_variable_hint,
-                    confidence=column.confidence,
-                )
-                for column in definition.column_definition.columns
-            ],
-            confidence=definition.column_definition.confidence,
-        ),
-        notes=list(definition.notes),
-        overall_confidence=definition.overall_confidence,
-    )

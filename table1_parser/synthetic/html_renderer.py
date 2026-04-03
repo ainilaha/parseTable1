@@ -7,20 +7,6 @@ from html import escape
 from table1_parser.synthetic.spec_models import SyntheticDocumentSpec, SyntheticDisplayRow, expand_display_rows, spec_to_json
 
 
-def _render_row(row: SyntheticDisplayRow, n_cols: int, wrapped_labels: bool) -> str:
-    row_classes = ["table-row", f"row-{row.row_type}"]
-    if row.indent_level:
-        row_classes.append("level-indented")
-    label_class = "label-cell wrap-label" if wrapped_labels else "label-cell"
-    label_style = f' style="padding-left: {row.indent_level * 1.5:.1f}rem;"' if row.indent_level else ""
-    cells = [f'<td class="{label_class}"{label_style}>{escape(row.label)}</td>']
-    for value in row.values[: n_cols - 1]:
-        cells.append(f"<td>{escape(value)}</td>")
-    while len(cells) < n_cols:
-        cells.append("<td></td>")
-    return f'<tr class="{" ".join(row_classes)}">{"".join(cells)}</tr>'
-
-
 def render_html_document(spec: SyntheticDocumentSpec) -> str:
     """Return an HTML document for a synthetic Table 1-style PDF source."""
 
@@ -30,7 +16,20 @@ def render_html_document(spec: SyntheticDocumentSpec) -> str:
     paragraphs_html = "".join(f"<p>{escape(paragraph)}</p>" for paragraph in spec.paragraphs)
     subtitle_html = f'<p class="subtitle">{escape(spec.subtitle)}</p>' if spec.subtitle else ""
     footnotes_html = "".join(f"<li>{escape(note)}</li>" for note in spec.footnotes)
-    rows_html = "".join(_render_row(row, n_cols=n_cols, wrapped_labels=spec.layout.wrapped_labels) for row in display_rows)
+    row_html_parts: list[str] = []
+    for row in display_rows:
+        row_classes = ["table-row", f"row-{row.row_type}"]
+        if row.indent_level:
+            row_classes.append("level-indented")
+        label_class = "label-cell wrap-label" if spec.layout.wrapped_labels else "label-cell"
+        label_style = f' style="padding-left: {row.indent_level * 1.5:.1f}rem;"' if row.indent_level else ""
+        cells = [f'<td class="{label_class}"{label_style}>{escape(row.label)}</td>']
+        for value in row.values[: n_cols - 1]:
+            cells.append(f"<td>{escape(value)}</td>")
+        while len(cells) < n_cols:
+            cells.append("<td></td>")
+        row_html_parts.append(f'<tr class="{" ".join(row_classes)}">{"".join(cells)}</tr>')
+    rows_html = "".join(row_html_parts)
     columns_html = "".join(f"<th>{escape(column)}</th>" for column in spec.columns)
     embedded_spec = spec_to_json(spec)
     return f"""<!doctype html>

@@ -88,12 +88,22 @@ class LLMSemanticTableDefinitionParser:
         prompt = build_llm_semantic_prompt(payload, schema)
         started_at = _utc_timestamp()
         started_perf = perf_counter()
-        base_monitoring = _base_monitoring_record(
-            table=table,
-            deterministic_table_definition=deterministic_table_definition,
-            retrieved_context=retrieved_context,
-            prompt=prompt,
-            trace_dir=trace_dir,
+        base_monitoring = LLMSemanticCallRecord(
+            table_id=table.table_id,
+            table_index=retrieved_context.table_index,
+            should_run_llm_semantics=True,
+            status="success",
+            trace_dir=str(trace_dir) if trace_dir is not None else None,
+            header_row_count=len(table.header_rows),
+            body_row_count=len(table.body_rows),
+            header_cell_count=table.n_cols * len(table.header_rows),
+            body_cell_count=sum(len(row_view.raw_cells) for row_view in table.row_views),
+            deterministic_variable_count=len(deterministic_table_definition.variables),
+            deterministic_column_count=len(deterministic_table_definition.column_definition.columns),
+            retrieved_passage_count=len(retrieved_context.passages),
+            retrieved_context_char_count=sum(len(passage.text) for passage in retrieved_context.passages),
+            prompt_char_count=len(prompt),
+            prompt_line_count=prompt.count("\n") + 1 if prompt else 0,
         )
         try:
             raw_response = self.client.structured_completion(
@@ -218,34 +228,6 @@ def _write_trace_artifacts(
                 "interpretation": result.model_dump(mode="json", exclude_none=True),
             },
         )
-
-
-def _base_monitoring_record(
-    *,
-    table: NormalizedTable,
-    deterministic_table_definition: TableDefinition,
-    retrieved_context: TableContext,
-    prompt: str,
-    trace_dir: str | Path | None,
-) -> LLMSemanticCallRecord:
-    """Build monitoring metrics known before the provider call starts."""
-    return LLMSemanticCallRecord(
-        table_id=table.table_id,
-        table_index=retrieved_context.table_index,
-        should_run_llm_semantics=True,
-        status="success",
-        trace_dir=str(trace_dir) if trace_dir is not None else None,
-        header_row_count=len(table.header_rows),
-        body_row_count=len(table.body_rows),
-        header_cell_count=table.n_cols * len(table.header_rows),
-        body_cell_count=sum(len(row_view.raw_cells) for row_view in table.row_views),
-        deterministic_variable_count=len(deterministic_table_definition.variables),
-        deterministic_column_count=len(deterministic_table_definition.column_definition.columns),
-        retrieved_passage_count=len(retrieved_context.passages),
-        retrieved_context_char_count=sum(len(passage.text) for passage in retrieved_context.passages),
-        prompt_char_count=len(prompt),
-        prompt_line_count=prompt.count("\n") + 1 if prompt else 0,
-    )
 
 
 def _finalize_monitoring(

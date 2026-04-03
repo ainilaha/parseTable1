@@ -20,11 +20,6 @@ COLUMN_CLUSTER_TOLERANCE = 18.0
 COLLAPSED_LABEL_PATTERN = re.compile(r"[a-z][A-Z]|[A-Za-z-]{8,}")
 
 
-def _vertical_overlap(top_a: float, bottom_a: float, top_b: float, bottom_b: float) -> bool:
-    """Return whether two vertical spans overlap meaningfully."""
-    return min(bottom_a, bottom_b) >= max(top_a, top_b)
-
-
 def detect_horizontal_rules(
     rule_segments: list[tuple[float, float, float, float]] | None,
     bbox: tuple[float, float, float, float] | None,
@@ -56,96 +51,9 @@ def detect_horizontal_rules(
     return deduped
 
 
-def _restore_text_from_chars(chars: list[dict[str, object]]) -> str:
-    """Rebuild text from positioned chars, re-inserting spaces for visible glyph gaps."""
-    if not chars:
-        return ""
-
-    ordered_chars = sorted(chars, key=lambda char: float(char["x0"]))
-    pieces: list[str] = []
-    previous_char: dict[str, object] | None = None
-    for char in ordered_chars:
-        text = str(char.get("text", ""))
-        if not text:
-            continue
-        if previous_char is not None:
-            gap = float(char["x0"]) - float(previous_char["x1"])
-            previous_width = float(previous_char["x1"]) - float(previous_char["x0"])
-            current_width = float(char["x1"]) - float(char["x0"])
-            gap_threshold = max(1.5, min(previous_width, current_width) * 0.6)
-            previous_text = str(previous_char.get("text", ""))
-            if previous_text.isalpha() and text.isalpha() and (previous_text.islower() or text.isupper()):
-                gap_threshold = min(gap_threshold, max(1.2, min(previous_width, current_width) * 0.45))
-            if gap > gap_threshold:
-                pieces.append(" ")
-        pieces.append(text)
-        previous_char = char
-    return "".join(pieces).strip()
-
-
-def _restore_word_text(word: dict[str, object], page_chars: list[dict[str, object]]) -> str:
-    """Restore intra-word spaces from underlying chars when possible."""
-    if not page_chars:
-        return str(word["text"]).strip()
-
-    x0 = float(word["x0"])
-    x1 = float(word["x1"])
-    top = float(word["top"])
-    bottom = float(word["bottom"])
-    chars_in_word = [
-        char
-        for char in page_chars
-        if float(char["x0"]) >= x0 - 0.5
-        and float(char["x1"]) <= x1 + 0.5
-        and _vertical_overlap(top, bottom, float(char["top"]), float(char["bottom"]))
-    ]
-    restored = _restore_text_from_chars(chars_in_word)
-    return restored or str(word["text"]).strip()
-
-
-def _group_words_into_lines(words: list[dict[str, object]]) -> list[dict[str, object]]:
-    """Group positioned words into reading-order lines."""
-    if not words:
-        return []
-
-    lines: list[dict[str, object]] = []
-    for word in sorted(words, key=lambda item: (float(item["top"]), float(item["x0"]))):
-        top = float(word["top"])
-        bottom = float(word["bottom"])
-        if not lines or abs(top - float(lines[-1]["top"])) > LINE_MERGE_TOLERANCE:
-            lines.append({"top": top, "bottom": bottom, "words": [word]})
-            continue
-        lines[-1]["words"].append(word)
-        lines[-1]["bottom"] = max(float(lines[-1]["bottom"]), bottom)
-
-    for line in lines:
-        line["words"] = sorted(line["words"], key=lambda item: float(item["x0"]))
-        line["text"] = " ".join(str(word["text"]).strip() for word in line["words"]).strip()
-    return lines
-
-
-def _cluster_positions(positions: list[float], tolerance: float) -> list[float]:
-    """Cluster x positions into stable column anchors."""
-    if not positions:
-        return []
-
-    clusters: list[list[float]] = [[positions[0]]]
-    for position in positions[1:]:
-        if abs(position - clusters[-1][-1]) <= tolerance:
-            clusters[-1].append(position)
-        else:
-            clusters.append([position])
-    return [sum(cluster) / len(cluster) for cluster in clusters]
-
-
 def _is_numeric_like(text: str) -> bool:
     """Return whether a token looks numeric enough to be a table value."""
     return bool(NUMERIC_TOKEN_PATTERN.search(text))
-
-
-def _looks_like_collapsed_label_token(text: str) -> bool:
-    """Return whether a first-column token likely lost visible word boundaries."""
-    return bool(COLLAPSED_LABEL_PATTERN.search(text))
 
 
 def _build_rows_from_line_segment(
@@ -159,7 +67,16 @@ def _build_rows_from_line_segment(
         for word in line["words"]
         if _is_numeric_like(str(word["text"]))
     )
-    numeric_anchors = _cluster_positions(numeric_positions, COLUMN_CLUSTER_TOLERANCE)
+    if not numeric_positions:
+        numeric_anchors = []
+    else:
+        clusters: list[list[float]] = [[numeric_positions[0]]]
+        for position in numeric_positions[1:]:
+            if abs(position - clusters[-1][-1]) <= COLUMN_CLUSTER_TOLERANCE:
+                clusters[-1].append(position)
+            else:
+                clusters.append([position])
+        numeric_anchors = [sum(cluster) / len(cluster) for cluster in clusters]
     if not numeric_anchors:
         return []
 
@@ -180,54 +97,46 @@ def _build_rows_from_line_segment(
                 and " " not in text
                 and ALPHA_TOKEN_PATTERN.search(text)
                 and not NUMERIC_TOKEN_PATTERN.search(text)
-                and _looks_like_collapsed_label_token(text)
+                and COLLAPSED_LABEL_PATTERN.search(text)
             ):
-                text = _restore_word_text(word, page_chars or [])
+                if page_chars:
+                    x0 = float(word["x0"])
+                    x1 = float(word["x1"])
+                    top = float(word["top"])
+                    bottom = float(word["bottom"])
+                    chars_in_word = [
+                        char
+                        for char in page_chars
+                        if float(char["x0"]) >= x0 - 0.5
+                        and float(char["x1"]) <= x1 + 0.5
+                        and min(bottom, float(char["bottom"])) >= max(top, float(char["top"]))
+                    ]
+                    if chars_in_word:
+                        ordered_chars = sorted(chars_in_word, key=lambda char: float(char["x0"]))
+                        pieces: list[str] = []
+                        previous_char: dict[str, object] | None = None
+                        for char in ordered_chars:
+                            char_text = str(char.get("text", ""))
+                            if not char_text:
+                                continue
+                            if previous_char is not None:
+                                gap = float(char["x0"]) - float(previous_char["x1"])
+                                previous_width = float(previous_char["x1"]) - float(previous_char["x0"])
+                                current_width = float(char["x1"]) - float(char["x0"])
+                                gap_threshold = max(1.5, min(previous_width, current_width) * 0.6)
+                                previous_text = str(previous_char.get("text", ""))
+                                if previous_text.isalpha() and char_text.isalpha() and (previous_text.islower() or char_text.isupper()):
+                                    gap_threshold = min(gap_threshold, max(1.2, min(previous_width, current_width) * 0.45))
+                                if gap > gap_threshold:
+                                    pieces.append(" ")
+                            pieces.append(char_text)
+                            previous_char = char
+                        restored = "".join(pieces).strip()
+                        if restored:
+                            text = restored
             row_cells[column_index] = f"{row_cells[column_index]} {text}".strip()
         rows.append(row_cells)
     return _normalize_rows(rows)
-
-
-def _segment_lines_into_tables(lines: list[dict[str, object]]) -> list[dict[str, object]]:
-    """Split page lines into table-like segments starting at caption lines."""
-    caption_indices = [
-        index for index, line in enumerate(lines) if TABLE_CAPTION_PATTERN.search(str(line["text"]))
-    ]
-    if not caption_indices:
-        return []
-
-    segments: list[dict[str, object]] = []
-    for segment_index, start_index in enumerate(caption_indices):
-        end_index = caption_indices[segment_index + 1] if segment_index + 1 < len(caption_indices) else len(lines)
-        segment_lines = lines[start_index:end_index]
-        if len(segment_lines) < 3:
-            continue
-
-        caption_parts = [str(segment_lines[0]["text"]).strip()]
-        content_start = 1
-        if len(segment_lines) > 1:
-            second_line_text = str(segment_lines[1]["text"]).strip()
-            second_line_word_count = len(segment_lines[1]["words"])
-            if second_line_text and second_line_word_count <= 2 and not _is_numeric_like(second_line_text):
-                caption_parts.append(second_line_text)
-                content_start = 2
-
-        content_lines = segment_lines[content_start:]
-        rows = _build_rows_from_line_segment(content_lines)
-        if not rows:
-            continue
-
-        left = min(float(word["x0"]) for line in content_lines for word in line["words"])
-        right = max(float(word["x1"]) for line in content_lines for word in line["words"])
-        segments.append(
-            {
-                "caption": "\n".join(caption_parts),
-                "content_lines": content_lines,
-                "row_bounds": [(float(line["top"]), float(line["bottom"])) for line in content_lines],
-                "bbox": (left, float(segment_lines[0]["top"]), right, max(float(line["bottom"]) for line in content_lines)),
-            }
-        )
-    return segments
 
 
 def build_text_layout_candidates(
@@ -241,9 +150,53 @@ def build_text_layout_candidates(
 ) -> list[DetectedTableCandidate]:
     """Build scored candidates from page word and char geometry."""
     page_chars = chars or []
-    lines = _group_words_into_lines(words)
+    if not words:
+        lines = []
+    else:
+        lines = []
+        for word in sorted(words, key=lambda item: (float(item["top"]), float(item["x0"]))):
+            top = float(word["top"])
+            bottom = float(word["bottom"])
+            if not lines or abs(top - float(lines[-1]["top"])) > LINE_MERGE_TOLERANCE:
+                lines.append({"top": top, "bottom": bottom, "words": [word]})
+                continue
+            lines[-1]["words"].append(word)
+            lines[-1]["bottom"] = max(float(lines[-1]["bottom"]), bottom)
+        for line in lines:
+            line["words"] = sorted(line["words"], key=lambda item: float(item["x0"]))
+            line["text"] = " ".join(str(word["text"]).strip() for word in line["words"]).strip()
+
+    caption_indices = [index for index, line in enumerate(lines) if TABLE_CAPTION_PATTERN.search(str(line["text"]))]
     candidates: list[DetectedTableCandidate] = []
-    for table_index, segment in enumerate(_segment_lines_into_tables(lines)):
+    segments: list[dict[str, object]] = []
+    for segment_index, start_index in enumerate(caption_indices):
+        end_index = caption_indices[segment_index + 1] if segment_index + 1 < len(caption_indices) else len(lines)
+        segment_lines = lines[start_index:end_index]
+        if len(segment_lines) < 3:
+            continue
+        caption_parts = [str(segment_lines[0]["text"]).strip()]
+        content_start = 1
+        if len(segment_lines) > 1:
+            second_line_text = str(segment_lines[1]["text"]).strip()
+            second_line_word_count = len(segment_lines[1]["words"])
+            if second_line_text and second_line_word_count <= 2 and not _is_numeric_like(second_line_text):
+                caption_parts.append(second_line_text)
+                content_start = 2
+        content_lines = segment_lines[content_start:]
+        rows = _build_rows_from_line_segment(content_lines)
+        if not rows:
+            continue
+        left = min(float(word["x0"]) for line in content_lines for word in line["words"])
+        right = max(float(word["x1"]) for line in content_lines for word in line["words"])
+        segments.append(
+            {
+                "caption": "\n".join(caption_parts),
+                "content_lines": content_lines,
+                "row_bounds": [(float(line["top"]), float(line["bottom"])) for line in content_lines],
+                "bbox": (left, float(segment_lines[0]["top"]), right, max(float(line["bottom"]) for line in content_lines)),
+            }
+        )
+    for table_index, segment in enumerate(segments):
         raw_rows = _build_rows_from_line_segment(segment["content_lines"], page_chars=page_chars)
         bbox = segment["bbox"]
         candidates.append(

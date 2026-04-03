@@ -111,31 +111,6 @@ def _extract_payload(tables: list[object]) -> list[dict[str, object]]:
     return [table.model_dump(mode="json") for table in tables]
 
 
-def _run_available_parse_stages(
-    pdf_path: str,
-) -> tuple[list[object], list[object], list[object], list[object], list[object], str, list[object], list[object]]:
-    """Run the currently implemented parse stages once and return their typed outputs."""
-    extractor = _build_default_extractor()
-    extracted_tables = extractor.extract(pdf_path)
-    normalized_tables = normalize_extracted_tables(extracted_tables)
-    table_profiles = build_table_profiles(normalized_tables)
-    table_definitions = build_table_definitions(normalized_tables)
-    parsed_tables = build_parsed_tables(normalized_tables, table_definitions)
-    paper_markdown = extract_paper_markdown(pdf_path)
-    paper_sections = parse_markdown_sections(paper_markdown)
-    table_contexts = build_table_contexts(paper_sections, table_definitions)
-    return (
-        extracted_tables,
-        normalized_tables,
-        table_profiles,
-        table_definitions,
-        parsed_tables,
-        paper_markdown,
-        paper_sections,
-        table_contexts,
-    )
-
-
 def _handle_extract(args: argparse.Namespace) -> int:
     """Run the Phase 2 extraction backend and serialize results as JSON."""
     if _validate_pdf_path(args.pdf_path) is None:
@@ -189,31 +164,115 @@ def _handle_parse(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        extracted_tables, normalized_tables, table_profiles, table_definitions, parsed_tables, paper_markdown, paper_sections, table_contexts = _run_available_parse_stages(args.pdf_path)
+        extractor = _build_default_extractor()
+        extracted_tables = extractor.extract(args.pdf_path)
+        normalized_tables = normalize_extracted_tables(extracted_tables)
+        table_profiles = build_table_profiles(normalized_tables)
+        table_definitions = build_table_definitions(normalized_tables)
+        parsed_tables = build_parsed_tables(normalized_tables, table_definitions)
+        paper_markdown = extract_paper_markdown(args.pdf_path)
+        paper_sections = parse_markdown_sections(paper_markdown)
+        table_contexts = build_table_contexts(paper_sections, table_definitions)
     except Exception as exc:
         _print_stderr(_error_payload(str(exc)))
         return 1
 
-    llm_table_definitions, llm_monitoring_report, llm_debug_dir = _maybe_run_semantic_llm(
-        args.pdf_path,
-        args.outdir,
-        normalized_tables,
-        table_profiles,
-        table_definitions,
-        table_contexts,
-        disabled=args.no_llm_semantic,
+    settings = Settings()
+    paper_stem = Path(args.pdf_path).stem
+    llm_debug_dir = (
+        Path(args.outdir) / "papers" / paper_stem / "llm_semantic_debug" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        if settings.llm_debug
+        else None
     )
+    monitoring_items: list[LLMSemanticCallRecord] = []
+    llm_table_definitions: list[object] | None = None
+    if args.no_llm_semantic:
+        monitoring_items.extend(
+            _skipped_llm_monitoring_record(table, profile, definition, context, status="skipped_disabled")
+            for table, profile, definition, context in zip(
+                normalized_tables,
+                table_profiles,
+                table_definitions,
+                table_contexts,
+                strict=True,
+            )
+        )
+        llm_monitoring_report = _monitoring_report(settings, monitoring_items, disabled=True) if settings.llm_debug else None
+    else:
+        eligible_items: list[tuple[object, object, object, object]] = []
+        for table, profile, definition, context in zip(
+            normalized_tables,
+            table_profiles,
+            table_definitions,
+            table_contexts,
+            strict=True,
+        ):
+            if getattr(profile, "should_run_llm_semantics", False):
+                eligible_items.append((table, profile, definition, context))
+            else:
+                monitoring_items.append(
+                    _skipped_llm_monitoring_record(
+                        table,
+                        profile,
+                        definition,
+                        context,
+                        status="skipped_not_eligible",
+                    )
+                )
+
+        if not eligible_items:
+            llm_monitoring_report = _monitoring_report(settings, monitoring_items) if settings.llm_debug else None
+        else:
+            try:
+                client = build_llm_client(settings=settings)
+            except LLMConfigurationError as exc:
+                monitoring_items.extend(
+                    _skipped_llm_monitoring_record(
+                        table,
+                        profile,
+                        definition,
+                        context,
+                        status="skipped_configuration_error",
+                        error_message=str(exc),
+                    )
+                    for table, profile, definition, context in eligible_items
+                )
+                _print_stderr(f"LLM semantic interpretation skipped: {exc} Use --no-llm-semantic to suppress this warning.")
+                llm_monitoring_report = _monitoring_report(settings, monitoring_items) if settings.llm_debug else None
+            else:
+                parser = LLMSemanticTableDefinitionParser(client)
+                definitions: list[object] = []
+                for table, profile, definition, context in eligible_items:
+                    trace_dir = llm_debug_dir / f"table_{context.table_index}" if llm_debug_dir is not None else None
+                    attempt = parser.parse_with_monitoring(table, definition, context, trace_dir=trace_dir)
+                    monitoring_items.append(
+                        attempt.monitoring.model_copy(
+                            update={
+                                "table_family": getattr(profile, "table_family", None),
+                                "should_run_llm_semantics": getattr(profile, "should_run_llm_semantics", True),
+                            }
+                        )
+                    )
+                    if attempt.result is not None:
+                        definitions.append(attempt.result)
+                    if attempt.error is not None:
+                        _print_stderr(
+                            f"LLM semantic interpretation skipped for table_index={context.table_index} "
+                            f"(table_id={context.table_id}): {attempt.error}"
+                        )
+                llm_table_definitions = definitions or None
+                llm_monitoring_report = _monitoring_report(settings, monitoring_items) if settings.llm_debug else None
 
     extract_output_path = _extract_output_path(args.pdf_path, args.outdir)
     normalize_output_path = _normalize_output_path(args.pdf_path, args.outdir)
-    table_profile_output_path = _table_profile_output_path(args.pdf_path, args.outdir)
-    table_definition_output_path = _table_definition_output_path(args.pdf_path, args.outdir)
-    parsed_output_path = _parsed_output_path(args.pdf_path, args.outdir)
-    llm_table_definition_output_path = _llm_table_definition_output_path(args.pdf_path, args.outdir)
-    llm_monitoring_output_path = _llm_semantic_monitoring_output_path(args.pdf_path, args.outdir, llm_debug_dir)
-    paper_markdown_output_path = _paper_markdown_output_path(args.pdf_path, args.outdir)
-    paper_sections_output_path = _paper_sections_output_path(args.pdf_path, args.outdir)
-    table_context_output_dir = _table_context_output_dir(args.pdf_path, args.outdir)
+    table_profile_output_path = Path(args.outdir) / "papers" / paper_stem / "table_profiles.json"
+    table_definition_output_path = Path(args.outdir) / "papers" / paper_stem / "table_definitions.json"
+    parsed_output_path = Path(args.outdir) / "papers" / paper_stem / "parsed_tables.json"
+    llm_table_definition_output_path = Path(args.outdir) / "papers" / paper_stem / "table_definitions_llm.json"
+    llm_monitoring_output_path = llm_debug_dir / "llm_semantic_monitoring.json" if llm_debug_dir is not None else None
+    paper_markdown_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_markdown.md"
+    paper_sections_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_sections.json"
+    table_context_output_dir = Path(args.outdir) / "papers" / paper_stem / "table_contexts"
     extract_output_path.parent.mkdir(parents=True, exist_ok=True)
     table_context_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -251,108 +310,11 @@ def _handle_parse(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
     for table_context in table_contexts:
-        _table_context_output_path(table_context_output_dir, table_context.table_index).write_text(
+        (table_context_output_dir / f"table_{table_context.table_index}_context.json").write_text(
             json.dumps(table_context.model_dump(mode="json"), indent=2) + "\n",
             encoding="utf-8",
         )
     return 0
-
-
-def _maybe_run_semantic_llm(
-    pdf_path: str,
-    outdir: str,
-    normalized_tables: list[object],
-    table_profiles: list[object],
-    table_definitions: list[object],
-    table_contexts: list[object],
-    *,
-    disabled: bool,
-) -> tuple[list[object] | None, LLMSemanticMonitoringReport | None, Path | None]:
-    """Return semantic LLM table definitions and optional debug monitoring artifacts."""
-    settings = Settings()
-    debug_run_dir = _llm_semantic_debug_run_dir(pdf_path, outdir) if settings.llm_debug else None
-    monitoring_items: list[LLMSemanticCallRecord] = []
-    definitions: list[object] = []
-    table_items = list(
-        zip(
-            normalized_tables,
-            table_profiles,
-            table_definitions,
-            table_contexts,
-            strict=True,
-        )
-    )
-    if disabled:
-        monitoring_items.extend(
-            _skipped_llm_monitoring_record(table, profile, definition, context, status="skipped_disabled")
-            for table, profile, definition, context in table_items
-        )
-        return (
-            None,
-            _monitoring_report(settings, monitoring_items, disabled=True) if settings.llm_debug else None,
-            debug_run_dir,
-        )
-
-    eligible_items: list[tuple[object, object, object, object]] = []
-    for table, profile, definition, context in table_items:
-        if getattr(profile, "should_run_llm_semantics", False):
-            eligible_items.append((table, profile, definition, context))
-        else:
-            monitoring_items.append(
-                _skipped_llm_monitoring_record(
-                    table,
-                    profile,
-                    definition,
-                    context,
-                    status="skipped_not_eligible",
-                )
-            )
-
-    if not eligible_items:
-        return None, _monitoring_report(settings, monitoring_items) if settings.llm_debug else None, debug_run_dir
-
-    try:
-        client = build_llm_client(settings=settings)
-    except LLMConfigurationError as exc:
-        monitoring_items.extend(
-            _skipped_llm_monitoring_record(
-                table,
-                profile,
-                definition,
-                context,
-                status="skipped_configuration_error",
-                error_message=str(exc),
-            )
-            for table, profile, definition, context in eligible_items
-        )
-        _print_stderr(f"LLM semantic interpretation skipped: {exc} Use --no-llm-semantic to suppress this warning.")
-        return None, _monitoring_report(settings, monitoring_items) if settings.llm_debug else None, debug_run_dir
-
-    parser = LLMSemanticTableDefinitionParser(client)
-    for table, profile, definition, context in eligible_items:
-        trace_dir = debug_run_dir / f"table_{context.table_index}" if debug_run_dir is not None else None
-        attempt = parser.parse_with_monitoring(table, definition, context, trace_dir=trace_dir)
-        monitoring_items.append(
-            attempt.monitoring.model_copy(
-                update={
-                    "table_family": getattr(profile, "table_family", None),
-                    "should_run_llm_semantics": getattr(profile, "should_run_llm_semantics", True),
-                }
-            )
-        )
-        if attempt.result is not None:
-            definitions.append(attempt.result)
-        if attempt.error is not None:
-            _print_stderr(
-                f"LLM semantic interpretation skipped for table_index={context.table_index} "
-                f"(table_id={context.table_id}): {attempt.error}"
-            )
-
-    return (
-        definitions or None,
-        _monitoring_report(settings, monitoring_items) if settings.llm_debug else None,
-        debug_run_dir,
-    )
 
 
 def _extract_output_path(pdf_path: str, outdir: str) -> Path:
@@ -365,66 +327,6 @@ def _normalize_output_path(pdf_path: str, outdir: str) -> Path:
     """Return the default normalized-table JSON path for one paper."""
     paper_stem = Path(pdf_path).stem
     return Path(outdir) / "papers" / paper_stem / "normalized_tables.json"
-
-
-def _table_definition_output_path(pdf_path: str, outdir: str) -> Path:
-    """Return the default table-definition JSON path for one paper."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "table_definitions.json"
-
-
-def _table_profile_output_path(pdf_path: str, outdir: str) -> Path:
-    """Return the default table-profile JSON path for one paper."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "table_profiles.json"
-
-
-def _llm_table_definition_output_path(pdf_path: str, outdir: str) -> Path:
-    """Return the default semantic-LLM table-definition JSON path for one paper."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "table_definitions_llm.json"
-
-
-def _llm_semantic_debug_run_dir(pdf_path: str, outdir: str) -> Path:
-    """Return the timestamped semantic-LLM debug directory for one parse run."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "llm_semantic_debug" / _utc_run_id()
-
-
-def _llm_semantic_monitoring_output_path(pdf_path: str, outdir: str, debug_run_dir: Path | None) -> Path | None:
-    """Return the monitoring-summary path when semantic debug output is enabled."""
-    if debug_run_dir is None:
-        return None
-    return debug_run_dir / "llm_semantic_monitoring.json"
-
-
-def _parsed_output_path(pdf_path: str, outdir: str) -> Path:
-    """Return the default final parsed-table JSON path for one paper."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "parsed_tables.json"
-
-
-def _paper_markdown_output_path(pdf_path: str, outdir: str) -> Path:
-    """Return the default paper-markdown path for one paper."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "paper_markdown.md"
-
-
-def _paper_sections_output_path(pdf_path: str, outdir: str) -> Path:
-    """Return the default paper-sections JSON path for one paper."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "paper_sections.json"
-
-
-def _table_context_output_dir(pdf_path: str, outdir: str) -> Path:
-    """Return the default per-table context directory for one paper."""
-    paper_stem = Path(pdf_path).stem
-    return Path(outdir) / "papers" / paper_stem / "table_contexts"
-
-
-def _table_context_output_path(output_dir: Path, table_index: int) -> Path:
-    """Return one per-table context JSON path."""
-    return output_dir / f"table_{table_index}_context.json"
 
 
 def _skipped_llm_monitoring_record(
@@ -481,13 +383,6 @@ def _monitoring_report(
 def _utc_timestamp() -> str:
     """Return a compact UTC ISO 8601 timestamp with trailing Z."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
-def _utc_run_id() -> str:
-    """Return a filesystem-safe UTC timestamp for one debug run directory."""
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI entry point."""
     parser = build_parser()

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from table1_parser.extract.layout_fallback import (
     _build_rows_from_line_segment,
-    _restore_word_text,
     build_text_layout_candidates,
 )
 
@@ -119,8 +118,6 @@ def test_text_layout_fallback_restores_short_collapsed_category_labels() -> None
 
     rows = _build_rows_from_line_segment(lines, page_chars=chars)
 
-    assert _restore_word_text(other_word, chars) == "Other race"
-    assert _restore_word_text(mexican_word, chars) == "Mexican American"
     assert rows[1][0].startswith("Other race")
     assert rows[2][0].startswith("Mexican American")
 

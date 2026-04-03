@@ -22,102 +22,6 @@ def _caption_table_number(candidate: DetectedTableCandidate) -> int | None:
     return value if isinstance(value, int) else None
 
 
-def _is_likely_continuation(
-    candidate: DetectedTableCandidate,
-    anchor: DetectedTableCandidate,
-) -> bool:
-    """Return whether an uncaptioned candidate likely continues a nearby table."""
-    signals = candidate.metadata.get("signals", {})
-    if bool(signals.get("caption_match", False)):
-        return False
-    if len(candidate.raw_rows) < 2 or _column_count(candidate) < 3:
-        return False
-    if float(signals.get("first_column_text_ratio", 0.0)) < 0.8:
-        return False
-    if float(signals.get("later_column_numeric_ratio", 0.0)) < 0.75:
-        return False
-    anchor_cols = _column_count(anchor)
-    candidate_cols = _column_count(candidate)
-    if anchor_cols == 0 or abs(candidate_cols - anchor_cols) > 1:
-        return False
-    return True
-
-
-def _gap_fill_threshold(confidence_threshold: float) -> float:
-    """Return a slightly relaxed threshold for numbered gaps inside a selected run."""
-    return max(0.55, confidence_threshold - 0.1)
-
-
-def _is_minimally_table_like(candidate: DetectedTableCandidate) -> bool:
-    """Return whether a discarded captioned candidate is still plausible enough to recover."""
-    signals = candidate.metadata.get("signals", {})
-    if not bool(signals.get("caption_match", False)):
-        return False
-    if len(candidate.raw_rows) >= 2 and _column_count(candidate) >= 2:
-        return True
-    return float(signals.get("later_column_numeric_ratio", 0.0)) >= 0.75
-
-
-def _recover_gap_candidate(
-    matches: list[DetectedTableCandidate],
-    threshold: float,
-) -> DetectedTableCandidate | None:
-    """Pick the best gap-filling candidate, preferring threshold-passing matches first."""
-    above_threshold = [candidate for candidate in matches if candidate.score >= threshold]
-    ranked = above_threshold or [candidate for candidate in matches if _is_minimally_table_like(candidate)]
-    if not ranked:
-        return None
-    best_match = sorted(
-        ranked,
-        key=lambda candidate: (-candidate.score, -_column_count(candidate), -len(candidate.raw_rows), candidate.page_num, candidate.table_index),
-    )[0]
-    if best_match.score >= threshold:
-        return best_match
-    return best_match.model_copy(
-        update={
-            "metadata": {
-                **best_match.metadata,
-                "sequence_gap_recovered": True,
-                "sequence_gap_recovery_reason": "caption_matched_below_threshold",
-            }
-        }
-    )
-
-
-def _fill_caption_number_gaps(
-    selected: dict[tuple[int, int], DetectedTableCandidate],
-    candidates: list[DetectedTableCandidate],
-    max_candidates: int,
-    confidence_threshold: float,
-) -> None:
-    """Add missing numbered tables between already selected captioned tables when available."""
-    selected_numbers = sorted(
-        {
-            table_number
-            for candidate in selected.values()
-            for table_number in [_caption_table_number(candidate)]
-            if table_number is not None
-        }
-    )
-    if len(selected_numbers) < 2:
-        return
-
-    threshold = _gap_fill_threshold(confidence_threshold)
-    for missing_number in range(selected_numbers[0], selected_numbers[-1] + 1):
-        if missing_number in selected_numbers or len(selected) >= max_candidates:
-            continue
-        matches = [
-            candidate
-            for candidate in candidates
-            if _candidate_key(candidate) not in selected
-            and _caption_table_number(candidate) == missing_number
-        ]
-        best_match = _recover_gap_candidate(matches, threshold)
-        if best_match is None:
-            continue
-        selected[_candidate_key(best_match)] = best_match
-
-
 def select_top_candidates(
     candidates: list[DetectedTableCandidate],
     max_candidates: int,
@@ -148,7 +52,13 @@ def select_top_candidates(
                     for candidate in candidates_by_page[next_page]
                     if _candidate_key(candidate) not in selected
                     and candidate.score >= continuation_threshold
-                    and _is_likely_continuation(candidate, current_anchor)
+                    and not bool(candidate.metadata.get("signals", {}).get("caption_match", False))
+                    and len(candidate.raw_rows) >= 2
+                    and _column_count(candidate) >= 3
+                    and float(candidate.metadata.get("signals", {}).get("first_column_text_ratio", 0.0)) >= 0.8
+                    and float(candidate.metadata.get("signals", {}).get("later_column_numeric_ratio", 0.0)) >= 0.75
+                    and (anchor_cols := _column_count(current_anchor)) != 0
+                    and abs(_column_count(candidate) - anchor_cols) <= 1
                 ]
                 if not matches:
                     break
@@ -156,6 +66,51 @@ def select_top_candidates(
                 selected[_candidate_key(best_match)] = best_match
                 current_anchor = best_match
                 next_page += 1
-        _fill_caption_number_gaps(selected, candidates, max_candidates, confidence_threshold)
+        selected_numbers = sorted(
+            {
+                table_number
+                for candidate in selected.values()
+                for table_number in [_caption_table_number(candidate)]
+                if table_number is not None
+            }
+        )
+        if len(selected_numbers) >= 2:
+            threshold = max(0.55, confidence_threshold - 0.1)
+            for missing_number in range(selected_numbers[0], selected_numbers[-1] + 1):
+                if missing_number in selected_numbers or len(selected) >= max_candidates:
+                    continue
+                matches = [
+                    candidate
+                    for candidate in candidates
+                    if _candidate_key(candidate) not in selected
+                    and _caption_table_number(candidate) == missing_number
+                ]
+                above_threshold = [candidate for candidate in matches if candidate.score >= threshold]
+                ranked = above_threshold or [
+                    candidate
+                    for candidate in matches
+                    if bool(candidate.metadata.get("signals", {}).get("caption_match", False))
+                    and (
+                        (len(candidate.raw_rows) >= 2 and _column_count(candidate) >= 2)
+                        or float(candidate.metadata.get("signals", {}).get("later_column_numeric_ratio", 0.0)) >= 0.75
+                    )
+                ]
+                if not ranked:
+                    continue
+                best_match = sorted(
+                    ranked,
+                    key=lambda candidate: (-candidate.score, -_column_count(candidate), -len(candidate.raw_rows), candidate.page_num, candidate.table_index),
+                )[0]
+                if best_match.score < threshold:
+                    best_match = best_match.model_copy(
+                        update={
+                            "metadata": {
+                                **best_match.metadata,
+                                "sequence_gap_recovered": True,
+                                "sequence_gap_recovery_reason": "caption_matched_below_threshold",
+                            }
+                        }
+                    )
+                selected[_candidate_key(best_match)] = best_match
         return sorted(selected.values(), key=lambda candidate: (candidate.page_num, candidate.table_index))
     return ranked[:max_candidates]

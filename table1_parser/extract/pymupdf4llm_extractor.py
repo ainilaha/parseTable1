@@ -41,15 +41,6 @@ def _import_pymupdf4llm() -> Any:
     return pymupdf4llm
 
 
-def _load_pymupdf4llm_payload(pdf_path: str) -> dict[str, Any]:
-    """Load PyMuPDF4LLM JSON while suppressing library stdout chatter."""
-    pymupdf4llm = _import_pymupdf4llm()
-    stdout_buffer = io.StringIO()
-    with contextlib.redirect_stdout(stdout_buffer):
-        payload = pymupdf4llm.to_json(pdf_path)
-    return json.loads(payload)
-
-
 class PyMuPDF4LLMExtractor(BaseExtractor):
     """Extract raw table grids with PyMuPDF4LLM."""
 
@@ -92,7 +83,10 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
         ]
 
     def _detect_table_candidates(self, pdf_path: str) -> list[DetectedTableCandidate]:
-        payload = _load_pymupdf4llm_payload(pdf_path)
+        pymupdf4llm = _import_pymupdf4llm()
+        stdout_buffer = io.StringIO()
+        with contextlib.redirect_stdout(stdout_buffer):
+            payload = json.loads(pymupdf4llm.to_json(pdf_path))
         pages = {
             int(page.get("page_number", 0)): page
             for page in payload.get("pages", [])
@@ -121,7 +115,40 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                         continue
                     bbox = _as_bbox(table.get("bbox")) or _as_bbox(box.get("bbox"))
                     cell_bboxes = _coerce_cell_bboxes(table.get("cells") or [])
-                    row_bounds, horizontal_rules = _derive_row_geometry(cell_bboxes, bbox)
+                    row_bounds: list[tuple[float, float]] = []
+                    horizontal_rules_raw: list[float] = []
+                    table_width = max(1.0, bbox[2] - bbox[0]) if bbox is not None else None
+                    for row in cell_bboxes:
+                        populated = [cell_bbox for cell_bbox in row if cell_bbox is not None]
+                        if not populated:
+                            continue
+                        row_top = min(cell_bbox[1] for cell_bbox in populated)
+                        row_bottom = max(cell_bbox[3] for cell_bbox in populated)
+                        row_bounds.append((row_top, row_bottom))
+                        row_left = min(cell_bbox[0] for cell_bbox in populated)
+                        row_right = max(cell_bbox[2] for cell_bbox in populated)
+                        if table_width is None:
+                            coverage_ok = len(populated) >= max(2, len(row) // 2)
+                        else:
+                            coverage_ok = ((row_right - row_left) / table_width) >= 0.8
+                        if coverage_ok:
+                            horizontal_rules_raw.extend([row_top, row_bottom])
+                    horizontal_rules: list[float] = []
+                    for value in sorted(horizontal_rules_raw):
+                        if not horizontal_rules or abs(value - horizontal_rules[-1]) > 1.5:
+                            horizontal_rules.append(value)
+                    nearby_caption_candidates: list[tuple[float, str]] = []
+                    table_top = bbox[1] if bbox else float("inf")
+                    for candidate_box in page_boxes:
+                        if candidate_box.get("boxclass") == "table":
+                            continue
+                        candidate_bbox = _as_bbox(candidate_box.get("bbox"))
+                        if candidate_bbox is None or candidate_bbox[3] > table_top + 2.0:
+                            continue
+                        caption_lines = _find_table_caption_lines(_extract_box_text(candidate_box))
+                        if not caption_lines:
+                            continue
+                        nearby_caption_candidates.append((table_top - candidate_bbox[3], caption_lines[-1]))
                     page_candidates.append(
                         score_candidate(
                             DetectedTableCandidate(
@@ -130,7 +157,7 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                                 bbox=bbox,
                                 raw_rows=raw_rows,
                                 caption=_caption_for_index(
-                                    _find_nearby_caption(page_boxes=page_boxes, table_bbox=bbox),
+                                    min(nearby_caption_candidates, key=lambda item: item[0])[1] if nearby_caption_candidates else None,
                                     page_text,
                                     table_index,
                                     table_count,
@@ -205,7 +232,16 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
         pdf_path: str,
         candidate: DetectedTableCandidate,
     ) -> ExtractedTable:
-        title, caption = _split_caption(candidate.caption)
+        if not candidate.caption:
+            title, caption = None, None
+        else:
+            lines = [line.strip() for line in candidate.caption.splitlines() if line.strip()]
+            if not lines:
+                title, caption = None, None
+            elif len(lines) == 1:
+                title, caption = lines[0], lines[0]
+            else:
+                title, caption = lines[0], " ".join(lines)
         cells: list[TableCell] = []
         table_cells = candidate.metadata.get("table_cells") or []
         cell_bboxes = _coerce_cell_bboxes(table_cells)
@@ -232,7 +268,7 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
             "candidate_score": candidate.score,
         }
         return ExtractedTable(
-            table_id=_build_table_id(pdf_path=pdf_path, candidate=candidate),
+            table_id=f"{Path(pdf_path).stem}-p{candidate.page_num}-t{candidate.table_index}",
             source_pdf=pdf_path,
             page_num=candidate.page_num,
             title=title,
@@ -253,7 +289,15 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
         page_candidates: list[DetectedTableCandidate],
     ) -> list[DetectedTableCandidate]:
         """Replace suspicious explicit page candidates with better text-layout candidates."""
-        if page is None or not any(_needs_layout_rescue(candidate, self.heuristic_confidence_threshold) for candidate in page_candidates):
+        if page is None or not any(
+            candidate.score < self.heuristic_confidence_threshold
+            and bool(candidate.metadata.get("signals", {}).get("caption_match", False))
+            and (
+                _column_count(candidate) <= 2
+                or _first_column_fill_ratio(candidate) < 0.25
+            )
+            for candidate in page_candidates
+        ):
             return page_candidates
 
         rescue_candidates = build_text_layout_candidates(
@@ -269,7 +313,30 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
 
         rescued: list[DetectedTableCandidate] = []
         for candidate in page_candidates:
-            replacement = _best_rescue_candidate(candidate, rescue_candidates, self.heuristic_confidence_threshold)
+            target_table_number = candidate.metadata.get("signals", {}).get("caption_table_number")
+            matching = [
+                rescue
+                for rescue in rescue_candidates
+                if rescue.metadata.get("signals", {}).get("caption_table_number") == target_table_number
+            ]
+            ranked = matching or rescue_candidates
+            if not ranked:
+                replacement = None
+            else:
+                best = sorted(
+                    ranked,
+                    key=lambda rescue: (-rescue.score, -_column_count(rescue), -len(rescue.raw_rows)),
+                )[0]
+                should_replace = (
+                    best.score >= self.heuristic_confidence_threshold
+                    and best.score > candidate.score
+                    and (
+                        _column_count(best) > _column_count(candidate)
+                        or _first_column_fill_ratio(best) > _first_column_fill_ratio(candidate) + 0.4
+                        or len(best.raw_rows) > len(candidate.raw_rows) + 5
+                    )
+                )
+                replacement = best if should_replace else None
             if replacement is None:
                 rescued.append(candidate)
                 continue
@@ -338,65 +405,6 @@ def _infer_table_orientation_metadata(
         "rotation_direction": "upright",
         "rotation_confidence": round(horizontal_count / considered_count, 4),
     }
-
-
-def _best_rescue_candidate(
-    candidate: DetectedTableCandidate,
-    rescue_candidates: list[DetectedTableCandidate],
-    confidence_threshold: float,
-) -> DetectedTableCandidate | None:
-    """Return a better same-page rescue candidate when one is clearly superior."""
-    target_table_number = candidate.metadata.get("signals", {}).get("caption_table_number")
-    matching = [
-        rescue
-        for rescue in rescue_candidates
-        if rescue.metadata.get("signals", {}).get("caption_table_number") == target_table_number
-    ]
-    ranked = matching or rescue_candidates
-    if not ranked:
-        return None
-    best = sorted(
-        ranked,
-        key=lambda rescue: (
-            -rescue.score,
-            -_column_count(rescue),
-            -len(rescue.raw_rows),
-        ),
-    )[0]
-    if not _should_replace_with_rescue(candidate, best, confidence_threshold):
-        return None
-    return best
-
-
-def _should_replace_with_rescue(
-    candidate: DetectedTableCandidate,
-    rescue: DetectedTableCandidate,
-    confidence_threshold: float,
-) -> bool:
-    """Return whether a rescue candidate is strong enough to replace an explicit one."""
-    if rescue.score < confidence_threshold:
-        return False
-    if rescue.score <= candidate.score:
-        return False
-    if _column_count(rescue) > _column_count(candidate):
-        return True
-    if _first_column_fill_ratio(rescue) > _first_column_fill_ratio(candidate) + 0.4:
-        return True
-    return len(rescue.raw_rows) > len(candidate.raw_rows) + 5
-
-
-def _needs_layout_rescue(candidate: DetectedTableCandidate, confidence_threshold: float) -> bool:
-    """Return whether an explicit candidate looks collapsed enough to justify fallback rescue."""
-    if candidate.score >= confidence_threshold:
-        return False
-    signals = candidate.metadata.get("signals", {})
-    if not bool(signals.get("caption_match", False)):
-        return False
-    if _column_count(candidate) <= 2:
-        return True
-    return _first_column_fill_ratio(candidate) < 0.25
-
-
 def _column_count(candidate: DetectedTableCandidate) -> int:
     """Return the candidate column count."""
     return max((len(row) for row in candidate.raw_rows), default=0)
@@ -430,58 +438,28 @@ def _extract_box_text(box: dict[str, Any]) -> str:
     lines: list[str] = []
     for line in textlines:
         spans = line.get("spans") or []
-        line_text = _join_span_texts([str(span.get("text", "")) for span in spans])
+        pieces: list[str] = []
+        for part in (str(span.get("text", "")) for span in spans):
+            if not part:
+                continue
+            if pieces:
+                previous = pieces[-1]
+                if (
+                    previous
+                    and not previous[-1].isspace()
+                    and not part[0].isspace()
+                    and (
+                        (previous[-1].isalnum() and part[0].isalnum())
+                        or (previous[-1].isalnum() and part[0] == "(")
+                        or (previous[-1] in {")", "]"} and part[0].isalnum())
+                    )
+                ):
+                    pieces.append(" ")
+            pieces.append(part)
+        line_text = "".join(pieces).strip()
         if line_text:
             lines.append(line_text)
     return " ".join(lines).strip()
-
-
-def _join_span_texts(parts: list[str]) -> str:
-    """Join adjacent span text while restoring spaces between split words."""
-    pieces: list[str] = []
-    for part in (part for part in parts if part):
-        if pieces and _needs_join_space(pieces[-1], part):
-            pieces.append(" ")
-        pieces.append(part)
-    return "".join(pieces).strip()
-
-
-def _needs_join_space(previous: str, current: str) -> bool:
-    """Return whether adjacent spans should have a space inserted."""
-    if not previous or not current:
-        return False
-    if previous[-1].isspace() or current[0].isspace():
-        return False
-    if previous[-1].isalnum() and current[0].isalnum():
-        return True
-    if previous[-1].isalnum() and current[0] == "(":
-        return True
-    if previous[-1] in {")", "]"} and current[0].isalnum():
-        return True
-    return False
-
-
-def _find_nearby_caption(
-    *,
-    page_boxes: list[dict[str, Any]],
-    table_bbox: tuple[float, float, float, float] | None,
-) -> str | None:
-    """Find the nearest preceding Table-caption-like box on the same page."""
-    candidates: list[tuple[float, str]] = []
-    table_top = table_bbox[1] if table_bbox else float("inf")
-    for box in page_boxes:
-        if box.get("boxclass") == "table":
-            continue
-        bbox = _as_bbox(box.get("bbox"))
-        if bbox is None or bbox[3] > table_top + 2.0:
-            continue
-        caption_lines = _find_table_caption_lines(_extract_box_text(box))
-        if not caption_lines:
-            continue
-        candidates.append((table_top - bbox[3], caption_lines[-1]))
-    if not candidates:
-        return None
-    return min(candidates, key=lambda item: item[0])[1]
 
 
 def _as_bbox(value: Any) -> tuple[float, float, float, float] | None:
@@ -502,59 +480,3 @@ def _coerce_cell_bboxes(table_cells: list[Any]) -> list[list[tuple[float, float,
             bbox_row.append(_as_bbox(cell))
         rows.append(bbox_row)
     return rows
-
-
-def _derive_row_geometry(
-    cell_bboxes: list[list[tuple[float, float, float, float] | None]],
-    table_bbox: tuple[float, float, float, float] | None,
-) -> tuple[list[tuple[float, float]], list[float]]:
-    """Derive row bounds and row-spanning horizontal boundaries from cell geometry."""
-    row_bounds: list[tuple[float, float]] = []
-    rule_positions: list[float] = []
-    table_width = None
-    if table_bbox is not None:
-        table_width = max(1.0, table_bbox[2] - table_bbox[0])
-
-    for row in cell_bboxes:
-        populated = [bbox for bbox in row if bbox is not None]
-        if not populated:
-            continue
-        row_top = min(bbox[1] for bbox in populated)
-        row_bottom = max(bbox[3] for bbox in populated)
-        row_bounds.append((row_top, row_bottom))
-
-        row_left = min(bbox[0] for bbox in populated)
-        row_right = max(bbox[2] for bbox in populated)
-        if table_width is None:
-            coverage_ok = len(populated) >= max(2, len(row) // 2)
-        else:
-            coverage_ok = ((row_right - row_left) / table_width) >= 0.8
-        if coverage_ok:
-            rule_positions.extend([row_top, row_bottom])
-
-    deduped_rules: list[float] = []
-    for value in sorted(rule_positions):
-        if not deduped_rules or abs(value - deduped_rules[-1]) > 1.5:
-            deduped_rules.append(value)
-    return row_bounds, deduped_rules
-
-
-def _build_table_id(pdf_path: str, candidate: DetectedTableCandidate) -> str:
-    """Build a stable table identifier from PDF and page context."""
-    stem = Path(pdf_path).stem
-    return f"{stem}-p{candidate.page_num}-t{candidate.table_index}"
-
-
-def _split_caption(caption: str | None) -> tuple[str | None, str | None]:
-    """Split nearby caption text into title and caption fields."""
-    if not caption:
-        return None, None
-
-    lines = [line.strip() for line in caption.splitlines() if line.strip()]
-    if not lines:
-        return None, None
-
-    title = lines[0]
-    if len(lines) == 1:
-        return title, title
-    return title, " ".join(lines)

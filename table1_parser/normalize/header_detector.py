@@ -46,64 +46,6 @@ def header_score(row: list[str], row_idx: int) -> float:
     return min(score, 1.0)
 
 
-def _detect_header_rows_from_rules(
-    rows: list[list[str]],
-    row_bounds: list[tuple[float, float]] | None,
-    horizontal_rules: list[float] | None,
-) -> tuple[list[int], str | None]:
-    """Use wide horizontal rules as strong optional signals for a top header block."""
-    if not rows or not row_bounds or not horizontal_rules or len(row_bounds) != len(rows):
-        return [], None
-
-    sorted_rules = sorted(horizontal_rules)
-    first_top = row_bounds[0][0]
-    top_rule_candidates = [rule_y for rule_y in sorted_rules if 0.0 <= first_top - rule_y <= TOP_RULE_GAP]
-    top_rule = max(top_rule_candidates) if top_rule_candidates else None
-    if top_rule is None:
-        return [], None
-
-    max_header_idx = min(len(rows) - 2, MAX_HEADER_ROWS - 1)
-    for row_idx in range(max_header_idx + 1):
-        current_bottom = row_bounds[row_idx][1]
-        next_top = row_bounds[row_idx + 1][0]
-        boundary_candidates = [
-            rule_y
-            for rule_y in sorted_rules
-            if current_bottom - BOUNDARY_RULE_TOLERANCE <= rule_y <= next_top + BOUNDARY_RULE_TOLERANCE
-        ]
-        if boundary_candidates:
-            gap_midpoint = (current_bottom + next_top) / 2.0
-            boundary_rule = min(boundary_candidates, key=lambda rule_y: abs(rule_y - gap_midpoint))
-        else:
-            boundary_rule = None
-        if boundary_rule is None:
-            continue
-        header_count = row_idx + 1
-        if header_count <= 2:
-            return list(range(header_count)), "strong"
-        candidate_rows = rows[:header_count]
-        average_score = sum(header_score(row, index) for index, row in enumerate(candidate_rows)) / len(candidate_rows)
-        if average_score >= 0.5:
-            return list(range(header_count)), "moderate"
-    return [], None
-
-
-def _detect_header_rows_by_content(rows: list[list[str]]) -> list[int]:
-    """Identify likely header rows near the top of the table using text signals only."""
-    header_rows: list[int] = []
-    scan_limit = min(len(rows), MAX_HEADER_ROWS)
-
-    for row_idx in range(scan_limit):
-        score = header_score(rows[row_idx], row_idx)
-        if score >= 0.55:
-            header_rows.append(row_idx)
-        elif row_idx == 0 and HEADER_KEYWORD_PATTERN.search(" ".join(rows[row_idx])):
-            header_rows.append(row_idx)
-        elif header_rows:
-            break
-    return header_rows
-
-
 def detect_header_rows_with_metadata(
     rows: list[list[str]],
     *,
@@ -111,8 +53,53 @@ def detect_header_rows_with_metadata(
     horizontal_rules: list[float] | None = None,
 ) -> tuple[list[int], list[int], dict[str, object]]:
     """Identify likely header rows and expose how the decision was made."""
-    content_headers = _detect_header_rows_by_content(rows)
-    rule_based_headers, rule_strength = _detect_header_rows_from_rules(rows, row_bounds, horizontal_rules)
+    content_headers: list[int] = []
+    scan_limit = min(len(rows), MAX_HEADER_ROWS)
+    for row_idx in range(scan_limit):
+        score = header_score(rows[row_idx], row_idx)
+        if score >= 0.55:
+            content_headers.append(row_idx)
+        elif row_idx == 0 and HEADER_KEYWORD_PATTERN.search(" ".join(rows[row_idx])):
+            content_headers.append(row_idx)
+        elif content_headers:
+            break
+
+    if not rows or not row_bounds or not horizontal_rules or len(row_bounds) != len(rows):
+        rule_based_headers, rule_strength = [], None
+    else:
+        sorted_rules = sorted(horizontal_rules)
+        first_top = row_bounds[0][0]
+        top_rule_candidates = [rule_y for rule_y in sorted_rules if 0.0 <= first_top - rule_y <= TOP_RULE_GAP]
+        top_rule = max(top_rule_candidates) if top_rule_candidates else None
+        if top_rule is None:
+            rule_based_headers, rule_strength = [], None
+        else:
+            rule_based_headers, rule_strength = [], None
+            max_header_idx = min(len(rows) - 2, MAX_HEADER_ROWS - 1)
+            for row_idx in range(max_header_idx + 1):
+                current_bottom = row_bounds[row_idx][1]
+                next_top = row_bounds[row_idx + 1][0]
+                boundary_candidates = [
+                    rule_y
+                    for rule_y in sorted_rules
+                    if current_bottom - BOUNDARY_RULE_TOLERANCE <= rule_y <= next_top + BOUNDARY_RULE_TOLERANCE
+                ]
+                if boundary_candidates:
+                    gap_midpoint = (current_bottom + next_top) / 2.0
+                    boundary_rule = min(boundary_candidates, key=lambda rule_y: abs(rule_y - gap_midpoint))
+                else:
+                    boundary_rule = None
+                if boundary_rule is None:
+                    continue
+                header_count = row_idx + 1
+                if header_count <= 2:
+                    rule_based_headers, rule_strength = list(range(header_count)), "strong"
+                    break
+                candidate_rows = rows[:header_count]
+                average_score = sum(header_score(row, index) for index, row in enumerate(candidate_rows)) / len(candidate_rows)
+                if average_score >= 0.5:
+                    rule_based_headers, rule_strength = list(range(header_count)), "moderate"
+                    break
 
     if rule_strength == "strong":
         header_rows = rule_based_headers
@@ -142,9 +129,8 @@ def detect_header_rows(
     horizontal_rules: list[float] | None = None,
 ) -> tuple[list[int], list[int]]:
     """Identify likely header rows near the top of the table."""
-    header_rows, body_rows, _ = detect_header_rows_with_metadata(
+    return detect_header_rows_with_metadata(
         rows,
         row_bounds=row_bounds,
         horizontal_rules=horizontal_rules,
-    )
-    return header_rows, body_rows
+    )[:2]

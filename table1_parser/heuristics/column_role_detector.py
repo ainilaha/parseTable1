@@ -7,12 +7,6 @@ from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable
 
 
-def _column_label(header_rows: list[list[str]], col_idx: int) -> str:
-    """Join non-empty header cells for a column into a single label."""
-    parts = [row[col_idx] for row in header_rows if col_idx < len(row) and row[col_idx]]
-    return clean_text(" ".join(parts))
-
-
 def detect_column_roles(table: NormalizedTable) -> list[ColumnRoleGuess]:
     """Detect likely roles for each normalized table column."""
     cleaned_rows = table.metadata.get("cleaned_rows", [])
@@ -26,7 +20,8 @@ def detect_column_roles(table: NormalizedTable) -> list[ColumnRoleGuess]:
 
     guesses: list[ColumnRoleGuess] = []
     for col_idx in range(table.n_cols):
-        label = _column_label(header_rows, col_idx)
+        parts = [row[col_idx] for row in header_rows if col_idx < len(row) and row[col_idx]]
+        label = clean_text(" ".join(parts))
         lowered = label.lower()
         if not label:
             role, confidence = "unknown", 0.4

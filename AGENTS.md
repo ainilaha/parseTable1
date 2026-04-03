@@ -2,11 +2,11 @@
 
 This repository contains a Python package for extracting and parsing **Table 1-style epidemiology tables** from PDF documents.
 
-The system will ultimately:
+The system works as a multi-stage parser:
 1. Extract tables from PDFs.
 2. Normalize them into a structured intermediate representation.
 3. Parse them into variables, categorical levels, column roles, and values.
-4. Use deterministic heuristics plus LLM assistance.
+4. Use deterministic heuristics plus LLM assistance where needed.
 5. Output normalized structured representations of the table.
 
 The full architecture specification is in:
@@ -41,16 +41,13 @@ This is a **research-oriented parsing system**, not just a PDF table extractor.
 # Architectural Principles
 
 Agents must follow these design principles.
-Never skip phases.
 Extraction, normalization, heuristics, LLM interpretation, and validation must remain separate modules.
 
 ## Repository size limits
 
 Agents must not vendor third-party libraries.
-External dependencies must be installed via pyproject.toml.
 Do not generate large files (>1 MB) in the repository.
 Do not generate large example datasets or logs.
-Target repository size after Phase 2 should be < 5,000 lines of code.
 
 ### Separation of responsibilities
 
@@ -80,7 +77,7 @@ ParsedTable
 
 Use rule-based parsing wherever possible.
 
-The LLM is used only for semantic disambiguation, not for raw extraction.
+LLM usage should be limited to semantic disambiguation, not raw extraction.
 
 ### LLM safety rules
 
@@ -106,20 +103,6 @@ Normalized values must always preserve the original text.
 Use:
 
 Python 3.11+
-
-## Dependencies
-
-Allowed libraries include:
-
-- pydantic v2
-- pandas
-- pymupdf4llm
-- typer or argparse
-- pytest
-
-LLM integration must be abstracted behind an interface.
-
-Do not hardcode one model provider.
 
 ### Function Design & Patterns
 - **No Single-Use Helpers**: NEVER extract logic into a separate helper function if it is only used once within a single parent function.
@@ -149,35 +132,6 @@ Do not collapse modules into one file.
 ## Tests
 
 All modules must be testable.
-
-Write pytest tests for:
-
-- schema validation
-- normalization
-- heuristic parsing
-
-Extraction tests may use example PDFs in `examples/`.
-
----
-
-# Development Strategy
-
-The project is implemented in phases.
-
-Agents must **only implement the requested phase** unless explicitly instructed otherwise.
-
-Phases:
-
-1. Project scaffold and schemas
-2. PDF table extraction
-3. Normalization layer
-4. Heuristic parsing
-5. LLM-assisted interpretation
-6. Validation layer
-7. CLI and exports
-8. End-to-end pipeline
-
-Do not skip phases.
 
 ---
 
@@ -209,33 +163,6 @@ If a table cannot be parsed:
 
 ---
 
-# CLI
-
-The package must expose a CLI called:
-
-table1-parser
-
-Example commands:
-
-table1-parser extract path/to/paper.pdf
-
-table1-parser parse path/to/paper.pdf
-
----
-
-# Testing Requirements
-
-Tests must exist for:
-
-- schema validation
-- normalization logic
-- row classification heuristics
-- variable grouping
-
-End-to-end tests should parse example Table 1 PDFs.
-
----
-
 # What Agents Should NOT Do
 
 Do not:
@@ -250,4 +177,3 @@ Table 1 formats vary across journals.
 The system must be robust to variation.
 
 ---
-
