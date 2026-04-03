@@ -12,7 +12,10 @@ def build_table_definition(table: NormalizedTable) -> TableDefinition:
     """Build one deterministic TableDefinition from a normalized table."""
     variables = build_defined_variables(table)
     column_definition = build_column_definition(table)
-    notes = _notes(table)
+    notes = ["rotated_table_layout"] if table.metadata.get("table_orientation") == "rotated" else []
+    confidences = [variable.confidence for variable in variables if getattr(variable, "confidence", None) is not None]
+    if getattr(column_definition, "confidence", None) is not None:
+        confidences.append(column_definition.confidence)
     definition = TableDefinition(
         table_id=table.table_id,
         title=table.title,
@@ -20,7 +23,7 @@ def build_table_definition(table: NormalizedTable) -> TableDefinition:
         variables=variables,
         column_definition=column_definition,
         notes=notes,
-        overall_confidence=_overall_confidence(variables, column_definition),
+        overall_confidence=round(sum(confidences) / len(confidences), 4) if confidences else None,
     )
     return validate_table_definition(definition, table)
 
@@ -33,20 +36,3 @@ def build_table_definitions(tables: list[NormalizedTable]) -> list[TableDefiniti
 def table_definitions_to_payload(tables: list[TableDefinition]) -> list[dict[str, object]]:
     """Serialize TableDefinition models as JSON-friendly dictionaries."""
     return [table.model_dump(mode="json") for table in tables]
-
-
-def _notes(table: NormalizedTable) -> list[str]:
-    """Return simple notes carried forward from normalization metadata."""
-    if table.metadata.get("table_orientation") == "rotated":
-        return ["rotated_table_layout"]
-    return []
-
-
-def _overall_confidence(variables: list[object], column_definition: object) -> float | None:
-    """Average the available component confidences."""
-    confidences = [variable.confidence for variable in variables if getattr(variable, "confidence", None) is not None]
-    if getattr(column_definition, "confidence", None) is not None:
-        confidences.append(column_definition.confidence)
-    if not confidences:
-        return None
-    return round(sum(confidences) / len(confidences), 4)

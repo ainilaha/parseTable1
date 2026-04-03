@@ -19,21 +19,13 @@ P_VALUE_PATTERN = re.compile(r"^(?:[<>]=?\s*)?(?:0?\.\d+|\.\d+|1\.0+)$", re.IGNO
 N_ONLY_PATTERN = re.compile(rf"^{INTEGER_TOKEN}$")
 
 
-def _normalize_p_value_candidate(value: str) -> str:
-    """Drop a literal p-prefix while preserving comparator symbols."""
-    normalized = clean_text(value).lower().strip()
-    if not normalized.startswith("p"):
-        return normalized
-    remainder = normalized[1:].lstrip()
-    if remainder.startswith(("=", ":")):
-        return remainder[1:].lstrip()
-    return remainder
-
-
 def detect_value_pattern(raw_value: str) -> ValuePatternGuess:
     """Classify a raw value string into a conservative pattern family."""
     value = clean_text(raw_value)
-    lowered = _normalize_p_value_candidate(raw_value)
+    lowered = clean_text(raw_value).lower().strip()
+    if lowered.startswith("p"):
+        remainder = lowered[1:].lstrip()
+        lowered = remainder[1:].lstrip() if remainder.startswith(("=", ":")) else remainder
 
     if MEDIAN_IQR_PATTERN.fullmatch(lowered):
         return ValuePatternGuess(raw_value=raw_value, pattern="median_iqr", confidence=0.95)

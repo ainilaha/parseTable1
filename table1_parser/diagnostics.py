@@ -59,57 +59,6 @@ def _utc_timestamp() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def _classification_map(
-    row_classifications: list[RowClassification],
-) -> dict[int, RowClassification]:
-    return {item.row_idx: item for item in row_classifications}
-
-
-def _find_parent_row_idx(row_order: list[int], classification_by_row: dict[int, RowClassification], row_idx: int) -> int | None:
-    """Return the nearest plausible categorical parent above a candidate level row."""
-    try:
-        row_position = row_order.index(row_idx)
-    except ValueError:
-        return None
-    for prior_row_idx in reversed(row_order[:row_position]):
-        prior = classification_by_row.get(prior_row_idx)
-        if prior is None:
-            continue
-        if prior.classification == "variable_header":
-            return prior_row_idx
-        if prior.classification in {"continuous_variable_row", "section_header"}:
-            return None
-    return None
-
-
-def _has_following_levels(row_order: list[int], classification_by_row: dict[int, RowClassification], row_idx: int) -> bool:
-    """Return whether a candidate categorical parent has plausible level rows below it."""
-    try:
-        row_position = row_order.index(row_idx)
-    except ValueError:
-        return False
-    for next_row_idx in row_order[row_position + 1 :]:
-        next_classification = classification_by_row.get(next_row_idx)
-        if next_classification is None:
-            continue
-        if next_classification.classification == "level_row":
-            return True
-        if next_classification.classification in {"variable_header", "continuous_variable_row", "section_header"}:
-            return False
-    return False
-
-
-def _body_column_values(table: NormalizedTable, col_idx: int) -> list[str]:
-    """Return body-row values for one column index."""
-    values: list[str] = []
-    for row_view in table.row_views:
-        if col_idx < len(row_view.raw_cells):
-            values.append(clean_text(row_view.raw_cells[col_idx]))
-        else:
-            values.append("")
-    return values
-
-
 def build_parse_quality_report(
     table: NormalizedTable,
     row_classifications: list[RowClassification],
@@ -122,7 +71,7 @@ def build_parse_quality_report(
     """Build a conservative parse-quality report from existing pipeline outputs."""
     variable_blocks = variable_blocks or []
     column_roles = column_roles or []
-    classification_by_row = _classification_map(row_classifications)
+    classification_by_row = {item.row_idx: item for item in row_classifications}
     row_order = [row_view.row_idx for row_view in table.row_views]
 
     row_diagnostics: list[DiagnosticItem] = []
@@ -181,24 +130,56 @@ def build_parse_quality_report(
                     row_idx=row_view.row_idx,
                 )
             )
-        if classification.classification == "level_row" and _find_parent_row_idx(row_order, classification_by_row, row_view.row_idx) is None:
-            row_diagnostics.append(
-                DiagnosticItem(
-                    severity="warning",
-                    code="level_without_parent",
-                    message="Level row has no plausible categorical parent above it.",
-                    row_idx=row_view.row_idx,
+        if classification.classification == "level_row":
+            try:
+                row_position = row_order.index(row_view.row_idx)
+            except ValueError:
+                parent_row_idx = None
+            else:
+                parent_row_idx = None
+                for prior_row_idx in reversed(row_order[:row_position]):
+                    prior = classification_by_row.get(prior_row_idx)
+                    if prior is None:
+                        continue
+                    if prior.classification == "variable_header":
+                        parent_row_idx = prior_row_idx
+                        break
+                    if prior.classification in {"continuous_variable_row", "section_header"}:
+                        break
+            if parent_row_idx is None:
+                row_diagnostics.append(
+                    DiagnosticItem(
+                        severity="warning",
+                        code="level_without_parent",
+                        message="Level row has no plausible categorical parent above it.",
+                        row_idx=row_view.row_idx,
+                    )
                 )
-            )
-        if classification.classification == "variable_header" and not _has_following_levels(row_order, classification_by_row, row_view.row_idx):
-            row_diagnostics.append(
-                DiagnosticItem(
-                    severity="info",
-                    code="parent_without_levels",
-                    message="Categorical parent row has no plausible levels below it.",
-                    row_idx=row_view.row_idx,
+        if classification.classification == "variable_header":
+            try:
+                row_position = row_order.index(row_view.row_idx)
+            except ValueError:
+                has_following_levels = False
+            else:
+                has_following_levels = False
+                for next_row_idx in row_order[row_position + 1 :]:
+                    next_classification = classification_by_row.get(next_row_idx)
+                    if next_classification is None:
+                        continue
+                    if next_classification.classification == "level_row":
+                        has_following_levels = True
+                        break
+                    if next_classification.classification in {"variable_header", "continuous_variable_row", "section_header"}:
+                        break
+            if not has_following_levels:
+                row_diagnostics.append(
+                    DiagnosticItem(
+                        severity="info",
+                        code="parent_without_levels",
+                        message="Categorical parent row has no plausible levels below it.",
+                        row_idx=row_view.row_idx,
+                    )
                 )
-            )
 
     if unknown_fraction > UNKNOWN_FAILURE_THRESHOLD:
         table_diagnostics.append(
@@ -287,7 +268,12 @@ def build_parse_quality_report(
 
     role_by_col = {role.col_idx: role for role in column_roles}
     for col_idx in range(1, table.n_cols):
-        values = _body_column_values(table, col_idx)
+        values = []
+        for row_view in table.row_views:
+            if col_idx < len(row_view.raw_cells):
+                values.append(clean_text(row_view.raw_cells[col_idx]))
+            else:
+                values.append("")
         nonempty_values = [value for value in values if value]
         if not nonempty_values:
             column_diagnostics.append(

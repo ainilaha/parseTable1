@@ -36,8 +36,16 @@ def build_table_profile(table: NormalizedTable) -> TableProfile:
     descriptive_score = 0
     estimate_score = 0
 
+    cleaned_rows = table.metadata.get("cleaned_rows", [])
+    header_rows = [cleaned_rows[row_idx] for row_idx in table.header_rows if isinstance(cleaned_rows, list) and row_idx < len(cleaned_rows)]
+    header_labels: list[str] = []
+    for col_idx in range(table.n_cols):
+        parts = [row[col_idx] for row in header_rows if col_idx < len(row) and clean_text(str(row[col_idx]))]
+        label = clean_text(" ".join(str(part) for part in parts))
+        if label:
+            header_labels.append(label)
     title_caption_text = clean_text(" ".join(part for part in [table.title or "", table.caption or ""] if part))
-    header_text = clean_text(" ".join(_header_labels(table)))
+    header_text = clean_text(" ".join(header_labels))
     all_context_text = clean_text(" ".join(part for part in [title_caption_text, header_text] if part))
 
     if DESCRIPTIVE_TEXT_PATTERN.search(title_caption_text):
@@ -53,7 +61,14 @@ def build_table_profile(table: NormalizedTable) -> TableProfile:
         estimate_score += 1
         evidence.append("header_mentions_model_or_adjustment")
 
-    pattern_counts = _pattern_counts(table)
+    pattern_counts: dict[str, int] = {}
+    for row_view in table.row_views:
+        for raw_value in row_view.raw_cells[1:]:
+            cleaned = clean_text(raw_value)
+            if not cleaned:
+                continue
+            pattern = detect_value_pattern(raw_value).pattern
+            pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
     descriptive_pattern_total = sum(
         pattern_counts.get(name, 0) for name in ("count_pct", "mean_sd", "median_iqr", "n_only")
     )
@@ -75,7 +90,11 @@ def build_table_profile(table: NormalizedTable) -> TableProfile:
         evidence.append("header_contains_group_or_overall_columns")
     p_value_column_count = sum(role.role == "p_value" for role in column_roles)
 
-    inline_interval_count = _inline_interval_count(table)
+    inline_interval_count = 0
+    for row_view in table.row_views:
+        for raw_value in row_view.raw_cells[1:]:
+            if INLINE_INTERVAL_PATTERN.fullmatch(clean_text(raw_value)):
+                inline_interval_count += 1
     if inline_interval_count >= 2:
         estimate_score += 2
         evidence.append("body_contains_multiple_inline_estimate_intervals")
@@ -100,7 +119,15 @@ def build_table_profile(table: NormalizedTable) -> TableProfile:
         caption=table.caption,
         table_family=family,
         should_run_llm_semantics=(family == "descriptive_characteristics"),
-        family_confidence=_family_confidence(descriptive_score, estimate_score, family),
+        family_confidence=(
+            min(0.98, round(0.55 + 0.08 * descriptive_score + 0.03 * max(0, descriptive_score - estimate_score), 4))
+            if family == "descriptive_characteristics"
+            else (
+                min(0.98, round(0.55 + 0.08 * estimate_score + 0.03 * max(0, estimate_score - descriptive_score), 4))
+                if family == "estimate_results"
+                else min(0.75, round(0.35 + 0.05 * max(descriptive_score, estimate_score), 4))
+            )
+        ),
         evidence=evidence,
         notes=[],
     )
@@ -115,51 +142,3 @@ def build_table_profiles(tables: list[NormalizedTable]) -> list[TableProfile]:
 def table_profiles_to_payload(profiles: list[TableProfile]) -> list[dict[str, object]]:
     """Serialize table profiles as JSON-friendly dictionaries."""
     return [profile.model_dump(mode="json") for profile in profiles]
-
-
-def _header_labels(table: NormalizedTable) -> list[str]:
-    """Return one cleaned header label per visible data column."""
-    cleaned_rows = table.metadata.get("cleaned_rows", [])
-    if not isinstance(cleaned_rows, list):
-        return []
-    header_rows = [cleaned_rows[row_idx] for row_idx in table.header_rows if row_idx < len(cleaned_rows)]
-    labels: list[str] = []
-    for col_idx in range(table.n_cols):
-        parts = [row[col_idx] for row in header_rows if col_idx < len(row) and clean_text(str(row[col_idx]))]
-        label = clean_text(" ".join(str(part) for part in parts))
-        if label:
-            labels.append(label)
-    return labels
-
-
-def _pattern_counts(table: NormalizedTable) -> dict[str, int]:
-    """Count recognized value-pattern families across the normalized body."""
-    counts: dict[str, int] = {}
-    for row_view in table.row_views:
-        for raw_value in row_view.raw_cells[1:]:
-            cleaned = clean_text(raw_value)
-            if not cleaned:
-                continue
-            pattern = detect_value_pattern(raw_value).pattern
-            counts[pattern] = counts.get(pattern, 0) + 1
-    return counts
-
-
-def _inline_interval_count(table: NormalizedTable) -> int:
-    """Count body cells that look like one estimate accompanied by a two-number interval."""
-    count = 0
-    for row_view in table.row_views:
-        for raw_value in row_view.raw_cells[1:]:
-            if INLINE_INTERVAL_PATTERN.fullmatch(clean_text(raw_value)):
-                count += 1
-    return count
-
-
-def _family_confidence(descriptive_score: int, estimate_score: int, family: str) -> float:
-    """Turn simple routing scores into a bounded confidence value."""
-    if family == "descriptive_characteristics":
-        return min(0.98, round(0.55 + 0.08 * descriptive_score + 0.03 * max(0, descriptive_score - estimate_score), 4))
-    if family == "estimate_results":
-        return min(0.98, round(0.55 + 0.08 * estimate_score + 0.03 * max(0, estimate_score - descriptive_score), 4))
-    best_score = max(descriptive_score, estimate_score)
-    return min(0.75, round(0.35 + 0.05 * best_score, 4))

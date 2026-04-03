@@ -30,81 +30,48 @@ def build_table_context(
     sections: list[PaperSection],
 ) -> TableContext:
     """Build one per-table context bundle."""
-    table_label = _table_label(definition.title, definition.caption)
-    row_terms = _row_terms(definition)
-    column_terms = _column_terms(definition)
-    grouping_terms = _grouping_terms(definition)
-    methods_sections = [section.section_id for section in sections if section.role_hint == "methods_like"]
-    results_sections = [section.section_id for section in sections if section.role_hint == "results_like"]
-    passages = _retrieve_passages(sections, table_label, row_terms, column_terms, grouping_terms)
-    return TableContext(
-        table_id=definition.table_id,
-        table_index=table_index,
-        table_label=table_label,
-        title=definition.title,
-        caption=definition.caption,
-        row_terms=row_terms,
-        column_terms=column_terms,
-        grouping_terms=grouping_terms,
-        methods_like_section_ids=methods_sections,
-        results_like_section_ids=results_sections,
-        passages=passages,
-    )
-
-
-def _table_label(title: str | None, caption: str | None) -> str | None:
-    """Return a normalized table label such as 'Table 2' when present."""
-    for text in (title, caption):
+    table_label = None
+    for text in (definition.title, definition.caption):
         match = TABLE_NUMBER_PATTERN.search(text or "")
         if match is not None:
-            return f"Table {match.group(1)}"
-    return None
-
-
-def _row_terms(definition: TableDefinition) -> list[str]:
-    """Return row-label terms worth searching in the paper text."""
-    return _dedupe(
+            table_label = f"Table {match.group(1)}"
+            break
+    row_terms = _dedupe(
         [
             variable.variable_label
             for variable in definition.variables
             if clean_text(variable.variable_label)
         ]
     )
-
-
-def _column_terms(definition: TableDefinition) -> list[str]:
-    """Return column-label terms worth searching in the paper text."""
-    return _dedupe(
+    column_terms = _dedupe(
         [
             column.column_label
             for column in definition.column_definition.columns
             if clean_text(column.column_label) and column.inferred_role not in {"overall", "p_value", "smd"}
         ]
     )
-
-
-def _grouping_terms(definition: TableDefinition) -> list[str]:
-    """Return grouping terms worth searching in the paper text."""
-    terms = [
-        definition.column_definition.grouping_label or "",
-        definition.column_definition.grouping_name or "",
-    ]
-    return _dedupe([term for term in terms if clean_text(term)])
-
-
-def _retrieve_passages(
-    sections: list[PaperSection],
-    table_label: str | None,
-    row_terms: list[str],
-    column_terms: list[str],
-    grouping_terms: list[str],
-) -> list[RetrievedPassage]:
-    """Return a compact retrieved passage list for one table."""
+    grouping_terms = _dedupe(
+        [
+            term
+            for term in [
+                definition.column_definition.grouping_label or "",
+                definition.column_definition.grouping_name or "",
+            ]
+            if clean_text(term)
+        ]
+    )
+    methods_sections = [section.section_id for section in sections if section.role_hint == "methods_like"]
+    results_sections = [section.section_id for section in sections if section.role_hint == "results_like"]
     ranked: list[tuple[float, RetrievedPassage]] = []
     search_terms = row_terms + column_terms + grouping_terms
     normalized_terms = {normalize_label_text(term).lower() for term in search_terms if normalize_label_text(term)}
     for section in sections:
-        for paragraph_index, paragraph in enumerate(_paragraphs(section.content)):
+        paragraphs = (
+            [chunk for chunk in (clean_text(part) for part in PARAGRAPH_SPLIT_PATTERN.split(section.content)) if chunk]
+            if section.content
+            else []
+        )
+        for paragraph_index, paragraph in enumerate(paragraphs):
             lowered = paragraph.lower()
             if table_label and table_label.lower() in lowered:
                 ranked.append(
@@ -120,7 +87,11 @@ def _retrieve_passages(
                     )
                 )
                 continue
-            score = _term_match_score(paragraph, normalized_terms)
+            if normalized_terms:
+                normalized_paragraph = normalize_label_text(paragraph).lower()
+                score = sum(term in normalized_paragraph for term in normalized_terms if term) / len(normalized_terms)
+            else:
+                score = 0.0
             if score <= 0.0:
                 continue
             if section.role_hint == "methods_like":
@@ -137,26 +108,26 @@ def _retrieve_passages(
                         _passage(section, paragraph_index, paragraph, "results_term_match", round(score + 0.1, 4)),
                     )
                 )
-    return _dedupe_passages([passage for _, passage in sorted(ranked, key=lambda item: -item[0])][:8])
-
-
-def _paragraphs(content: str) -> list[str]:
-    """Split section content into compact paragraphs."""
-    if not content:
-        return []
-    chunks = [clean_text(part) for part in PARAGRAPH_SPLIT_PATTERN.split(content)]
-    return [chunk for chunk in chunks if chunk]
-
-
-def _term_match_score(paragraph: str, normalized_terms: set[str]) -> float:
-    """Return a simple normalized term-overlap score for a paragraph."""
-    if not normalized_terms:
-        return 0.0
-    normalized_paragraph = normalize_label_text(paragraph).lower()
-    matches = sum(term in normalized_paragraph for term in normalized_terms if term)
-    if matches == 0:
-        return 0.0
-    return matches / len(normalized_terms)
+    passages: list[RetrievedPassage] = []
+    seen_passage_text: set[str] = set()
+    for passage in [passage for _, passage in sorted(ranked, key=lambda item: -item[0])][:8]:
+        if passage.text in seen_passage_text:
+            continue
+        seen_passage_text.add(passage.text)
+        passages.append(passage)
+    return TableContext(
+        table_id=definition.table_id,
+        table_index=table_index,
+        table_label=table_label,
+        title=definition.title,
+        caption=definition.caption,
+        row_terms=row_terms,
+        column_terms=column_terms,
+        grouping_terms=grouping_terms,
+        methods_like_section_ids=methods_sections,
+        results_like_section_ids=results_sections,
+        passages=passages,
+    )
 
 
 def _passage(
@@ -187,16 +158,4 @@ def _dedupe(values: list[str]) -> list[str]:
             continue
         seen.add(cleaned)
         deduped.append(cleaned)
-    return deduped
-
-
-def _dedupe_passages(passages: list[RetrievedPassage]) -> list[RetrievedPassage]:
-    """Deduplicate passages by text while preserving rank order."""
-    seen: set[str] = set()
-    deduped: list[RetrievedPassage] = []
-    for passage in passages:
-        if passage.text in seen:
-            continue
-        seen.add(passage.text)
-        deduped.append(passage)
     return deduped

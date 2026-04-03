@@ -33,101 +33,69 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
         parent_row = row_views_by_idx[block.variable_row_idx]
         levels = [
             DefinedLevel(
-                level_name=_level_name(row_views_by_idx[row_idx].first_cell_raw),
+                level_name=clean_text(row_views_by_idx[row_idx].first_cell_raw),
                 level_label=row_views_by_idx[row_idx].first_cell_raw,
                 row_idx=row_idx,
                 confidence=0.92,
             )
             for row_idx in block.level_row_indices
         ]
-        variable_type = _variable_type(block.variable_kind, levels)
+        if block.variable_kind == "continuous":
+            variable_type = "continuous"
+        elif levels:
+            level_names = {
+                normalize_label_text(level.level_name).lower()
+                for level in levels
+                if normalize_label_text(level.level_name)
+            }
+            variable_type = "binary" if frozenset(level_names) in KNOWN_BINARY_LEVELS else "categorical"
+        else:
+            variable_type = "unknown"
+        cleaned = clean_text(parent_row.first_cell_raw)
+        without_suffix = SUMMARY_SUFFIX_PATTERN.sub("", cleaned).strip(" ,")
+        without_paren_units = PAREN_UNITS_PATTERN.sub("", without_suffix).strip(" ,")
+        variable_name = normalize_label_text(without_paren_units) or normalize_label_text(cleaned)
+        units_hint = None
+        if "," in cleaned:
+            suffix = clean_text(cleaned.rsplit(",", maxsplit=1)[-1])
+            if suffix and "n (%)" not in suffix.lower() and len(suffix) <= 20:
+                units_hint = suffix
+        if units_hint is None:
+            match = PAREN_UNITS_PATTERN.search(cleaned)
+            if match is not None:
+                candidate = clean_text(match.group(1))
+                if candidate and candidate.lower() not in {"sd", "iqr", "%"} and len(candidate) <= 20:
+                    units_hint = candidate
+        label = clean_text(parent_row.raw_cells[0]).lower() if parent_row.raw_cells else ""
+        if "n (%)" in label or "no. (%)" in label:
+            summary_style_hint = "count_pct"
+        else:
+            summary_style_hint = None
+            for cell in [cell for cell in parent_row.raw_cells[1:] if clean_text(cell)]:
+                pattern = detect_value_pattern(cell).pattern
+                if pattern != "unknown":
+                    summary_style_hint = pattern
+                    break
+            if summary_style_hint is None and levels:
+                summary_style_hint = "count_pct"
+        confidence = 0.55
+        if variable_type == "continuous":
+            confidence = 0.9
+        elif variable_type == "binary":
+            confidence = 0.95
+        elif variable_type == "categorical":
+            confidence = 0.92 if levels else 0.75
         variables.append(
             DefinedVariable(
-                variable_name=_variable_name(parent_row.first_cell_raw),
+                variable_name=variable_name,
                 variable_label=parent_row.first_cell_raw,
                 variable_type=variable_type,
                 row_start=block.row_start,
                 row_end=block.row_end,
                 levels=levels,
-                units_hint=_units_hint(parent_row.first_cell_raw),
-                summary_style_hint=_summary_style_hint(parent_row.raw_cells, levels),
-                confidence=_variable_confidence(variable_type, levels),
+                units_hint=units_hint,
+                summary_style_hint=summary_style_hint,
+                confidence=confidence,
             )
         )
     return variables
-
-
-def _variable_name(label: str) -> str:
-    """Return a matching-friendly variable name for parent variable rows."""
-    cleaned = clean_text(label)
-    without_suffix = SUMMARY_SUFFIX_PATTERN.sub("", cleaned).strip(" ,")
-    without_paren_units = PAREN_UNITS_PATTERN.sub("", without_suffix).strip(" ,")
-    normalized = normalize_label_text(without_paren_units)
-    if normalized:
-        return normalized
-    return normalize_label_text(cleaned)
-
-
-def _level_name(label: str) -> str:
-    """Return a level name while preserving punctuation that changes category meaning."""
-    return clean_text(label)
-
-
-def _units_hint(label: str) -> str | None:
-    """Extract a short units hint from a label when visible."""
-    cleaned = clean_text(label)
-    if "," in cleaned:
-        suffix = clean_text(cleaned.rsplit(",", maxsplit=1)[-1])
-        if suffix and "n (%)" not in suffix.lower() and len(suffix) <= 20:
-            return suffix
-    match = PAREN_UNITS_PATTERN.search(cleaned)
-    if match is None:
-        return None
-    candidate = clean_text(match.group(1))
-    if not candidate or candidate.lower() in {"sd", "iqr", "%"}:
-        return None
-    if len(candidate) > 20:
-        return None
-    return candidate
-
-
-def _summary_style_hint(raw_cells: list[str], levels: list[DefinedLevel]) -> str | None:
-    """Infer a conservative summary style hint from visible text."""
-    label = clean_text(raw_cells[0]).lower() if raw_cells else ""
-    if "n (%)" in label or "no. (%)" in label:
-        return "count_pct"
-    trailing_cells = [cell for cell in raw_cells[1:] if clean_text(cell)]
-    for cell in trailing_cells:
-        pattern = detect_value_pattern(cell).pattern
-        if pattern != "unknown":
-            return pattern
-    if levels:
-        return "count_pct"
-    return None
-
-
-def _variable_type(variable_kind: str, levels: list[DefinedLevel]) -> str:
-    """Map grouped row structure onto a variable type."""
-    if variable_kind == "continuous":
-        return "continuous"
-    if levels:
-        level_names = {
-            normalize_label_text(level.level_name).lower()
-            for level in levels
-            if normalize_label_text(level.level_name)
-        }
-        if frozenset(level_names) in KNOWN_BINARY_LEVELS:
-            return "binary"
-        return "categorical"
-    return "unknown"
-
-
-def _variable_confidence(variable_type: str, levels: list[DefinedLevel]) -> float:
-    """Return a simple confidence score for a defined variable."""
-    if variable_type == "continuous":
-        return 0.9
-    if variable_type == "binary":
-        return 0.95
-    if variable_type == "categorical":
-        return 0.92 if levels else 0.75
-    return 0.55

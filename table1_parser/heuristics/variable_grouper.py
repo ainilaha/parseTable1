@@ -9,57 +9,9 @@ from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable, RowView
 
 
-def _count_more_indented_levels(
-    parent_row_view: RowView,
-    level_rows: list[int],
-    row_views_by_idx: dict[int, RowView],
-) -> int:
-    """Count attached levels that are visibly more indented than the parent."""
-    return sum(
-        1
-        for row_idx in level_rows
-        if row_views_by_idx[row_idx].indent_level is not None
-        and parent_row_view.indent_level is not None
-        and row_views_by_idx[row_idx].indent_level > parent_row_view.indent_level
-    )
-
-
 def _nonempty_trailing_cell_count(row_view: RowView) -> int:
     """Count meaningful trailing cells while preserving raw row text elsewhere."""
     return sum(bool(clean_text(cell)) for cell in row_view.raw_cells[1:])
-
-
-def _promote_categorical_parents(
-    row_order: list[int],
-    classifications_by_row: dict[int, str],
-    row_views_by_idx: dict[int, RowView],
-    *,
-    indentation_informative: bool,
-) -> dict[int, str]:
-    """Promote misclassified continuous rows that clearly own multiple levels."""
-    adjusted = dict(classifications_by_row)
-    for row_idx in row_order:
-        if adjusted.get(row_idx) != "continuous_variable_row":
-            continue
-        row_view = row_views_by_idx[row_idx]
-        if _nonempty_trailing_cell_count(row_view) > 1:
-            continue
-        level_rows = detect_level_row_indices(
-            parent_row_idx=row_idx,
-            row_order=row_order,
-            classifications_by_row=adjusted,
-        )
-        more_indented_levels = (
-            _count_more_indented_levels(row_view, level_rows, row_views_by_idx)
-            if indentation_informative
-            else 0
-        )
-        if len(level_rows) >= 2 and (
-            (indentation_informative and more_indented_levels >= 1)
-            or _nonempty_trailing_cell_count(row_view) <= 1
-        ):
-            adjusted[row_idx] = "variable_header"
-    return adjusted
 
 
 def group_variable_blocks(
@@ -74,12 +26,35 @@ def group_variable_blocks(
     row_views_by_idx = {row_view.row_idx: row_view for row_view in table.row_views}
     row_order = [row_view.row_idx for row_view in table.row_views]
     use_indentation = indentation_is_informative(table)
-    classifications_by_row = _promote_categorical_parents(
-        row_order,
-        classifications_by_row,
-        row_views_by_idx,
-        indentation_informative=use_indentation,
-    )
+    adjusted = dict(classifications_by_row)
+    for row_idx in row_order:
+        if adjusted.get(row_idx) != "continuous_variable_row":
+            continue
+        row_view = row_views_by_idx[row_idx]
+        if _nonempty_trailing_cell_count(row_view) > 1:
+            continue
+        level_rows = detect_level_row_indices(
+            parent_row_idx=row_idx,
+            row_order=row_order,
+            classifications_by_row=adjusted,
+        )
+        more_indented_levels = (
+            sum(
+                1
+                for level_row_idx in level_rows
+                if row_views_by_idx[level_row_idx].indent_level is not None
+                and row_view.indent_level is not None
+                and row_views_by_idx[level_row_idx].indent_level > row_view.indent_level
+            )
+            if use_indentation
+            else 0
+        )
+        if len(level_rows) >= 2 and (
+            (use_indentation and more_indented_levels >= 1)
+            or _nonempty_trailing_cell_count(row_view) <= 1
+        ):
+            adjusted[row_idx] = "variable_header"
+    classifications_by_row = adjusted
     blocks: list[VariableBlock] = []
     consumed_rows: set[int] = set()
 

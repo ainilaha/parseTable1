@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.normalize.cleaner import clean_text
-from table1_parser.schemas import DefinedColumn, DefinedVariable, NormalizedTable, ParsedColumn, ValueRecord
+from table1_parser.schemas import DefinedVariable, NormalizedTable, ParsedColumn, ValueRecord
 
 
 INTEGER_TOKEN = r"(?:\d{1,3}(?:,\d{3})*|\d+)"
@@ -89,7 +89,7 @@ def parse_cell_value(raw_value: str, column_role: str) -> ParsedCell:
         if match is not None:
             return ParsedCell(
                 value_type="count",
-                parsed_numeric=float(_parse_int_like(match.group("count"))),
+                parsed_numeric=float(int(match.group("count").replace(",", ""))),
                 parsed_secondary_numeric=float(match.group("percent")),
                 confidence=pattern.confidence,
             )
@@ -108,7 +108,7 @@ def parse_cell_value(raw_value: str, column_role: str) -> ParsedCell:
         if match is not None:
             return ParsedCell(
                 value_type="count",
-                parsed_numeric=float(_parse_int_like(match.group("count"))),
+                parsed_numeric=float(int(match.group("count").replace(",", ""))),
                 parsed_secondary_numeric=None,
                 confidence=pattern.confidence,
             )
@@ -145,8 +145,34 @@ def apply_count_percent_heuristics(
         return notes
 
     first_substantive_column = candidate_columns[0]
-    overall_column = first_substantive_column if _looks_like_overall_column(first_substantive_column, candidate_columns) else None
-    denominators = _column_denominators(table, columns)
+    lowered = clean_text(first_substantive_column.column_label).lower()
+    overall_column = first_substantive_column if (
+        first_substantive_column == candidate_columns[0]
+        and (
+            first_substantive_column.inferred_role == "overall"
+            or lowered in {"overall", "total", "all"}
+            or (not lowered and any(other.inferred_role == "group" for other in candidate_columns[1:]))
+        )
+    ) else None
+    denominators: dict[int, int] = {}
+    for column in columns:
+        match = HEADER_N_PATTERN.search(clean_text(column.column_label))
+        if match is not None:
+            denominators[column.col_idx] = int(match.group("count").replace(",", ""))
+
+    count_row = None
+    for row_view in table.row_views:
+        label = clean_text(row_view.first_cell_raw).lower().rstrip(".")
+        if label in COUNT_ROW_LABELS:
+            count_row = row_view
+            break
+    if count_row is not None:
+        for column in columns:
+            if column.col_idx >= len(count_row.raw_cells) or column.col_idx in denominators:
+                continue
+            parsed = parse_cell_value(count_row.raw_cells[column.col_idx], column.inferred_role)
+            if parsed.value_type == "count" and parsed.parsed_numeric is not None:
+                denominators[column.col_idx] = int(round(parsed.parsed_numeric))
     overall_n = denominators.get(overall_column.col_idx) if overall_column is not None else None
 
     for variable in variables:
@@ -201,58 +227,3 @@ def apply_count_percent_heuristics(
             if note is not None:
                 notes.append(note)
     return notes
-
-
-def _parse_int_like(value: str) -> int:
-    """Parse an integer-like token that may contain thousands separators."""
-    return int(value.replace(",", ""))
-
-
-def _column_denominators(table: NormalizedTable, columns: list[ParsedColumn]) -> dict[int, int]:
-    """Infer column denominators from header labels first, then from a table-wide n row."""
-    denominators: dict[int, int] = {}
-    column_lookup = {column.col_idx: column for column in columns}
-    for column in columns:
-        header_n = _header_n(column)
-        if header_n is not None:
-            denominators[column.col_idx] = header_n
-
-    count_row = _find_count_row(table)
-    if count_row is None:
-        return denominators
-    for col_idx, column in column_lookup.items():
-        if col_idx >= len(count_row.raw_cells) or col_idx in denominators:
-            continue
-        parsed = parse_cell_value(count_row.raw_cells[col_idx], column.inferred_role)
-        if parsed.value_type == "count" and parsed.parsed_numeric is not None:
-            denominators[col_idx] = int(round(parsed.parsed_numeric))
-    return denominators
-
-
-def _find_count_row(table: NormalizedTable):
-    """Return a compact n-row when one appears in the normalized body."""
-    for row_view in table.row_views:
-        label = clean_text(row_view.first_cell_raw).lower().rstrip(".")
-        if label in COUNT_ROW_LABELS:
-            return row_view
-    return None
-
-
-def _header_n(column: DefinedColumn | ParsedColumn) -> int | None:
-    """Extract an explicit header denominator such as Overall (n=100)."""
-    match = HEADER_N_PATTERN.search(clean_text(column.column_label))
-    if match is None:
-        return None
-    return _parse_int_like(match.group("count"))
-
-
-def _looks_like_overall_column(column: ParsedColumn, candidate_columns: list[ParsedColumn]) -> bool:
-    """Return whether the first substantive data column should carry the 100% rule."""
-    if column != candidate_columns[0]:
-        return False
-    lowered = clean_text(column.column_label).lower()
-    if column.inferred_role == "overall":
-        return True
-    if lowered in {"overall", "total", "all"}:
-        return True
-    return not lowered and any(other.inferred_role == "group" for other in candidate_columns[1:])

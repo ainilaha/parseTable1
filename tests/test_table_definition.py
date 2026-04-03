@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from table1_parser.heuristics.table_definition_builder import build_table_definition
-from table1_parser.heuristics.table_definition_rows import _level_name, _variable_name
+from table1_parser.heuristics.table_definition_rows import build_defined_variables
 from table1_parser.schemas import NormalizedTable, RowView, TableDefinition
 from table1_parser.validation.table_definition import validate_table_definition
 
@@ -156,12 +156,34 @@ def test_build_table_definition_preserves_textual_comparator_level_names() -> No
     assert [level.level_label for level in definition.variables[0].levels] == ["<High school", ">High school"]
 
 
-def test_variable_and_level_name_helpers_use_different_normalization_rules() -> None:
-    """Variable-row names strip summary/unit noise, while level names preserve semantic punctuation."""
-    assert _variable_name("Age, years, mean (SD)") == "Age years"
-    assert _level_name("< 1.3") == "< 1.3"
-    assert _level_name("1.3-1.8") == "1.3-1.8"
-    assert _level_name(">High school") == ">High school"
+def test_variable_and_level_names_use_different_normalization_rules() -> None:
+    """Variable rows and level rows should still normalize differently after inlining."""
+    table = NormalizedTable(
+        table_id="tbl-name-rules",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Age, years, mean (SD)", ["52.3 (14.1)"]),
+            _build_row(2, "Education, n (%)", []),
+            _build_row(3, ">High school", ["110 (88.0)"], indent_level=2),
+        ],
+        n_rows=4,
+        n_cols=2,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall"],
+                ["Age, years, mean (SD)", "52.3 (14.1)"],
+                ["Education, n (%)", ""],
+                [">High school", "110 (88.0)"],
+            ]
+        },
+    )
+
+    variables = build_defined_variables(table)
+
+    assert variables[0].variable_name == "Age years"
+    assert variables[1].variable_name == "Education"
+    assert variables[1].levels[0].level_name == ">High school"
 
 
 def test_validate_table_definition_rejects_invalid_level_row() -> None:

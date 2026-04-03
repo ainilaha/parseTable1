@@ -121,6 +121,11 @@ LLM integration must be abstracted behind an interface.
 
 Do not hardcode one model provider.
 
+### Function Design & Patterns
+- **No Single-Use Helpers**: NEVER extract logic into a separate helper function if it is only used once within a single parent function.
+- **Inline Logic**: Keep one-time logic inline to maintain readability and reduce "jumping" between function definitions.
+- **Exception**: Only extract one-time logic if it significantly improves readability of a complex algorithm (e.g., more than 20 lines of distinct logic) and comment it clearly.
+
 ## Typing
 
 Use full type hints everywhere.
@@ -246,14 +251,3 @@ The system must be robust to variation.
 
 ---
 
-# First Task
-
-When starting development, implement **Phase 1 only**:
-
-- package scaffold
-- schemas
-- configuration module
-- CLI stub
-- minimal tests
-
-Extraction and LLM logic will be implemented later.

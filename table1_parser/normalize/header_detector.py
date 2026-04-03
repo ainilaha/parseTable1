@@ -22,15 +22,6 @@ def _numeric_density(row: list[str]) -> float:
     return len(numeric) / len(populated)
 
 
-def _text_density(row: list[str]) -> float:
-    """Compute the fraction of populated cells containing alphabetic content."""
-    populated = [cell for cell in row if cell]
-    if not populated:
-        return 0.0
-    text_like = [cell for cell in populated if any(char.isalpha() for char in cell)]
-    return len(text_like) / len(populated)
-
-
 def header_score(row: list[str], row_idx: int) -> float:
     """Score a row for header-likeness using simple deterministic signals."""
     joined = " ".join(cell for cell in row if cell)
@@ -40,38 +31,19 @@ def header_score(row: list[str], row_idx: int) -> float:
         score += 0.25
     if HEADER_KEYWORD_PATTERN.search(joined):
         score += 0.4
-    if _text_density(row) >= 0.75:
+    populated = [cell for cell in row if cell]
+    text_density = (
+        len([cell for cell in populated if any(char.isalpha() for char in cell)]) / len(populated)
+        if populated
+        else 0.0
+    )
+    if text_density >= 0.75:
         score += 0.2
     if _numeric_density(row) <= 0.25:
         score += 0.2
     if row_idx > 0 and COUNT_ROW_LABEL_PATTERN.fullmatch(first_cell.strip()) and _numeric_density(row) >= 0.75:
         score -= 0.45
     return min(score, 1.0)
-
-
-def _find_top_rule(sorted_rules: list[float], first_top: float) -> float | None:
-    """Return the closest plausible top rule above the first row."""
-    candidates = [rule_y for rule_y in sorted_rules if 0.0 <= first_top - rule_y <= TOP_RULE_GAP]
-    if not candidates:
-        return None
-    return max(candidates)
-
-
-def _find_boundary_rule(
-    sorted_rules: list[float],
-    current_bottom: float,
-    next_top: float,
-) -> float | None:
-    """Return a separator rule near the gap between adjacent rows."""
-    candidates = [
-        rule_y
-        for rule_y in sorted_rules
-        if current_bottom - BOUNDARY_RULE_TOLERANCE <= rule_y <= next_top + BOUNDARY_RULE_TOLERANCE
-    ]
-    if not candidates:
-        return None
-    gap_midpoint = (current_bottom + next_top) / 2.0
-    return min(candidates, key=lambda rule_y: abs(rule_y - gap_midpoint))
 
 
 def _detect_header_rows_from_rules(
@@ -85,7 +57,8 @@ def _detect_header_rows_from_rules(
 
     sorted_rules = sorted(horizontal_rules)
     first_top = row_bounds[0][0]
-    top_rule = _find_top_rule(sorted_rules, first_top)
+    top_rule_candidates = [rule_y for rule_y in sorted_rules if 0.0 <= first_top - rule_y <= TOP_RULE_GAP]
+    top_rule = max(top_rule_candidates) if top_rule_candidates else None
     if top_rule is None:
         return [], None
 
@@ -93,7 +66,16 @@ def _detect_header_rows_from_rules(
     for row_idx in range(max_header_idx + 1):
         current_bottom = row_bounds[row_idx][1]
         next_top = row_bounds[row_idx + 1][0]
-        boundary_rule = _find_boundary_rule(sorted_rules, current_bottom, next_top)
+        boundary_candidates = [
+            rule_y
+            for rule_y in sorted_rules
+            if current_bottom - BOUNDARY_RULE_TOLERANCE <= rule_y <= next_top + BOUNDARY_RULE_TOLERANCE
+        ]
+        if boundary_candidates:
+            gap_midpoint = (current_bottom + next_top) / 2.0
+            boundary_rule = min(boundary_candidates, key=lambda rule_y: abs(rule_y - gap_midpoint))
+        else:
+            boundary_rule = None
         if boundary_rule is None:
             continue
         header_count = row_idx + 1

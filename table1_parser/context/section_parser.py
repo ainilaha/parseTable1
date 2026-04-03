@@ -57,21 +57,16 @@ def paper_sections_to_payload(sections: list[PaperSection]) -> list[dict[str, ob
 def _build_section(order: int, heading: str | None, level: int, lines: list[str]) -> PaperSection:
     """Build one section object from heading and collected lines."""
     content = clean_text("\n".join(lines))
+    lowered = clean_text(heading or "").lower()
     return PaperSection(
         section_id=f"section_{order}",
         order=order,
         heading=heading,
         level=level,
-        role_hint=_role_hint(heading),
+        role_hint=(
+            "methods_like"
+            if any(token in lowered for token in METHODS_HINTS)
+            else ("results_like" if any(token in lowered for token in RESULTS_HINTS) else "other")
+        ),
         content=content,
     )
-
-
-def _role_hint(heading: str | None) -> str:
-    """Return a simple heading-based section role hint."""
-    lowered = clean_text(heading or "").lower()
-    if any(token in lowered for token in METHODS_HINTS):
-        return "methods_like"
-    if any(token in lowered for token in RESULTS_HINTS):
-        return "results_like"
-    return "other"

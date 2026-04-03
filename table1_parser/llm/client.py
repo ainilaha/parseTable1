@@ -108,7 +108,24 @@ class OpenAIClient(LLMClient):
         except Exception as exc:
             raise LLMProviderError(f"OpenAI structured completion failed: {exc}") from exc
 
-        parsed = _extract_parsed_response(response)
+        parsed = getattr(response, "output_parsed", None)
+        if parsed is None:
+            for output_item in getattr(response, "output", []) or []:
+                for content_item in getattr(output_item, "content", []) or []:
+                    parsed = getattr(content_item, "parsed", None)
+                    if parsed is not None:
+                        break
+                if parsed is not None:
+                    break
+        if parsed is None:
+            output_text = getattr(response, "output_text", None)
+            if isinstance(output_text, str) and output_text.strip():
+                try:
+                    loaded = json.loads(output_text)
+                except json.JSONDecodeError:
+                    loaded = None
+                if isinstance(loaded, dict):
+                    parsed = loaded
         if parsed is None:
             raise LLMProviderError("OpenAI response did not contain a parsed structured payload.")
         if isinstance(parsed, BaseModel):
@@ -116,29 +133,6 @@ class OpenAIClient(LLMClient):
         if isinstance(parsed, dict):
             return parsed
         raise LLMProviderError("OpenAI parsed structured payload had an unsupported type.")
-
-
-def _extract_parsed_response(response: Any) -> BaseModel | dict[str, Any] | None:
-    """Extract parsed structured output across SDK response shapes."""
-    parsed = getattr(response, "output_parsed", None)
-    if parsed is not None:
-        return parsed
-
-    for output_item in getattr(response, "output", []) or []:
-        for content_item in getattr(output_item, "content", []) or []:
-            parsed = getattr(content_item, "parsed", None)
-            if parsed is not None:
-                return parsed
-
-    output_text = getattr(response, "output_text", None)
-    if isinstance(output_text, str) and output_text.strip():
-        try:
-            loaded = json.loads(output_text)
-        except json.JSONDecodeError:
-            return None
-        if isinstance(loaded, dict):
-            return loaded
-    return None
 
 
 def build_llm_client(settings: Settings | None = None) -> LLMClient:
