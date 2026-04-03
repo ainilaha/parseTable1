@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
@@ -85,12 +86,17 @@ def _error_payload(message: str) -> str:
     return json.dumps({"tables": [], "error": message}, indent=2)
 
 
+def _print_stderr(message: str) -> None:
+    """Write one diagnostic line to stderr."""
+    print(message, file=sys.stderr)
+
+
 def _validate_pdf_path(pdf_path: str) -> Path | None:
     """Return the PDF path when it exists, otherwise None."""
     path = Path(pdf_path)
     if path.is_file():
         return path
-    print(_error_payload(f"PDF not found: {pdf_path}"))
+    _print_stderr(_error_payload(f"PDF not found: {pdf_path}"))
     return None
 
 
@@ -140,7 +146,7 @@ def _handle_extract(args: argparse.Namespace) -> int:
     try:
         tables = extractor.extract(args.pdf_path)
     except Exception as exc:
-        print(_error_payload(str(exc)))
+        _print_stderr(_error_payload(str(exc)))
         return 1
 
     payload = _extract_payload(tables)
@@ -151,7 +157,6 @@ def _handle_extract(args: argparse.Namespace) -> int:
     output_path = _extract_output_path(args.pdf_path, args.outdir)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"Wrote {output_path}")
     return 0
 
 
@@ -164,7 +169,7 @@ def _handle_normalize(args: argparse.Namespace) -> int:
         extractor = _build_default_extractor()
         normalized_tables = normalize_extracted_tables(extractor.extract(args.pdf_path))
     except Exception as exc:
-        print(_error_payload(str(exc)))
+        _print_stderr(_error_payload(str(exc)))
         return 1
 
     payload = normalized_tables_to_payload(normalized_tables)
@@ -175,7 +180,6 @@ def _handle_normalize(args: argparse.Namespace) -> int:
     output_path = _normalize_output_path(args.pdf_path, args.outdir)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_normalized_tables(output_path, normalized_tables)
-    print(f"Wrote {output_path}")
     return 0
 
 
@@ -187,7 +191,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
     try:
         extracted_tables, normalized_tables, table_profiles, table_definitions, parsed_tables, paper_markdown, paper_sections, table_contexts = _run_available_parse_stages(args.pdf_path)
     except Exception as exc:
-        print(_error_payload(str(exc)))
+        _print_stderr(_error_payload(str(exc)))
         return 1
 
     llm_table_definitions, llm_monitoring_report, llm_debug_dir = _maybe_run_semantic_llm(
@@ -251,21 +255,6 @@ def _handle_parse(args: argparse.Namespace) -> int:
             json.dumps(table_context.model_dump(mode="json"), indent=2) + "\n",
             encoding="utf-8",
         )
-
-    print(f"Wrote {extract_output_path}")
-    print(f"Wrote {normalize_output_path}")
-    print(f"Wrote {table_profile_output_path}")
-    print(f"Wrote {table_definition_output_path}")
-    print(f"Wrote {parsed_output_path}")
-    if llm_table_definitions is not None:
-        print(f"Wrote {llm_table_definition_output_path}")
-    if llm_monitoring_report is not None and llm_monitoring_output_path is not None:
-        print(f"Wrote {llm_monitoring_output_path}")
-        if llm_debug_dir is not None:
-            print(f"Wrote {llm_debug_dir}")
-    print(f"Wrote {paper_markdown_output_path}")
-    print(f"Wrote {paper_sections_output_path}")
-    print(f"Wrote {table_context_output_dir}")
     return 0
 
 
@@ -336,7 +325,7 @@ def _maybe_run_semantic_llm(
             )
             for table, profile, definition, context in eligible_items
         )
-        print(f"LLM semantic interpretation skipped: {exc} Use --no-llm-semantic to suppress this warning.")
+        _print_stderr(f"LLM semantic interpretation skipped: {exc} Use --no-llm-semantic to suppress this warning.")
         return None, _monitoring_report(settings, monitoring_items) if settings.llm_debug else None, debug_run_dir
 
     parser = LLMSemanticTableDefinitionParser(client)
@@ -354,7 +343,7 @@ def _maybe_run_semantic_llm(
         if attempt.result is not None:
             definitions.append(attempt.result)
         if attempt.error is not None:
-            print(
+            _print_stderr(
                 f"LLM semantic interpretation skipped for table_index={context.table_index} "
                 f"(table_id={context.table_id}): {attempt.error}"
             )

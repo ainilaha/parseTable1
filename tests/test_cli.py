@@ -44,7 +44,7 @@ def test_cli_extract_stub_prints_not_implemented(capsys) -> None:
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "error" in captured.out
+    assert "error" in captured.err
 
 
 def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypatch, capsys) -> None:
@@ -111,15 +111,8 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
     assert json.loads(paper_sections_path.read_text(encoding="utf-8"))[0]["section_id"] == "section_0"
     assert json.loads(table_context_path.read_text(encoding="utf-8"))["table_id"] == "tbl-1"
-    assert "Wrote outputs/papers/paper/extracted_tables.json" in captured.out
-    assert "Wrote outputs/papers/paper/normalized_tables.json" in captured.out
-    assert "Wrote outputs/papers/paper/table_profiles.json" in captured.out
-    assert "Wrote outputs/papers/paper/table_definitions.json" in captured.out
-    assert "Wrote outputs/papers/paper/parsed_tables.json" in captured.out
-    assert "Wrote outputs/papers/paper/paper_markdown.md" in captured.out
-    assert "Wrote outputs/papers/paper/paper_sections.json" in captured.out
-    assert "Wrote outputs/papers/paper/table_contexts" in captured.out
-    assert "LLM semantic interpretation skipped:" not in captured.out
+    assert captured.out == ""
+    assert "LLM semantic interpretation skipped:" not in captured.err
 
 
 def test_cli_parse_writes_semantic_llm_output_when_available(tmp_path, monkeypatch, capsys) -> None:
@@ -190,7 +183,7 @@ def test_cli_parse_writes_semantic_llm_output_when_available(tmp_path, monkeypat
     assert exit_code == 0
     assert llm_path.exists()
     assert json.loads(llm_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
-    assert "Wrote outputs/papers/paper/table_definitions_llm.json" in captured.out
+    assert captured.out == ""
 
 
 def test_cli_parse_warns_and_skips_semantic_llm_when_configuration_is_missing(tmp_path, monkeypatch, capsys) -> None:
@@ -239,8 +232,9 @@ def test_cli_parse_warns_and_skips_semantic_llm_when_configuration_is_missing(tm
     assert exit_code == 0
     assert table_definition_path.exists()
     assert not llm_path.exists()
-    assert "LLM semantic interpretation skipped:" in captured.out
-    assert "Use --no-llm-semantic to suppress this warning." in captured.out
+    assert captured.out == ""
+    assert "LLM semantic interpretation skipped:" in captured.err
+    assert "Use --no-llm-semantic to suppress this warning." in captured.err
 
 
 def test_cli_parse_skips_semantic_llm_for_estimate_result_tables(tmp_path, monkeypatch, capsys) -> None:
@@ -336,7 +330,7 @@ def test_cli_parse_skips_semantic_llm_for_estimate_result_tables(tmp_path, monke
     assert parse_calls["count"] == 0
     assert llm_path.exists() is False
     assert json.loads(profile_path.read_text(encoding="utf-8"))[0]["table_family"] == "estimate_results"
-    assert "Wrote outputs/papers/paper/table_profiles.json" in captured.out
+    assert captured.out == ""
 
 
 def test_cli_parse_writes_semantic_debug_monitoring_when_llm_debug_enabled(tmp_path, monkeypatch, capsys) -> None:
@@ -418,8 +412,7 @@ def test_cli_parse_writes_semantic_debug_monitoring_when_llm_debug_enabled(tmp_p
     assert len(monitoring_paths) == 1
     monitoring_payload = json.loads(monitoring_paths[0].read_text(encoding="utf-8"))
     assert monitoring_payload["items"][0]["status"] == "success"
-    assert "Wrote" in captured.out
-    assert str(monitoring_paths[0].relative_to(tmp_path)) in captured.out
+    assert captured.out == ""
 
 
 def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -> None:
@@ -439,7 +432,7 @@ def test_cli_extract_writes_default_output_file(tmp_path, monkeypatch, capsys) -
     captured = capsys.readouterr()
     output_path = tmp_path / "outputs" / "papers" / "paper" / "extracted_tables.json"
     assert exit_code == 0
-    assert "Wrote outputs/papers/paper/extracted_tables.json" in captured.out
+    assert captured.out == ""
     assert json.loads(output_path.read_text(encoding="utf-8")) == []
 
 
@@ -484,7 +477,7 @@ def test_cli_normalize_writes_default_output_file(tmp_path, monkeypatch, capsys)
     payload = json.loads(output_path.read_text(encoding="utf-8"))
 
     assert exit_code == 0
-    assert f"Wrote {Path('outputs') / 'papers' / 'paper' / 'normalized_tables.json'}" in captured.out
+    assert captured.out == ""
     assert payload[0]["table_id"] == "tbl-1"
     assert payload[0]["header_rows"] == [0]
     assert payload[0]["body_rows"] == [1, 2]
