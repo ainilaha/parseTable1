@@ -66,6 +66,15 @@ load_paper_outputs <- function(paper_dir) {
   )
 }
 
+normalized_table_by_index <- function(outputs, table_index = 0L) {
+  idx <- as.integer(table_index) + 1L
+  table <- outputs$normalized_tables[[idx]]
+  if (is.null(table)) {
+    stop(sprintf("No normalized table found for table_index=%s.", table_index), call. = FALSE)
+  }
+  table
+}
+
 list_llm_semantic_debug_runs <- function(paper_dir) {
   debug_root <- paper_output_paths(paper_dir)$llm_debug_dir
   if (!dir.exists(debug_root)) {
@@ -225,6 +234,99 @@ print_comparison_block <- function(title, x) {
   print(x, row.names = FALSE, right = FALSE)
   cat("\n")
   invisible(x)
+}
+
+show_table_structure <- function(
+  paper_dir,
+  table_index = 0L,
+  variant = c("deterministic", "llm"),
+  max_rows = NULL
+) {
+  variant <- match.arg(variant)
+  outputs <- load_paper_outputs(paper_dir)
+  normalized <- normalized_table_by_index(outputs, table_index)
+  definition <- table_definition_variant_by_index(outputs, table_index, variant = variant)
+
+  cleaned_rows <- normalized$metadata$cleaned_rows %||% list()
+  if (!is.null(max_rows)) {
+    max_rows <- as.integer(max_rows)
+    cleaned_rows <- cleaned_rows[seq_len(min(length(cleaned_rows), max_rows))]
+  }
+
+  cat(sprintf("table_index: %s\n", as.integer(table_index)))
+  cat(sprintf("table_id: %s\n", definition$table_id %||% normalized$table_id %||% ""))
+  if (!is.null(definition$title) && nzchar(definition$title)) {
+    cat(sprintf("title: %s\n", definition$title))
+  }
+  if (!is.null(definition$caption) && nzchar(definition$caption) && !identical(definition$caption, definition$title)) {
+    cat(sprintf("caption: %s\n", definition$caption))
+  }
+  cat(sprintf("definition variant: %s\n\n", variant))
+
+  cat("Rows\n")
+  if (length(cleaned_rows) == 0) {
+    cat("[No cleaned rows]\n\n")
+  } else {
+    for (i in seq_along(cleaned_rows)) {
+      cat(sprintf("%2d | %s\n", i - 1L, paste(unlist(cleaned_rows[[i]], use.names = FALSE), collapse = " | ")))
+    }
+    cat("\n")
+  }
+
+  cat("Columns\n")
+  columns <- definition$column_definition$columns %||% definition$columns %||% list()
+  if (length(columns) == 0) {
+    cat("[No column definitions]\n\n")
+  } else {
+    for (column in columns) {
+      col_idx <- as.integer(column$col_idx %||% -1L)
+      label <- as.character(column$column_label %||% column$column_name %||% "")
+      role <- as.character(column$inferred_role %||% "")
+      group_level <- as.character(column$group_level_label %||% "")
+      stat <- as.character(column$statistic_subtype %||% "")
+      extras <- Filter(nzchar, c(
+        if (nzchar(group_level)) paste0("group_level=", group_level) else "",
+        if (nzchar(stat)) paste0("stat=", stat) else ""
+      ))
+      suffix <- if (length(extras)) paste0(" [", paste(extras, collapse = ", "), "]") else ""
+      cat(sprintf("%2d | %s | %s%s\n", col_idx, role, label, suffix))
+    }
+    cat("\n")
+  }
+
+  cat("Variables\n")
+  variables <- definition$variables %||% list()
+  if (length(variables) == 0) {
+    cat("[No variables]\n")
+  } else {
+    for (variable in variables) {
+      label <- as.character(variable$variable_label %||% variable$variable_name %||% "")
+      vtype <- as.character(variable$variable_type %||% "")
+      row_start <- as.integer(variable$row_start %||% -1L)
+      row_end <- as.integer(variable$row_end %||% -1L)
+      summary_style <- as.character(variable$summary_style_hint %||% "")
+      units <- as.character(variable$units_hint %||% "")
+      extras <- Filter(nzchar, c(
+        if (nzchar(summary_style)) paste0("summary=", summary_style) else "",
+        if (nzchar(units)) paste0("units=", units) else ""
+      ))
+      suffix <- if (length(extras)) paste0(" [", paste(extras, collapse = ", "), "]") else ""
+      cat(sprintf("%2d-%2d | %s | %s%s\n", row_start, row_end, vtype, label, suffix))
+      levels <- variable$levels %||% list()
+      if (length(levels)) {
+        for (level in levels) {
+          cat(sprintf("      level row %2d | %s\n",
+                      as.integer(level$row_idx %||% -1L),
+                      as.character(level$level_label %||% level$level_name %||% "")))
+        }
+      }
+    }
+  }
+
+  invisible(list(
+    normalized_table = normalized,
+    table_definition = definition
+  ))
 }
 
 compare_table_definitions <- function(paper_dir, table_index = 0L) {

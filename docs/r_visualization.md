@@ -83,6 +83,7 @@ The paper-output inspection helper is for comparing deterministic and LLM semant
 Public functions:
 
 - `load_paper_outputs(paper_dir)`
+- `show_table_structure(paper_dir, table_index = 0L, variant = "deterministic", max_rows = NULL)`
 - `compare_table_definitions(paper_dir, table_index = 0L)`
 - `compare_table_definition_runs(paper_dir_a, paper_dir_b, table_index = 0L, variant_a = "deterministic", variant_b = "llm", label_a = NULL, label_b = NULL)`
 - `list_llm_semantic_debug_runs(paper_dir)`
@@ -100,6 +101,7 @@ From the repo root:
 source("R/inspect_paper_outputs.R")
 
 x <- load_paper_outputs("outputs/papers/cobaltpaper")
+show_table_structure("outputs/papers/cobaltpaper", table_index = 1L)
 compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
 compare_table_definition_runs(
   "outputs/no_llm/papers/Nephro",
@@ -118,6 +120,8 @@ show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 
 What these are for:
 
+- `show_table_structure(...)`
+  print one saved table's normalized rows, semantic columns, and row-variable definitions together
 - `compare_table_definitions(...)`
   compare deterministic syntax-first semantics with the LLM semantic interpretation
 - `compare_table_definition_runs(...)`
