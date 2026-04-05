@@ -6,6 +6,7 @@ import re
 
 
 WHITESPACE_PATTERN = re.compile(r"\s+")
+REPLACEMENT_CHAR_LE_THRESHOLD_PATTERN = re.compile(r"(?:(?<=^)|(?<=\s)|(?<=\())�\s*(?=\d)")
 HTML_ENTITY_MAP = {
     "&lt;": "<",
     "&gt;": ">",
@@ -36,6 +37,9 @@ def canonicalize_symbols(value: str) -> str:
     normalized = value
     for source, target in HTML_ENTITY_MAP.items():
         normalized = normalized.replace(source, target)
+    # Some PDFs surface a broken <= glyph as the replacement character directly
+    # before a numeric threshold such as "�0.12". Repair only this narrow case.
+    normalized = REPLACEMENT_CHAR_LE_THRESHOLD_PATTERN.sub("<=", normalized)
     return normalized.translate(SYMBOL_TRANSLATIONS)
 
 

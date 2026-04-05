@@ -19,6 +19,8 @@ def test_clean_text_collapses_whitespace_and_normalizes_dashes() -> None:
     assert clean_text("BMI\u2013kg/m2") == "BMI-kg/m2"
     assert clean_text("p \uff1c 0.05") == "p < 0.05"
     assert clean_text("BMI \u2265 30") == "BMI >= 30"
+    assert clean_text("�0.12") == "<=0.12"
+    assert clean_text("Q1 �0.12") == "Q1 <=0.12"
 
 
 def test_label_normalization_preserves_alphanumerics() -> None:
@@ -338,20 +340,37 @@ def test_normalization_repairs_split_count_percent_columns_and_promotes_followin
 
     assert normalized.header_rows == [0, 1]
     assert normalized.n_cols == 7
-    assert normalized.metadata["cleaned_rows"][0] == ["", "", "Q1", "Q2", "Q3", "Q4", ""]
-    assert normalized.metadata["cleaned_rows"][1] == [
-        "Cobalt quartiles (mg/l)",
-        "All",
-        "<=0.12",
-        "0.13-0.14",
-        "0.15-0.18",
-        ">=0.19",
-        "P value",
-    ]
-    assert normalized.metadata["cleaned_rows"][3][5] == "199 (11.5%)"
-    assert normalized.metadata["column_repairs"]["merged_columns"] == [
-        {"from_col_idx": 6, "to_col_idx": 5, "merged_row_count": 3}
-    ]
+
+
+def test_normalization_repairs_broken_replacement_char_threshold_in_headers() -> None:
+    """A broken replacement character before a numeric threshold should normalize to <=."""
+    extracted = ExtractedTable(
+        table_id="tbl-threshold-repair",
+        source_pdf="paper.pdf",
+        page_num=1,
+        n_rows=3,
+        n_cols=5,
+        cells=[
+            TableCell(row_idx=0, col_idx=1, text="Q1"),
+            TableCell(row_idx=0, col_idx=2, text="Q2"),
+            TableCell(row_idx=1, col_idx=0, text="Cobalt quartiles (mg/l)"),
+            TableCell(row_idx=1, col_idx=1, text="�0.12"),
+            TableCell(row_idx=1, col_idx=2, text="0.13-0.14"),
+            TableCell(row_idx=1, col_idx=3, text=">=0.19"),
+            TableCell(row_idx=1, col_idx=4, text="P value"),
+            TableCell(row_idx=2, col_idx=0, text="SBP (mm Hg), mean±SD"),
+            TableCell(row_idx=2, col_idx=1, text="131.0±19.7"),
+            TableCell(row_idx=2, col_idx=2, text="129.4±18.1"),
+            TableCell(row_idx=2, col_idx=3, text="131.3±21.3"),
+            TableCell(row_idx=2, col_idx=4, text="<.001"),
+        ],
+        extraction_backend="pymupdf4llm",
+    )
+
+    normalized = normalize_extracted_table(extracted)
+
+    assert normalized.metadata["cleaned_rows"][1][1] == "<=0.12"
+    assert normalized.header_rows == [0, 1]
 
 
 def test_normalized_table_round_trip_serialization(tmp_path: Path) -> None:

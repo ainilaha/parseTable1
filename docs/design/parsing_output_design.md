@@ -203,6 +203,8 @@ Design intent:
 - saved normalized tables can be reloaded as formal downstream input
 - normalization may apply conservative structural repairs when extraction has clearly split one logical value across adjacent columns
 - those repairs should be driven by row-style expectations and body-value patterns, not by paper-specific header templates
+- normalization may also repair a small set of extractor-facing symbol failures in parser-facing text, such as a broken replacement character before a numeric threshold becoming `<=`
+- these symbol repairs belong in normalized text only; the original extracted cell text remains preserved in `ExtractedTable`
 
 Conservative repair rule:
 
