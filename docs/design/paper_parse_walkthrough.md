@@ -310,6 +310,13 @@ For columns:
 - overall vs group vs p-value vs trend vs SMD style columns
 - grouped-column structure when it can be inferred
 
+One implemented heuristic detail is worth calling out explicitly:
+
+- a row with empty group columns but populated test or statistic columns can still be a variable header
+- if that row is followed by plausible child levels such as `Yes` and `No`, it should be treated as a new variable, not as another level under the previous variable
+
+This matters for printed Table 1 layouts where the parent row carries only the p-value or trend-test result and the level rows carry the group counts.
+
 ### Why `TableDefinition` Exists
 
 This is one of the most important design choices in the project.

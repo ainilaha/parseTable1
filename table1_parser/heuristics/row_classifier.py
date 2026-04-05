@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 
+from table1_parser.heuristics.column_role_detector import detect_column_roles
 from table1_parser.heuristics.level_detector import is_common_level_label, is_likely_level_row
 from table1_parser.heuristics.models import RowClassification
 from table1_parser.schemas import NormalizedTable, RowView
@@ -108,12 +109,19 @@ def classify_row(
     next_row_view: RowView | None = None,
     following_row_views: Sequence[RowView] | None = None,
     indentation_informative: bool = True,
+    statistic_col_indices: set[int] | None = None,
 ) -> RowClassification:
     """Classify a normalized body row conservatively."""
     label = row_view.first_cell_normalized
     word_count = len(label.split())
     trailing_cells = _trailing_cells(row_view)
     trailing_numeric = sum(any(char.isdigit() for char in cell) for cell in row_view.raw_cells[1:] if cell)
+    populated_trailing_col_indices = {
+        col_idx
+        for col_idx in range(1, len(row_view.raw_cells))
+        if clean_text(row_view.raw_cells[col_idx])
+    }
+    has_only_statistic_values = bool(populated_trailing_col_indices) and bool(statistic_col_indices) and populated_trailing_col_indices.issubset(statistic_col_indices)
     next_is_level_like = bool(next_row_view and is_likely_level_row(next_row_view))
     categorical_parent_cue = _has_categorical_parent_cue(row_view)
     child_level_count = 0
@@ -170,6 +178,7 @@ def classify_row(
         row_view.has_trailing_values
         and not categorical_parent_cue
         and not strong_continuous_layout
+        and not has_only_statistic_values
         and not _looks_scalar_count_row(
             row_view,
             child_level_count=child_level_count,
@@ -209,7 +218,7 @@ def classify_row(
             confidence=0.82,
         )
 
-    if is_common_level_label(label) and row_view.has_trailing_values:
+    if is_common_level_label(label) and row_view.has_trailing_values and not has_only_statistic_values:
         return RowClassification(
             row_idx=row_view.row_idx,
             classification="level_row",
@@ -288,6 +297,7 @@ def classify_row(
         and row_view.has_trailing_values
         and trailing_numeric > 0
         and word_count <= 4
+        and not has_only_statistic_values
     ):
         return RowClassification(
             row_idx=row_view.row_idx,
@@ -302,6 +312,9 @@ def classify_rows(table: NormalizedTable) -> list[RowClassification]:
     """Classify all normalized body rows in order."""
     classifications: list[RowClassification] = []
     indentation_informative = indentation_is_informative(table)
+    statistic_col_indices = {
+        guess.col_idx for guess in detect_column_roles(table) if guess.role in {"p_value", "smd"}
+    }
     for index, row_view in enumerate(table.row_views):
         previous = classifications[-1].classification if classifications else None
         previous_row = table.row_views[index - 1] if index > 0 else None
@@ -314,6 +327,7 @@ def classify_rows(table: NormalizedTable) -> list[RowClassification]:
                 next_row_view=next_row,
                 following_row_views=table.row_views[index + 1 :],
                 indentation_informative=indentation_informative,
+                statistic_col_indices=statistic_col_indices,
             )
         )
     return classifications

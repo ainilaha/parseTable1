@@ -109,6 +109,49 @@ def test_row_with_n_percent_and_multiple_children_is_variable_header() -> None:
     assert classifications[3] == "level_row"
 
 
+def test_stats_only_parent_rows_do_not_chain_as_levels() -> None:
+    """Rows populated only in statistic columns should start new variables, not continue levels."""
+    table = NormalizedTable(
+        table_id="tbl-stats-only-parent",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4, 5, 6],
+        row_views=[
+            _build_row(1, "Elevated TGs, n (%)", ["", "", "", "", "<.001", ".018"]),
+            _build_row(2, "Yes", ["371 (31.4%)", "363 (34.3%)", "522 (36.2%)", "335 (26.0%)", "", ""]),
+            _build_row(3, "No", ["811 (68.6%)", "694 (65.7%)", "919 (63.8%)", "952 (74.0%)", "", ""]),
+            _build_row(4, "Antihypertensive drugs", ["", "", "", "", ".021", ".034"]),
+            _build_row(5, "Yes", ["732 (37.9%)", "571 (40.3%)", "769 (42.9%)", "699 (40.5%)", "", ""]),
+            _build_row(6, "No", ["1199 (62.1%)", "847 (59.7%)", "1023 (57.1%)", "1026 (59.5%)", "", ""]),
+        ],
+        n_rows=7,
+        n_cols=7,
+        metadata={
+            "cleaned_rows": [
+                ["Variable", "Q1", "Q2", "Q3", "Q4", "P value", "P for trend"],
+                ["Elevated TGs, n (%)", "", "", "", "", "<.001", ".018"],
+                ["Yes", "371 (31.4%)", "363 (34.3%)", "522 (36.2%)", "335 (26.0%)", "", ""],
+                ["No", "811 (68.6%)", "694 (65.7%)", "919 (63.8%)", "952 (74.0%)", "", ""],
+                ["Antihypertensive drugs", "", "", "", "", ".021", ".034"],
+                ["Yes", "732 (37.9%)", "571 (40.3%)", "769 (42.9%)", "699 (40.5%)", "", ""],
+                ["No", "1199 (62.1%)", "847 (59.7%)", "1023 (57.1%)", "1026 (59.5%)", "", ""],
+            ]
+        },
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "variable_header"
+    assert classifications[5] == "level_row"
+    assert classifications[6] == "level_row"
+    assert len(blocks) == 2
+    assert blocks[0].level_row_indices == [2, 3]
+    assert blocks[1].level_row_indices == [5, 6]
+
+
 def test_mean_sd_row_without_children_stays_continuous() -> None:
     """Rows with continuous cues and no child levels should remain one-line continuous variables."""
     table = NormalizedTable(
