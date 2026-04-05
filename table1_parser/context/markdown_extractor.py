@@ -4,21 +4,17 @@ from __future__ import annotations
 
 import contextlib
 import io
-from typing import Any
 
-
-def _import_pymupdf4llm() -> Any:
-    """Import pymupdf4llm lazily."""
-    try:
-        import pymupdf4llm
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError("pymupdf4llm is required for paper markdown extraction.") from exc
-    return pymupdf4llm
+from table1_parser.text_cleaning import repair_extractor_glyph_failures
 
 
 def extract_paper_markdown(pdf_path: str) -> str:
     """Extract markdown for a PDF while suppressing library stdout."""
+    try:
+        import pymupdf4llm
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError("pymupdf4llm is required for paper markdown extraction.") from exc
     stdout_buffer = io.StringIO()
     with contextlib.redirect_stdout(stdout_buffer):
-        markdown = _import_pymupdf4llm().to_markdown(pdf_path)
-    return str(markdown or "")
+        markdown = pymupdf4llm.to_markdown(pdf_path)
+    return repair_extractor_glyph_failures(str(markdown or ""))

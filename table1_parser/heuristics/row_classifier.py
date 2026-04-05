@@ -7,8 +7,8 @@ from collections.abc import Sequence
 
 from table1_parser.heuristics.level_detector import is_common_level_label, is_likely_level_row
 from table1_parser.heuristics.models import RowClassification
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable, RowView
+from table1_parser.text_cleaning import clean_text
 
 
 CATEGORICAL_PARENT_CUE_PATTERN = re.compile(

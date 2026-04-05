@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.normalize.header_detector import detect_header_rows
 from table1_parser.normalize.io import load_normalized_tables, normalized_tables_to_payload, write_normalized_tables
 from table1_parser.normalize.pipeline import normalize_extracted_table
 from table1_parser.normalize.row_signature import build_row_signature
 from table1_parser.normalize.text_normalizer import alpha_only_text, normalize_label_text
 from table1_parser.schemas import ExtractedTable, TableCell
+from table1_parser.text_cleaning import clean_text
 
 
 def test_clean_text_collapses_whitespace_and_normalizes_dashes() -> None:

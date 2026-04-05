@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.normalize.text_normalizer import normalize_label_text
 from table1_parser.schemas import ColumnDefinition, DefinedColumn, NormalizedTable
+from table1_parser.text_cleaning import clean_text
 
 
 BY_PATTERN = re.compile(r"\b(?:stratified\s+)?by\s+(.+?)(?:[.;]|$)", re.IGNORECASE)

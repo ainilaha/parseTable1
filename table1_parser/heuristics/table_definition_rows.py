@@ -6,9 +6,9 @@ import re
 
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.heuristics.variable_grouper import group_variable_blocks
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.normalize.text_normalizer import normalize_label_text
 from table1_parser.schemas import DefinedLevel, DefinedVariable, NormalizedTable
+from table1_parser.text_cleaning import clean_text
 
 
 SUMMARY_SUFFIX_PATTERN = re.compile(

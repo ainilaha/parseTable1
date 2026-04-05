@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from table1_parser.normalize.cleaner import clean_text
+from table1_parser.text_cleaning import clean_text
 
 
 NON_ALNUM_PATTERN = re.compile(r"[^A-Za-z0-9]+")

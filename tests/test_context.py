@@ -29,6 +29,24 @@ def test_extract_paper_markdown_suppresses_library_stdout(monkeypatch, capsys) -
     assert captured.out == ""
 
 
+def test_extract_paper_markdown_repairs_known_glyph_failures(monkeypatch) -> None:
+    """Paper markdown extraction should repair known threshold glyph failures."""
+    module = ModuleType("pymupdf4llm")
+
+    def _to_markdown(_: str) -> str:
+        return "# Results\n|Q1|�0.12|\n|Q4|≥0.19|\nQ1<br>�0.12"
+
+    module.to_markdown = _to_markdown
+    monkeypatch.setitem(sys.modules, "pymupdf4llm", module)
+
+    markdown = extract_paper_markdown("paper.pdf")
+
+    assert "�0.12" not in markdown
+    assert "<=0.12" in markdown
+    assert "≥0.19" in markdown
+    assert "Q1<br><=0.12" in markdown
+
+
 def test_parse_markdown_sections_detects_methods_and_results() -> None:
     """Markdown heading parsing should create sections with simple role hints."""
     sections = parse_markdown_sections(

@@ -7,8 +7,8 @@ import re
 from table1_parser.heuristics.column_role_detector import detect_column_roles
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.heuristics.variable_grouper import group_variable_blocks
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable, TableProfile
+from table1_parser.text_cleaning import clean_text
 from table1_parser.validation.table_profile import validate_table_profile
 
 

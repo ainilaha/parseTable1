@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from table1_parser.heuristics.models import ColumnRoleGuess
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable
+from table1_parser.text_cleaning import clean_text
 
 
 def detect_column_roles(table: NormalizedTable) -> list[ColumnRoleGuess]:

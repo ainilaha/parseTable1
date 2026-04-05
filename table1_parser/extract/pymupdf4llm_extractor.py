@@ -30,17 +30,6 @@ from table1_parser.extract.table_selector import select_top_candidates
 from table1_parser.schemas import ExtractedTable, TableCell
 
 
-def _import_pymupdf4llm() -> Any:
-    """Import pymupdf4llm lazily so the package imports without it installed."""
-    try:
-        import pymupdf4llm
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "pymupdf4llm is required for the pymupdf4llm extraction backend."
-        ) from exc
-    return pymupdf4llm
-
-
 class PyMuPDF4LLMExtractor(BaseExtractor):
     """Extract raw table grids with PyMuPDF4LLM."""
 
@@ -83,7 +72,12 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
         ]
 
     def _detect_table_candidates(self, pdf_path: str) -> list[DetectedTableCandidate]:
-        pymupdf4llm = _import_pymupdf4llm()
+        try:
+            import pymupdf4llm
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "pymupdf4llm is required for the pymupdf4llm extraction backend."
+            ) from exc
         stdout_buffer = io.StringIO()
         with contextlib.redirect_stdout(stdout_buffer):
             payload = json.loads(pymupdf4llm.to_json(pdf_path))

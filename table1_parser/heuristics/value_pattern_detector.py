@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from table1_parser.heuristics.models import ValuePatternGuess
-from table1_parser.normalize.cleaner import clean_text
+from table1_parser.text_cleaning import clean_text
 
 
 INTEGER_TOKEN = r"(?:\d{1,3}(?:,\d{3})*|\d+)"

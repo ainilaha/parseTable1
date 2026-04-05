@@ -4,7 +4,7 @@ This document defines the intent of `paper_markdown.md`, the paper-level markdow
 
 ## Purpose
 
-`paper_markdown.md` is the raw document-context view of the paper.
+`paper_markdown.md` is the document-context view of the paper.
 
 It exists to support:
 
@@ -31,7 +31,8 @@ outputs/papers/<paper_stem>/paper_markdown.md
 
 ## Design Rules
 
-- Preserve the full-paper markdown as extracted.
+- Preserve the full-paper markdown structure as extracted.
+- Allow only conservative repair of a small set of known extractor glyph-to-Unicode failures in text, such as a replacement character standing in for a threshold comparator.
 - Do not rewrite it into a table-specific format.
 - Do not use it as a replacement for `ExtractedTable` or `NormalizedTable`.
 - Keep it paired with:
@@ -52,14 +53,15 @@ Examples:
 
 The pipeline should therefore:
 
-- preserve the raw markdown
+- preserve the extracted markdown structure with only conservative glyph repair
+- treat these repairs as extractor-symbol recovery, not as a general-purpose file-encoding pass
 - derive structure in `paper_sections.json`
 - tolerate section-name variation
 - avoid hardcoding exact heading names as the only way to find methods-like or results-like content
 
 ## Relationship To Section Parsing
 
-`paper_markdown.md` is the raw persisted artifact.
+`paper_markdown.md` is the persisted document-context artifact.
 
 `paper_sections.json` is the structured interpretation of that markdown.
 

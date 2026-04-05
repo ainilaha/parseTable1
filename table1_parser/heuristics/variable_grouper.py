@@ -5,8 +5,8 @@ from __future__ import annotations
 from table1_parser.heuristics.level_detector import detect_level_row_indices
 from table1_parser.heuristics.models import RowClassification, VariableBlock
 from table1_parser.heuristics.row_classifier import classify_rows, indentation_is_informative
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import NormalizedTable, RowView
+from table1_parser.text_cleaning import clean_text
 
 
 def _nonempty_trailing_cell_count(row_view: RowView) -> int:

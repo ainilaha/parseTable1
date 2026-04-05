@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.normalize.text_normalizer import alpha_only_text, normalize_label_text
 from table1_parser.schemas import RowView
+from table1_parser.text_cleaning import clean_text
 
 
 NUMERIC_PATTERN = re.compile(r"\d")

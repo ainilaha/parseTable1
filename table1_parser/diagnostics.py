@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 
 from table1_parser.heuristics.models import ColumnRoleGuess, RowClassification, VariableBlock
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import ExtractedTable, NormalizedTable
+from table1_parser.text_cleaning import clean_text
 
 
 Severity = Literal["info", "warning", "error"]

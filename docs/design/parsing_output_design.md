@@ -48,7 +48,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | Normalization | `NormalizedTable` | Written now as `normalized_tables.json` by `normalize` and `parse` | Clean rows, detect headers, derive row features |
 | Table routing | `TableProfile` | Written now as `table_profiles.json` by `parse` | Persist deterministic family routing and LLM-gating decisions |
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
-| Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles |
+| Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles, with only conservative glyph repair in the markdown text |
 | Semantic LLM table definition | `LLMSemanticTableDefinition` | Written now as `table_definitions_llm.json` by `parse` when LLM config is available | Persist value-free semantic interpretation grounded in table indices and retrieved paper context |
 | Semantic LLM debug monitoring | `LLMSemanticMonitoringReport`, `LLMSemanticCallRecord` | Written only when `LLM_DEBUG=true` as `llm_semantic_debug/<timestamp>/llm_semantic_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence |
 | Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
@@ -203,8 +203,9 @@ Design intent:
 - saved normalized tables can be reloaded as formal downstream input
 - normalization may apply conservative structural repairs when extraction has clearly split one logical value across adjacent columns
 - those repairs should be driven by row-style expectations and body-value patterns, not by paper-specific header templates
-- normalization may also repair a small set of extractor-facing symbol failures in parser-facing text, such as a broken replacement character before a numeric threshold becoming `<=`
+- normalization may also repair a small set of extractor-facing glyph-to-Unicode failures in parser-facing text, such as a broken replacement character before a numeric threshold becoming `<=`
 - these symbol repairs belong in normalized text only; the original extracted cell text remains preserved in `ExtractedTable`
+- these repairs are meant to recover known PDF-extractor symbol failures, not to infer a general source-file encoding
 
 Conservative repair rule:
 
@@ -353,13 +354,13 @@ Design intent:
 - keep paper-level context in the same per-paper output directory
 - support future LLM semantic interpretation with compact retrieved evidence
 - avoid tying retrieval to exact section names like `Methods`
-- preserve `paper_markdown.md` as the raw markdown artifact and move derived structure into `paper_sections.json`
+- preserve `paper_markdown.md` as the paper-level markdown artifact, allowing only conservative glyph repair, and move derived structure into `paper_sections.json`
 - preserve a JSON-first, inspectable context path alongside the table path
 
 Variation note:
 
 - papers may use different section names, heading levels, and table-reference styles
-- that variation should be handled in section parsing and retrieval, not by redefining the meaning of `paper_markdown.md`
+- that variation should be handled in section parsing and retrieval, not by redefining the meaning of `paper_markdown.md` beyond conservative glyph repair
 - `docs/design/paper_markdown_spec.md` is the design reference for this artifact
 
 ## 5. `table_definitions_llm.json`

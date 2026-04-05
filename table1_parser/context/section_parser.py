@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import PaperSection
+from table1_parser.text_cleaning import clean_text
 
 
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")

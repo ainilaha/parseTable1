@@ -6,8 +6,8 @@ import re
 from dataclasses import dataclass
 
 from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
-from table1_parser.normalize.cleaner import clean_text
 from table1_parser.schemas import DefinedVariable, NormalizedTable, ParsedColumn, ValueRecord
+from table1_parser.text_cleaning import clean_text
 
 
 INTEGER_TOKEN = r"(?:\d{1,3}(?:,\d{3})*|\d+)"
