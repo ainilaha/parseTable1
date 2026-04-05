@@ -10,7 +10,7 @@ from table1_parser.normalize.header_detector import detect_header_rows_with_meta
 from table1_parser.normalize.row_signature import build_row_signature
 from table1_parser.schemas import ExtractedTable, NormalizedTable
 from table1_parser.schemas.normalized_table import RowView
-from table1_parser.text_cleaning import clean_text
+from table1_parser.text_cleaning import clean_text, summarize_text_cleaning_provenance
 
 
 ALPHA_PATTERN = re.compile(r"[A-Za-z]")
@@ -160,7 +160,7 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
                 and PERCENT_FRAGMENT_PATTERN.fullmatch(right_clean)
                 and detect_value_pattern(left_clean).pattern == "n_only"
             ):
-                raw_rows[row_idx][col_idx - 1] = clean_text(f"{raw_rows[row_idx][col_idx - 1]} {raw_rows[row_idx][col_idx]}")
+                raw_rows[row_idx][col_idx - 1] = f"{raw_rows[row_idx][col_idx - 1]} {raw_rows[row_idx][col_idx]}".strip()
                 cleaned_rows[row_idx][col_idx - 1] = clean_text(f"{left_clean} {right_clean}")
                 raw_rows[row_idx][col_idx] = ""
                 cleaned_rows[row_idx][col_idx] = ""
@@ -194,6 +194,7 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
         baseline = min(indent_levels)
         meaningful_offsets = [level - baseline for level in indent_levels if level - baseline >= 2]
         indentation_informative = len(meaningful_offsets) >= 2 and len(set(indent_levels)) >= 2
+    text_cleaning_provenance = summarize_text_cleaning_provenance(raw_rows)
 
     metadata = {
         **table.metadata,
@@ -208,6 +209,7 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
         },
         "header_detection": header_detection,
         "indentation_informative": indentation_informative,
+        "text_cleaning_provenance": text_cleaning_provenance,
     }
     return NormalizedTable(
         table_id=table.table_id,

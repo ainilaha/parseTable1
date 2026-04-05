@@ -371,6 +371,83 @@ def test_normalization_repairs_broken_replacement_char_threshold_in_headers() ->
 
     assert normalized.metadata["cleaned_rows"][1][1] == "<=0.12"
     assert normalized.header_rows == [0, 1]
+    assert normalized.metadata["text_cleaning_provenance"] == {
+        "observed_symbol_counts": {"<": 1, "<=": 0, ">": 0, ">=": 1},
+        "reconstructed_symbol_counts": {"<": 0, "<=": 1, ">": 0, ">=": 0},
+        "total_observed_symbol_count": 2,
+        "total_reconstructed_symbol_count": 1,
+        "extractor_glyph_repair_rule_counts": {"replacement_char_le_threshold": 1},
+        "cells_with_extractor_glyph_repairs": 1,
+    }
+
+
+def test_count_percent_column_merge_preserves_raw_text_for_provenance() -> None:
+    """Column repair should keep raw text raw enough for later provenance accounting."""
+    extracted = ExtractedTable(
+        table_id="tbl-merge-provenance",
+        source_pdf="paper.pdf",
+        page_num=1,
+        n_rows=6,
+        n_cols=8,
+        cells=[
+            TableCell(row_idx=0, col_idx=2, text="Q1"),
+            TableCell(row_idx=0, col_idx=3, text="Q2"),
+            TableCell(row_idx=0, col_idx=4, text="Q3"),
+            TableCell(row_idx=0, col_idx=6, text="Q4"),
+            TableCell(row_idx=1, col_idx=0, text="Cobalt quartiles (mg/l)"),
+            TableCell(row_idx=1, col_idx=1, text="All"),
+            TableCell(row_idx=1, col_idx=2, text="<=0.12"),
+            TableCell(row_idx=1, col_idx=3, text="0.13-0.14"),
+            TableCell(row_idx=1, col_idx=4, text="0.15-0.18"),
+            TableCell(row_idx=1, col_idx=5, text=">=0.19"),
+            TableCell(row_idx=1, col_idx=7, text="P value"),
+            TableCell(row_idx=2, col_idx=0, text="Education level, n (%)"),
+            TableCell(row_idx=2, col_idx=7, text=".046"),
+            TableCell(row_idx=3, col_idx=0, text="<High school"),
+            TableCell(row_idx=3, col_idx=1, text="849 (12.4%)"),
+            TableCell(row_idx=3, col_idx=2, text="220 (11.4%)"),
+            TableCell(row_idx=3, col_idx=3, text="182 (12.9%)"),
+            TableCell(row_idx=3, col_idx=4, text="248 (13.9%)"),
+            TableCell(row_idx=3, col_idx=5, text="199"),
+            TableCell(row_idx=3, col_idx=6, text="(11.5%)"),
+            TableCell(row_idx=4, col_idx=0, text="High school"),
+            TableCell(row_idx=4, col_idx=1, text="2364 (34.5%)"),
+            TableCell(row_idx=4, col_idx=2, text="706 (36.6%)"),
+            TableCell(row_idx=4, col_idx=3, text="467 (33.3%)"),
+            TableCell(row_idx=4, col_idx=4, text="618 (34.6%)"),
+            TableCell(row_idx=4, col_idx=5, text="573"),
+            TableCell(row_idx=4, col_idx=6, text="(33.2%)"),
+            TableCell(row_idx=5, col_idx=0, text=">High school"),
+            TableCell(row_idx=5, col_idx=1, text="3640 (53.1%)"),
+            TableCell(row_idx=5, col_idx=2, text="1002 (52.0%)"),
+            TableCell(row_idx=5, col_idx=3, text="765 (54.1%)"),
+            TableCell(row_idx=5, col_idx=4, text="921 (51.5%)"),
+            TableCell(row_idx=5, col_idx=5, text="952"),
+            TableCell(row_idx=5, col_idx=6, text="(55.2%)"),
+        ],
+        extraction_backend="pymupdf4llm",
+    )
+
+    normalized = normalize_extracted_table(extracted)
+
+    assert normalized.metadata["cleaned_rows"][3] == [
+        "<High school",
+        "849 (12.4%)",
+        "220 (11.4%)",
+        "182 (12.9%)",
+        "248 (13.9%)",
+        "199 (11.5%)",
+        "",
+    ]
+    assert normalized.row_views[1].raw_cells == [
+        "<High school",
+        "849 (12.4%)",
+        "220 (11.4%)",
+        "182 (12.9%)",
+        "248 (13.9%)",
+        "199 (11.5%)",
+        "",
+    ]
 
 
 def test_normalized_table_round_trip_serialization(tmp_path: Path) -> None:

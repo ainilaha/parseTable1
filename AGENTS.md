@@ -21,6 +21,12 @@ docs/design/design_index.md
 
 When changing CLI behavior, persisted outputs, schema shape, markdown-context handling, or design assumptions, update the relevant `docs/*.md` files in the same change. Keep the design docs current.
 
+If you change the implemented parse flow, the order of pipeline stages, the purpose of an intermediate artifact, or the paper-level/table-level outputs written by `table1-parser parse`, also update:
+
+- `docs/design/paper_parse_walkthrough.md`
+
+This document is the human-readable explanation of how one paper is processed end to end, so it must stay aligned with the actual implementation.
+
 ---
 
 # Project Goals

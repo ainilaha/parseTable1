@@ -15,6 +15,9 @@ Then use the documents below as needed.
   Short user-facing overview of the intended pipeline:
   `PDF -> ExtractedTable -> NormalizedTable -> TableDefinition -> ParsedTable`
 
+- `docs/design/paper_parse_walkthrough.md`
+  Human-readable walkthrough of the full `parse` command, including paper-level context artifacts and the reasons each intermediate table version exists.
+
 - `docs/design/parsing_output_design.md`
   Current JSON artifact design, canonical models, and output-file intent.
 
@@ -71,6 +74,7 @@ Then use the documents below as needed.
 
 - If you are changing extraction, normalization, heuristics, LLM parsing, validation, or final exports:
   read `docs/design/codex_build_spec.md` and `docs/design/parsing_output_design.md`.
+  If those changes alter the implemented paper parse flow or the role of any intermediate artifact, also update `docs/design/paper_parse_walkthrough.md`.
 
 - If you are changing symbol normalization, parser-facing text canonicalization, or categorical `n (%)` value parsing:
   read `docs/design/value_parsing_spec.md`.
@@ -86,7 +90,8 @@ Then use the documents below as needed.
   read `docs/design/observed_tableone_component.md` and `docs/implementation/observed_tableone_r_plan.md`.
 
 - If you are updating user-facing explanations of the pipeline:
-  read `docs/design/parsing_process.md`.
+  read `docs/design/parsing_process.md` and `docs/design/paper_parse_walkthrough.md`.
+  Keep both documents aligned with the current implementation, not just the intended architecture.
 
 - If you are changing markdown extraction, section parsing, or table-context retrieval:
   read `docs/design/paper_markdown_spec.md` and `docs/design/llm_semantic_inference_phase.md`.

@@ -194,6 +194,7 @@ Important current `metadata` keys produced by normalization:
 - `dropped_trailing_cols`
 - `header_detection`
 - `indentation_informative`
+- `text_cleaning_provenance`
 
 Design intent:
 
@@ -206,6 +207,7 @@ Design intent:
 - normalization may also repair a small set of extractor-facing glyph-to-Unicode failures in parser-facing text, such as a broken replacement character before a numeric threshold becoming `<=`
 - these symbol repairs belong in normalized text only; the original extracted cell text remains preserved in `ExtractedTable`
 - these repairs are meant to recover known PDF-extractor symbol failures, not to infer a general source-file encoding
+- `text_cleaning_provenance` should record table-level counts of comparator symbols that were observed directly in the surviving normalized grid versus reconstructed from known extractor glyph-failure rules
 
 Conservative repair rule:
 
