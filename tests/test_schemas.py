@@ -11,8 +11,6 @@ from table1_parser.schemas import (
     DefinedLevel,
     DefinedVariable,
     ExtractedTable,
-    LLMTableContext,
-    LLMTableParseResponse,
     LLMSemanticCallRecord,
     LLMSemanticMonitoringReport,
     NormalizedTable,
@@ -226,36 +224,6 @@ def test_llm_semantic_monitoring_creation_and_serialization() -> None:
 
     assert dumped["items"][0]["status"] == "success"
     assert dumped["items"][0]["elapsed_seconds"] == 12.4
-
-
-def test_llm_contract_models_create_without_llm_logic() -> None:
-    """LLM contract schemas should remain purely structural in Phase 1."""
-    context = LLMTableContext(
-        table_id="tbl-1",
-        row_views=[
-            RowView(
-                row_idx=0,
-                raw_cells=["Variable", "Overall"],
-                first_cell_raw="Variable",
-                first_cell_normalized="variable",
-                first_cell_alpha_only="variable",
-                nonempty_cell_count=2,
-                numeric_cell_count=0,
-                has_trailing_values=False,
-                indent_level=0,
-                likely_role="header",
-            )
-        ],
-    )
-    response = LLMTableParseResponse(
-        table_id="tbl-1",
-        referenced_row_indices=[0],
-        notes=["Placeholder contract only"],
-    )
-
-    assert context.row_views[0].likely_role == "header"
-    assert response.model_dump()["referenced_row_indices"] == [0]
-
 
 def test_document_context_schemas_create_without_llm_logic() -> None:
     """Document-context schemas should serialize cleanly."""

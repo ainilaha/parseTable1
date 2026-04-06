@@ -58,7 +58,6 @@ table1_parser/
     extracted_table.py
     normalized_table.py
     parsed_table.py
-    llm_contracts.py
 
 tests/
 
@@ -222,7 +221,6 @@ For Phase 1 these commands should only print:
 Create `config.py` with configuration settings such as:
 
 default_extraction_backend  
-llm_enabled  
 llm_model  
 max_table_candidates  
 heuristic_confidence_threshold

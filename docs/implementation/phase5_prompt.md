@@ -54,12 +54,6 @@ Implement only these modules:
 
 You may add one small helper if needed, but keep scope tight.
 
-If needed, you may also add a small schema file under:
-
-- `table1_parser/schemas/llm_contracts.py`
-
-but only if helpful.
-
 ---
 
 ## Functional requirements

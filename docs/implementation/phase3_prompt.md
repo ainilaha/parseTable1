@@ -17,7 +17,6 @@ Implement these modules:
 - table1_parser/normalize/text_normalizer.py
 - table1_parser/normalize/header_detector.py
 - table1_parser/normalize/row_signature.py
-- table1_parser/normalize/interpretation_view.py
 
 You may also add a small pipeline helper if useful.
 
@@ -90,10 +89,6 @@ For each body row, compute:
 - likely_role only if confidence is high, else None
 
 Do not implement full row classification yet.
-
-## interpretation_view.py
-
-Add a helper that converts a NormalizedTable into a compact dict suitable for later LLM use, but do not add any LLM code yet.
 
 ## Tests
 

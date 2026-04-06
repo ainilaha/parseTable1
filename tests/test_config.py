@@ -22,7 +22,6 @@ def test_settings_defaults(monkeypatch) -> None:
     settings = Settings()
 
     assert settings.default_extraction_backend == "pymupdf4llm"
-    assert settings.llm_enabled is False
     assert settings.llm_provider == "openai"
     assert settings.llm_model is None
     assert settings.openai_api_key is None

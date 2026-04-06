@@ -64,7 +64,6 @@ Add or update only the small set needed for this feature:
 - `table1_parser/cli.py`
 - `table1_parser/normalize/__init__.py`
 - `table1_parser/normalize/pipeline.py`
-- `table1_parser/normalize/interpretation_view.py`
 - `R/visualize_table_from_json.R`
 - `README.md`
 - `docs/design/parsing_output_design.md`

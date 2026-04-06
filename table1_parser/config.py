@@ -56,7 +56,6 @@ class Settings(BaseSettings):
     """Runtime configuration for the Table 1 parser."""
 
     default_extraction_backend: str = Field(default="pymupdf4llm")
-    llm_enabled: bool = Field(default=False)
     llm_provider: str = Field(default="openai", validation_alias="LLM_PROVIDER")
     llm_model: str | None = Field(default=None, validation_alias="LLM_MODEL")
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY", repr=False)
