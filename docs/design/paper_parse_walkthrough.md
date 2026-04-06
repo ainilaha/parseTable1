@@ -438,8 +438,8 @@ This produces per-table passages and term lists that can later support semantic 
 
 If enabled and eligible, the parser can run semantic LLM inference using:
 
-- the normalized table
-- the deterministic table definition
+- compact body-row hints
+- compact deterministic variable spans
 - the per-table paper context
 
 This produces `table_definitions_llm.json`.

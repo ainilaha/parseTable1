@@ -538,6 +538,7 @@ Design intent:
 - preserve the exact semantic LLM payload, monitoring metrics, raw provider output, and validated interpretation for inspection
 - keep these files separate from canonical pipeline outputs such as `table_definitions.json`, `table_definitions_llm.json`, and `parsed_tables.json`
 - preserve stable row references so semantic disagreements can still be audited safely
+- keep the prompt payload compact; the saved input wrapper currently uses short payload keys such as `rows`, `vars`, and `passages`
 
 ## 7. `ParsedTable` JSON
 

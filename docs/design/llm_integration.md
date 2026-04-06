@@ -20,6 +20,12 @@ Current non-scope:
 - grouping-label reinterpretation
 - cross-table prompting
 
+Current prompt-shaping strategy:
+
+- compact row hints rather than full cell arrays
+- compact deterministic variable spans rather than full `TableDefinition` dumps
+- a small truncated passage bundle rather than the full retrieval payload
+
 ## Current provider path
 
 The repository currently supports:

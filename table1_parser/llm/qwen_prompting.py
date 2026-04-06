@@ -29,7 +29,7 @@ def compact_qwen_prompt(prompt: str, response_model: type[BaseModel] | None) -> 
             compact_prompt += (
                 "\n\nSemantic constraints:\n"
                 '- Preserve every row_idx exactly as supplied.\n'
-                '- Use only evidence_passage_ids that appear in retrieved_passages.\n'
+                '- Use only evidence_passage_ids that appear in passages.\n'
                 '- If there is no supporting passage, use an empty evidence_passage_ids list.\n'
                 '- Keep variable_name, variable_label, level_name, and level_label as strings.\n'
                 '- Do not use alternate field names such as label, kind, rows, row_indices, or passages.\n'

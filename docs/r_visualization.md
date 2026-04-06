@@ -16,6 +16,7 @@ The table display helper can display:
 
 - stored normalized-table JSON such as `normalized_tables.json`
 - row-oriented semantic debug payload JSON such as `table_definition_llm_input.json`
+  these payloads currently use compact keys such as `rows`, `vars`, and `passages`
 - parsed-table-style JSON that contains `variables`, `columns`, and `values`
 - trace wrapper files that store the actual payload under `payload`, `interpretation`, or `response`
 

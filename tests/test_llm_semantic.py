@@ -79,16 +79,27 @@ def _build_context_and_definition() -> tuple[NormalizedTable, object, object]:
 
 
 def test_semantic_prompt_payload_contains_context_and_deterministic_definition() -> None:
-    """Semantic payload should carry body rows, deterministic row output, and retrieved passages."""
+    """Semantic payload should carry compact row hints, deterministic row spans, and compact passages."""
     table, definition, context = _build_context_and_definition()
 
     payload = build_llm_semantic_input_payload(table, definition, context)
 
     assert payload.body_rows[1].row_idx == 2
-    assert payload.deterministic_variables[0].variable_label == "Age, years"
+    assert payload.body_rows[1].label == "Sex"
+    assert payload.body_rows[1].has_trailing_values is False
+    assert payload.body_rows[2].numeric_cell_count == 2
+    assert payload.deterministic_variables[0].label == "Age, years"
+    assert payload.deterministic_variables[1].levels[0].label == "Male"
     assert payload.retrieved_passages[0].passage_id == context.passages[0].passage_id
-    assert payload.deterministic_variables[0].units_hint is None
-    assert payload.deterministic_variables[0].summary_style_hint is None
+    assert payload.table_text == "Characteristics by DKD status"
+    dumped = payload.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_defaults=True)
+    assert "rows" in dumped
+    assert "vars" in dumped
+    assert "passages" in dumped
+    assert "deterministic_variables" not in dumped
+    assert "cells" not in json.dumps(dumped)
+    assert "section_id" not in json.dumps(dumped)
+    assert "match_type" not in json.dumps(dumped)
 
 
 def test_semantic_prompt_includes_safety_and_evidence_requirements() -> None:
@@ -105,6 +116,11 @@ def test_semantic_prompt_includes_safety_and_evidence_requirements() -> None:
     assert "units_hint" not in prompt
     assert "summary_style_hint" not in prompt
     assert "columns" not in prompt
+    assert '"rows"' in prompt
+    assert '"vars"' in prompt
+    assert '"passages"' in prompt
+    assert "deterministic_variables" not in prompt
+    assert '"cells"' not in prompt
 
 
 def test_semantic_prompt_template_is_repo_file() -> None:
