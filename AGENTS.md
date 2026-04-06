@@ -83,6 +83,12 @@ Final results must be:
 
 ParsedTable
 
+Important cross-language rule:
+
+- major semantic artifacts must be designed as clear objects in both Python and R
+- JSON is the transport layer, not the conceptual model
+- schema shapes should stay explicit, stable, and unambiguous across both languages
+
 ### Deterministic-first approach
 
 Use rule-based parsing wherever possible.

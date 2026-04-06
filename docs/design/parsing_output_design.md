@@ -7,6 +7,7 @@ The short version is:
 - table data stays JSON-first
 - each pipeline phase has its own schema
 - raw extracted content is preserved
+- canonical objects must be unambiguous in both Python and R
 - row and column references stay stable across phases
 - trace/debug wrappers are not the same thing as canonical parsed outputs
 - mixed-table papers may eventually route into different semantic families after normalization
@@ -39,6 +40,31 @@ There are two related but different concepts in this repository:
    These are CLI outputs or trace/debug artifacts written to disk.
 
 Some JSON files are direct dumps of canonical models. Others are wrapper files that add timestamps and nest the real payload under keys like `payload`, `response`, or `interpretation`.
+
+## Cross-Language Object Principle
+
+This repository should treat cross-language object design as a first-order principle.
+
+The real semantic objects are the canonical typed structures used by the parser and by downstream R tooling.
+JSON is the transport format between those environments, not the conceptual source of truth.
+
+That means every important persisted artifact should be designed so that:
+
+- it can be instantiated as a clear typed object in Python
+- it can be loaded as a clear, unambiguous object in R
+- field meanings remain stable across languages
+- row-oriented records can be converted into R data frames without bespoke restructuring
+- IDs and coordinates remain explicit rather than implied by list position alone
+
+When designing or revising schemas:
+
+- prefer explicit named fields over positional conventions
+- prefer flat arrays of records over deeply nested ad hoc objects
+- use IDs to link related records instead of relying on language-specific object identity
+- keep enum-like string vocabularies stable and documented
+- avoid shapes that are easy in Python but ambiguous or awkward in R
+
+This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifacts, and the planned `paper_variable_inventory.json` artifact.
 
 ## Output Layers
 

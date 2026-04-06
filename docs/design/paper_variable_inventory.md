@@ -18,6 +18,12 @@ This is not a minor debug artifact. It is a first-class paper-level semantic art
 
 The project should treat this candidate-reference list as a major design decision for cross-table consistency.
 
+It should also be treated as a cross-language object, not just a JSON blob.
+
+- Python should have a clear typed model for it
+- R should have a clear object/table representation for it
+- JSON should act only as the transport format between those environments
+
 ## Goal
 
 Build a paper-level inventory of likely variables from:
@@ -38,6 +44,12 @@ Keep LLM prompting table-scoped.
 - cross-table consistency should come from paper-level artifacts, not from multi-table prompting
 
 The paper-level variable inventory is therefore a context artifact, not a replacement for per-table `TableDefinition`.
+
+The object-design principle for this artifact is equally important:
+
+- the inventory must be unambiguous in both Python and R
+- mention-level and candidate-level records must have stable field meanings
+- the file should be structured so it can be read directly into R inspection tools without custom deep parsing
 
 ## Two-Phase Plan
 
@@ -282,6 +294,12 @@ Design requirements for R access:
 - keep `mentions` and `candidates` row-oriented
 - preserve IDs such as `mention_id`, `candidate_id`, `section_id`, and `table_id`
 - prefer scalar fields and short vector fields over deeply nested objects
+
+Matching Python requirements:
+
+- define explicit typed models for mention-level and candidate-level records
+- keep field names stable across serialization boundaries
+- do not rely on Python-only object nesting patterns that are awkward to interpret in R
 
 Planned downstream support should include a small R helper that can:
 

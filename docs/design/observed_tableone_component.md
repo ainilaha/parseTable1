@@ -82,6 +82,9 @@ If a detail was not printed and cannot be safely inferred from parser outputs, i
 
 The component should consume the parser's JSON artifacts, not internal Python objects.
 
+JSON is the transport layer, not the semantic model.
+The artifacts should therefore be shaped so they can be interpreted unambiguously in both Python and R.
+
 Primary inputs:
 
 - `table_definitions.json`
