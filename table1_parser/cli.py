@@ -375,7 +375,7 @@ def _monitoring_report(
         report_timestamp=_utc_timestamp(),
         llm_disabled=disabled,
         provider=settings.llm_provider,
-        model=settings.openai_model or settings.llm_model,
+        model=settings.active_llm_model,
         items=items,
     )
 

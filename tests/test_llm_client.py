@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import sys
 from types import SimpleNamespace
+from urllib import error as urllib_error
+import json
 
 import pytest
 
@@ -40,6 +42,35 @@ class _FakeOpenAI:
         )
 
 
+class _FakeHTTPResponse:
+    def __init__(self, payload: str) -> None:
+        self._payload = payload
+
+    def read(self) -> bytes:
+        return self._payload.encode("utf-8")
+
+    def __enter__(self) -> "_FakeHTTPResponse":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+
+class _FakeURLOpener:
+    def __init__(self, payload: str | None = None, exc: Exception | None = None) -> None:
+        self.payload = payload
+        self.exc = exc
+        self.calls: list[object] = []
+
+    def open(self, request: object, timeout: float | None = None) -> _FakeHTTPResponse:
+        self.calls.append({"request": request, "timeout": timeout})
+        if self.exc is not None:
+            raise self.exc
+        if self.payload is None:
+            raise AssertionError("Fake opener requires either payload or exc.")
+        return _FakeHTTPResponse(self.payload)
+
+
 def test_settings_reads_llm_environment_variables(monkeypatch) -> None:
     """Settings should read the documented LLM environment variables directly."""
     monkeypatch.setenv("LLM_PROVIDER", "openai")
@@ -64,6 +95,24 @@ def test_settings_reads_llm_environment_variables(monkeypatch) -> None:
     assert settings.llm_sdk_debug is True
 
 
+def test_settings_reads_qwen_environment_variables(monkeypatch) -> None:
+    """Settings should read the documented Qwen environment variables directly."""
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.setenv("LLM_PROVIDER", "qwen")
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "dash-key")
+    monkeypatch.setenv("QWEN_MODEL", "qwen-plus")
+    monkeypatch.setenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/api/v1")
+
+    settings = Settings()
+
+    assert settings.llm_provider == "qwen"
+    assert settings.qwen_api_key == "dash-key"
+    assert settings.qwen_model == "qwen-plus"
+    assert settings.llm_model == "qwen-plus"
+    assert settings.qwen_base_url == "https://dashscope.aliyuncs.com/api/v1"
+
+
 def test_build_llm_client_requires_openai_configuration(monkeypatch) -> None:
     """Missing required OpenAI settings should fail with a clear configuration error."""
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -74,6 +123,17 @@ def test_build_llm_client_requires_openai_configuration(monkeypatch) -> None:
         build_llm_client(settings=settings)
 
     assert "OPENAI_API_KEY" in str(exc_info.value)
+
+
+def test_build_llm_client_requires_qwen_configuration(monkeypatch) -> None:
+    """Missing required Qwen settings should fail with a clear configuration error."""
+    monkeypatch.delenv("DASHSCOPE_API_KEY", raising=False)
+    settings = Settings(llm_provider="qwen", qwen_model="qwen-plus")
+
+    with pytest.raises(LLMConfigurationError) as exc_info:
+        build_llm_client(settings=settings)
+
+    assert "DASHSCOPE_API_KEY" in str(exc_info.value)
 
 
 def test_build_llm_client_returns_openai_client_with_fake_sdk(monkeypatch) -> None:
@@ -102,6 +162,60 @@ def test_build_llm_client_returns_openai_client_with_fake_sdk(monkeypatch) -> No
     assert client._client.max_retries == 3  # type: ignore[attr-defined]
     assert client._client.responses.calls[0]["model"] == "gpt-4.1-mini"  # type: ignore[attr-defined]
     assert client.sdk_debug is False
+
+
+def test_build_llm_client_returns_qwen_client_and_parses_json_response() -> None:
+    """The provider builder should construct a Qwen client and parse JSON text output."""
+    client = build_llm_client(
+        settings=Settings(
+            llm_provider="qwen",
+            qwen_api_key="dash-key",
+            qwen_model="qwen-plus",
+            qwen_base_url="https://dashscope.aliyuncs.com/api/v1",
+            llm_temperature=0.2,
+            llm_timeout_seconds=15,
+            llm_max_retries=3,
+        )
+    )
+    fake_opener = _FakeURLOpener(
+        payload=json.dumps(
+            {
+                "output": {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": [
+                                    {
+                                        "text": (
+                                            "```json\n"
+                                            '{"table_id":"tbl-llm","variables":[],"columns":[],"notes":["from fake qwen"]}'
+                                            "\n```"
+                                        )
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    client._opener = fake_opener  # type: ignore[attr-defined]
+
+    response = client.structured_completion(
+        "prompt text\n\nOutput schema:\n{...}",
+        LLMTableInterpretation.model_json_schema(),
+        response_model=LLMTableInterpretation,
+    )
+
+    request = fake_opener.calls[0]["request"]
+    body = request.data.decode("utf-8")  # type: ignore[attr-defined]
+    assert response["table_id"] == "tbl-llm"
+    assert response["notes"] == ["from fake qwen"]
+    assert fake_opener.calls[0]["timeout"] == 15
+    assert '"model": "qwen-plus"' in body
+    assert "Output contract:" in body
+    assert "Output schema:" not in body
 
 
 def test_build_llm_client_separates_sdk_debug_from_artifact_debug(monkeypatch) -> None:
@@ -156,3 +270,47 @@ def test_openai_client_raises_provider_error_when_no_parsed_payload(monkeypatch)
             LLMTableInterpretation.model_json_schema(),
             response_model=LLMTableInterpretation,
         )
+
+
+def test_qwen_client_raises_provider_error_for_invalid_json_response() -> None:
+    """Malformed Qwen text output should fail clearly before model validation."""
+    client = build_llm_client(
+        settings=Settings(
+            llm_provider="qwen",
+            qwen_api_key="dash-key",
+            qwen_model="qwen-plus",
+        )
+    )
+    client._opener = _FakeURLOpener(  # type: ignore[attr-defined]
+        payload='{"output":{"choices":[{"message":{"content":[{"text":"not json"}]}}]}}'
+    )
+
+    with pytest.raises(LLMProviderError):
+        client.structured_completion(
+            "prompt text",
+            LLMTableInterpretation.model_json_schema(),
+            response_model=LLMTableInterpretation,
+        )
+
+
+def test_qwen_client_raises_provider_error_for_http_failures() -> None:
+    """HTTP-layer Qwen failures should be wrapped as provider errors."""
+    client = build_llm_client(
+        settings=Settings(
+            llm_provider="qwen",
+            qwen_api_key="dash-key",
+            qwen_model="qwen-plus",
+        )
+    )
+    client._opener = _FakeURLOpener(  # type: ignore[attr-defined]
+        exc=urllib_error.URLError("network down")
+    )
+
+    with pytest.raises(LLMProviderError) as exc_info:
+        client.structured_completion(
+            "prompt text",
+            LLMTableInterpretation.model_json_schema(),
+            response_model=LLMTableInterpretation,
+        )
+
+    assert "network down" in str(exc_info.value)

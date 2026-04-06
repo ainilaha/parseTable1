@@ -5,6 +5,7 @@ from table1_parser.llm.client import (
     LLMConfigurationError,
     LLMProviderError,
     OpenAIClient,
+    QwenClient,
     StaticStructuredLLMClient,
     build_llm_client,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "LLMProviderError",
     "LLMTableParser",
     "OpenAIClient",
+    "QwenClient",
     "StaticStructuredLLMClient",
     "build_llm_client",
     "parse_table_with_configured_llm",

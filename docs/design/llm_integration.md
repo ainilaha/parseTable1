@@ -7,12 +7,24 @@ Phase 5 refines the deterministic heuristic interpretation through the provider 
 The repository currently supports:
 
 - `LLM_PROVIDER=openai`
+- `LLM_PROVIDER=qwen`
 
 The configured client uses:
 
 - environment variables for credentials and model selection
-- the official OpenAI Python SDK
+- provider-specific request handling
 - structured output parsed into the existing Phase 5 Pydantic models
+
+OpenAI uses:
+
+- the official OpenAI Python SDK
+- native structured parsing into the existing Phase 5 Pydantic models
+
+Qwen uses:
+
+- direct HTTP requests to DashScope
+- a compact JSON-only prompt contract
+- local JSON parsing plus the existing Pydantic validation layer
 
 ## Environment variables
 
@@ -31,6 +43,15 @@ Required for OpenAI:
 
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
+
+Required for Qwen:
+
+- `DASHSCOPE_API_KEY`
+- `QWEN_MODEL`
+
+Optional for Qwen:
+
+- `QWEN_BASE_URL`
 
 Debug note:
 

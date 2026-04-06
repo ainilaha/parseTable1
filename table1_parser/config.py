@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,12 +58,12 @@ class Settings(BaseSettings):
     default_extraction_backend: str = Field(default="pymupdf4llm")
     llm_enabled: bool = Field(default=False)
     llm_provider: str = Field(default="openai", validation_alias="LLM_PROVIDER")
-    llm_model: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("LLM_MODEL", "OPENAI_MODEL"),
-    )
+    llm_model: str | None = Field(default=None, validation_alias="LLM_MODEL")
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY", repr=False)
     openai_model: str | None = Field(default=None, validation_alias="OPENAI_MODEL")
+    qwen_api_key: str | None = Field(default=None, validation_alias="DASHSCOPE_API_KEY", repr=False)
+    qwen_model: str | None = Field(default=None, validation_alias="QWEN_MODEL")
+    qwen_base_url: str | None = Field(default=None, validation_alias="QWEN_BASE_URL")
     llm_temperature: float = Field(default=0.0, validation_alias="LLM_TEMPERATURE")
     llm_timeout_seconds: float = Field(default=60.0, validation_alias="LLM_TIMEOUT_SECONDS", gt=0.0)
     llm_max_retries: int = Field(default=2, validation_alias="LLM_MAX_RETRIES", ge=0)
@@ -77,3 +77,23 @@ class Settings(BaseSettings):
         extra="ignore",
         populate_by_name=True,
     )
+
+    @model_validator(mode="after")
+    def _sync_provider_defaults(self) -> "Settings":
+        """Backfill generic provider settings from the active provider-specific values."""
+        provider = self.llm_provider.strip().lower()
+        if self.llm_model is None:
+            self.llm_model = self.active_llm_model
+        if provider == "openai" and self.openai_model is None and self.llm_model is not None:
+            self.openai_model = self.llm_model
+        if provider == "qwen" and self.qwen_model is None and self.llm_model is not None:
+            self.qwen_model = self.llm_model
+        return self
+
+    @property
+    def active_llm_model(self) -> str | None:
+        """Return the active provider's configured model, falling back to the generic model."""
+        provider = self.llm_provider.strip().lower()
+        if provider == "qwen":
+            return self.qwen_model or self.llm_model
+        return self.openai_model or self.llm_model

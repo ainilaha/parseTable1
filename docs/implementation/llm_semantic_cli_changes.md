@@ -38,7 +38,7 @@ If semantic LLM inference is not turned off, but configuration is missing, `pars
 Example warning:
 
 ```text
-LLM semantic interpretation skipped: missing OPENAI_API_KEY or OPENAI_MODEL. Use --no-llm-semantic to suppress this warning.
+LLM semantic interpretation skipped: OPENAI_API_KEY is required when LLM_PROVIDER=openai. Use --no-llm-semantic to suppress this warning.
 ```
 
 ## Output

@@ -15,8 +15,12 @@ def _script_env() -> dict[str, str]:
     env = os.environ.copy()
     for key in (
         "LLM_PROVIDER",
+        "LLM_MODEL",
         "OPENAI_API_KEY",
         "OPENAI_MODEL",
+        "DASHSCOPE_API_KEY",
+        "QWEN_MODEL",
+        "QWEN_BASE_URL",
         "LLM_TEMPERATURE",
         "LLM_TIMEOUT_SECONDS",
         "LLM_MAX_RETRIES",
@@ -55,4 +59,5 @@ def test_debug_llm_trace_reports_missing_provider_configuration() -> None:
     assert result.returncode == 1
     assert "LLM configuration error" in result.stdout
     assert "OPENAI_API_KEY" in result.stdout or "OPENAI_MODEL" in result.stdout
-    assert "Configure LLM_PROVIDER, OPENAI_API_KEY, and OPENAI_MODEL" in result.stdout
+    assert "Configure either OpenAI" in result.stdout
+    assert "Qwen" in result.stdout

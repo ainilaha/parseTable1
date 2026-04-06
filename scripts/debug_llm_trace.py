@@ -85,7 +85,8 @@ def main() -> int:
         except LLMConfigurationError as exc:
             print(f"LLM configuration error: {exc}")
             print(
-                "Configure LLM_PROVIDER, OPENAI_API_KEY, and OPENAI_MODEL before using "
+                "Configure either OpenAI (LLM_PROVIDER, OPENAI_API_KEY, OPENAI_MODEL) or "
+                "Qwen (LLM_PROVIDER, DASHSCOPE_API_KEY, QWEN_MODEL) before using "
                 "--use-configured-client."
             )
             return 1
