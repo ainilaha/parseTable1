@@ -1,6 +1,12 @@
 # LLM Integration
 
-Phase 5 refines the deterministic heuristic interpretation through the provider abstraction in `table1_parser.llm`.
+The repository's active LLM path is the semantic post-`TableDefinition` layer used by `table1-parser parse`.
+
+Current flow:
+
+`NormalizedTable -> TableDefinition -> TableContext -> LLMSemanticTableDefinition`
+
+The LLM is used only for optional semantic interpretation after deterministic table-definition assembly and paper-context retrieval.
 
 ## Current provider path
 
@@ -13,18 +19,18 @@ The configured client uses:
 
 - environment variables for credentials and model selection
 - provider-specific request handling
-- structured output parsed into the existing Phase 5 Pydantic models
+- structured output parsed into `LLMSemanticTableDefinition`
 
 OpenAI uses:
 
 - the official OpenAI Python SDK
-- native structured parsing into the existing Phase 5 Pydantic models
+- native structured parsing into the semantic Pydantic response model
 
 Qwen uses:
 
 - direct HTTP requests to DashScope
-- a compact JSON-only prompt contract
-- local JSON parsing plus the existing Pydantic validation layer
+- a compact JSON-only output contract
+- local JSON parsing plus the semantic Pydantic validation layer
 
 ## Environment variables
 
@@ -59,46 +65,30 @@ Debug note:
 - these artifacts include per-table timing, payload-size summaries, raw structured responses, and validated interpretations when available
 - set `LLM_SDK_DEBUG=true` only if you want verbose OpenAI SDK/provider logging in the terminal
 
-## Python usage
-
-```python
-from table1_parser.extract import build_extractor
-from table1_parser.llm import parse_table_with_configured_llm
-from table1_parser.normalize import normalize_extracted_table
-
-extractor = build_extractor("pymupdf4llm")
-table = extractor.extract("testpapers/cobaltpaper.pdf")[0]
-normalized = normalize_extracted_table(table)
-result = parse_table_with_configured_llm(
-    normalized,
-    trace_dir="outputs/traces/cobaltpaper/table_0",
-)
-```
-
-## Trace script
-
-Live provider call:
+## CLI usage
 
 ```bash
-python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --use-configured-client
+table1-parser parse path/to/paper.pdf
 ```
 
-Explicit canned response:
+To disable the semantic LLM stage explicitly:
 
 ```bash
-python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --response-json path/to/response.json
+table1-parser parse path/to/paper.pdf --no-llm-semantic
 ```
 
-If neither a configured client nor `--response-json` is provided, the script now fails loudly instead of silently faking an LLM run.
+## Debug artifacts
 
-## Trace artifacts
+When `LLM_DEBUG=true`, semantic debug artifacts are written under:
 
-The Phase 5 trace path writes:
+```text
+outputs/papers/<paper_stem>/llm_semantic_debug/<timestamp>/
+  llm_semantic_monitoring.json
+  table_0/
+    table_definition_llm_input.json
+    table_definition_llm_metrics.json
+    table_definition_llm_output.json
+    table_definition_llm_interpretation.json
+```
 
-- `heuristics.json`
-- `llm_input.json`
-- `llm_output.json`
-- `final_interpretation.json`
-- `diff.txt`
-
-These are intended for inspection and should not be committed. `outputs/` is ignored by Git.
+These are inspection artifacts only and should not be committed. `outputs/` is ignored by Git.

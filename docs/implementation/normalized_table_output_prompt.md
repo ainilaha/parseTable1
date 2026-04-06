@@ -145,7 +145,7 @@ Update docs to reflect that users can now find:
 
 Be explicit that:
 
-- heuristic and LLM trace outputs still live separately under `outputs/traces/`
+- later semantic LLM debug outputs live under `outputs/papers/<paper_stem>/llm_semantic_debug/`
 - `ParsedTable` export is still not implemented
 
 ## Deliverable

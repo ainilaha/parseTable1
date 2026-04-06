@@ -1,6 +1,6 @@
 # LLM Setup
 
-This project supports a real Phase 5 LLM client through environment-variable-based configuration.
+This project supports the semantic post-`TableDefinition` LLM client through environment-variable-based configuration.
 
 ## Required variables
 
@@ -98,20 +98,34 @@ python3 -m pip install -e '.[dev]'
 
 The configured Qwen client uses the Python standard library HTTP stack.
 
-If provider setup is missing, the trace script and configured client path will fail with a clear setup error.
+If provider setup is missing, the semantic LLM path in `table1-parser parse` will skip provider calls with a clear setup warning.
 
-## Running the configured Phase 5 trace
+## Running the configured semantic LLM path
 
 ```bash
-python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --use-configured-client
+table1-parser parse testpapers/cobaltpaper.pdf
 ```
 
-## Explicit offline testing
+## Disabling the semantic LLM path
 
-If you do not want to call a live provider, pass an explicit canned response instead of using the configured client:
+If you do not want `parse` to attempt any semantic LLM calls:
 
 ```bash
-python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --response-json path/to/response.json
+table1-parser parse testpapers/cobaltpaper.pdf --no-llm-semantic
+```
+
+## Debug artifacts
+
+If you want per-table semantic debug artifacts, enable:
+
+```bash
+export LLM_DEBUG=true
+```
+
+Then run `table1-parser parse ...`. The parser will write a timestamped debug directory under:
+
+```text
+outputs/papers/<paper_stem>/llm_semantic_debug/
 ```
 
 ## Security

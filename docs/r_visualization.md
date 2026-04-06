@@ -6,7 +6,6 @@ File:
 
 - [`R/visualize_table_from_json.R`](../R/visualize_table_from_json.R)
 - [`R/inspect_paper_outputs.R`](../R/inspect_paper_outputs.R)
-- [`R/extract_variables_from_final_interpretation.R`](../R/extract_variables_from_final_interpretation.R)
 - [`R/pt1_json_io.R`](../R/pt1_json_io.R)
 - [`R/observed_table_one.R`](../R/observed_table_one.R)
 - manual pages in [`man/`](../man)
@@ -16,7 +15,7 @@ File:
 The table display helper can display:
 
 - stored normalized-table JSON such as `normalized_tables.json`
-- row-oriented payload JSON such as `llm_input.json`
+- row-oriented semantic debug payload JSON such as `table_definition_llm_input.json`
 - parsed-table-style JSON that contains `variables`, `columns`, and `values`
 - trace wrapper files that store the actual payload under `payload`, `interpretation`, or `response`
 
@@ -35,45 +34,7 @@ From the repo root:
 ```r
 source("R/visualize_table_from_json.R")
 options(width = 200)
-visualize_table_from_json("outputs/traces/cobaltpaper/table_0/llm_input.json")
 visualize_table_from_json("outputs/papers/cobaltpaper/normalized_tables.json")
-```
-
-From inside the `R/` directory:
-
-```r
-source("visualize_table_from_json.R")
-options(width = 200)
-visualize_table_from_json("../outputs/traces/cobaltpaper/table_0/llm_input.json")
-```
-
-## Variable Extraction Helper
-
-The variable-extraction helper reads `final_interpretation.json` from one parser output directory and returns a small base-R structure for human inspection of:
-
-- variable names
-- original labels
-- inferred units
-- cleaned level labels
-- original level labels
-- variable type when available
-
-It uses the current `final_interpretation.json` shape already produced by the parser:
-
-- top-level `interpretation`
-- `interpretation$variables`
-- `variable_name`
-- `variable_type`
-- `levels[[i]]$label`
-
-### Interactive usage
-
-From the repo root:
-
-```r
-source("R/extract_variables_from_final_interpretation.R")
-x <- extract_variables_from_output_dir("outputs/traces/cobaltpaper/table_0")
-print_variable_structure(x)
 ```
 
 ## Paper Output Inspection Helper
@@ -190,40 +151,31 @@ Sex
 
 This is the simplest end-to-end workflow for one PDF:
 
-1. Generate parser trace artifacts:
+1. Generate parser outputs with semantic debug artifacts enabled:
 
 ```bash
-python3 scripts/debug_llm_trace.py testpapers/OPEandRA.pdf --use-configured-client
+LLM_DEBUG=true table1-parser parse testpapers/OPEandRA.pdf
 ```
 
 This creates a directory such as:
 
 ```text
-outputs/traces/OPEandRA/table_0/
+outputs/papers/OPEandRA/llm_semantic_debug/<timestamp>/table_0/
 ```
 
-2. Inspect the table payload visually:
+2. Inspect the semantic input payload visually:
 
 ```bash
-Rscript R/visualize_table_from_json.R outputs/traces/OPEandRA/table_0/llm_input.json
+Rscript R/visualize_table_from_json.R outputs/papers/OPEandRA/llm_semantic_debug/<timestamp>/table_0/table_definition_llm_input.json
 ```
 
-3. Read the final interpreted variables:
-
-```bash
-Rscript -e 'source("R/extract_variables_from_final_interpretation.R"); x <- extract_variables_from_output_dir("outputs/traces/OPEandRA/table_0"); print_variable_structure(x)'
-```
-
-4. Do the same in interactive R if preferred:
+3. Do the same in interactive R if preferred:
 
 ```r
 source("R/visualize_table_from_json.R")
-source("R/extract_variables_from_final_interpretation.R")
 options(width = 200)
 
-visualize_table_from_json("outputs/traces/OPEandRA/table_0/llm_input.json")
-x <- extract_variables_from_output_dir("outputs/traces/OPEandRA/table_0")
-print_variable_structure(x)
+visualize_table_from_json("outputs/papers/OPEandRA/llm_semantic_debug/<timestamp>/table_0/table_definition_llm_input.json")
 ```
 
 ## Notes

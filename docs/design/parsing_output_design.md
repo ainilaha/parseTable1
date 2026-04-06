@@ -33,7 +33,7 @@ Those files define the main development criteria:
 There are two related but different concepts in this repository:
 
 1. Canonical typed models
-   These are the Pydantic models in `table1_parser/schemas/` and `table1_parser/llm/schemas.py`.
+   These are the Pydantic models in `table1_parser/schemas/` and `table1_parser/llm/semantic_schemas.py`.
 
 2. Persisted JSON files
    These are CLI outputs or trace/debug artifacts written to disk.
@@ -51,10 +51,7 @@ Some JSON files are direct dumps of canonical models. Others are wrapper files t
 | Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles, with only conservative glyph repair in the markdown text |
 | Semantic LLM table definition | `LLMSemanticTableDefinition` | Written now as `table_definitions_llm.json` by `parse` when LLM config is available | Persist value-free semantic interpretation grounded in table indices and retrieved paper context |
 | Semantic LLM debug monitoring | `LLMSemanticMonitoringReport`, `LLMSemanticCallRecord` | Written only when `LLM_DEBUG=true` as `llm_semantic_debug/<timestamp>/llm_semantic_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence |
-| Heuristics | Phase 4 helper models | Written in trace mode as `heuristics.json` | Deterministic row/variable/column guesses |
-| LLM input | `LLMInputPayload` | Written in trace mode as `llm_input.json` | Compact structured prompt payload |
-| LLM raw response | raw JSON validated into `LLMTableInterpretation` | Written in trace mode as `llm_output.json` | Preserve the provider response for inspection |
-| LLM interpretation | `LLMTableInterpretation` | Written in trace mode as `final_interpretation.json` | Pre-validation semantic interpretation |
+| Semantic LLM per-table trace files | wrapper JSON files | Written only when `LLM_DEBUG=true` as `table_definition_llm_input.json`, `table_definition_llm_metrics.json`, `table_definition_llm_output.json`, and `table_definition_llm_interpretation.json` | Preserve prompt payloads, metrics, raw provider responses, and validated semantic interpretations for inspection |
 | Final parsed output | `ParsedTable` | Written now as `parsed_tables.json` by `parse` | Validated downstream structured table data |
 
 Design note for future multitable support:
@@ -449,129 +446,39 @@ outputs/papers/<paper_stem>/llm_semantic_debug/<timestamp>/
 - `llm_semantic_monitoring.json` summarizes every table's semantic-LLM status, including skipped tables
 - per-table trace files are written only for tables that actually reached the semantic LLM call path
 
-## 6. `heuristics.json`
+## 6. Semantic Debug Trace Files
 
 Current status:
 
-- written only in Phase 5 trace mode
-- debug artifact, not the final parsed output
+- written only when `LLM_DEBUG=true`
+- debug artifacts, not stable downstream interfaces
 
-Top-level shape:
+Current per-table file names:
 
-```json
-{
-  "report_timestamp": "...",
-  "table_id": "...",
-  "row_classifications": [],
-  "variables": [],
-  "columns": [],
-  "notes": []
-}
-```
+- `table_definition_llm_input.json`
+- `table_definition_llm_metrics.json`
+- `table_definition_llm_output.json`
+- `table_definition_llm_interpretation.json`
 
-Design components:
-
-- `report_timestamp`: UTC trace timestamp
-- `table_id`
-- `row_classifications`: deterministic row-level guesses
-- `variables`: deterministic candidate variable blocks
-- `columns`: deterministic candidate column roles
-- `notes`: reserved for heuristic notes
-
-`row_classifications` entries:
-
-- `row_idx`
-- `classification`
-- `confidence`
-
-`variables` entries:
-
-- `variable_row_idx`
-- `row_start`
-- `row_end`
-- `variable_label`
-- `variable_type`
-- `levels`
-
-`columns` entries:
-
-- `col_idx`
-- `header_label`
-- `inferred_role`
-- `confidence`
-
-Design intent:
-
-- preserve the deterministic interpretation before LLM refinement
-- keep it small and row-referenced
-- do not treat this as the final exported table format
-
-## 7. `llm_input.json`
-
-Current status:
-
-- written only in Phase 5 trace mode
-- wrapper around the actual prompt payload
-
-Top-level shape:
+Current top-level wrappers:
 
 ```json
 {
   "report_timestamp": "...",
   "table_id": "...",
   "payload": {
-    "...": "LLMInputPayload"
+    "...": "semantic LLM prompt payload"
   }
 }
 ```
 
-Canonical payload model:
-
-- `LLMInputPayload`
-
-Payload design components:
-
-- `table_id`
-- `title`
-- `caption`
-- `header_rows`: arrays of header cell strings
-- `body_rows`: arrays of body cell strings
-- `heuristics`
-
-`heuristics` payload components:
-
-- `row_classifications`
-- `variable_blocks`
-- `column_roles`
-
-Design intent:
-
-- the LLM sees normalized table content, not raw PDF bytes
-- the payload is compact and conservative
-- row/column invention is prohibited by prompt design and by validation rules around the response
-
-Current implementation note:
-
-- `body_rows` is serialized as `list[list[str]]`
-- the checked-in `schemas/table_llm_payload.schema.json` is expected to match `LLMInputPayload.model_json_schema()`
-- the checked-in `tests/data/sample_table_llm_payload.json` is expected to validate against `LLMInputPayload`
-- `tests/test_llm.py` contains contract-drift tests for both the schema file and the sample payload
-
-Current source-of-truth files for this contract:
-
-- `table1_parser/llm/schemas.py`
-- `schemas/table_llm_payload.schema.json`
-- `tests/data/sample_table_llm_payload.json`
-- `tests/test_llm.py`
-
-## 8. `llm_output.json`
-
-Current status:
-
-- written only in Phase 5 trace mode
-- wrapper around the raw provider response
-
-Top-level shape:
+```json
+{
+  "table_id": "...",
+  "status": "success",
+  "elapsed_seconds": 1.23
+}
+```
 
 ```json
 {
@@ -583,73 +490,23 @@ Top-level shape:
 }
 ```
 
-Design intent:
-
-- keep the exact model output for debugging
-- separate raw output from validated interpretation
-- do not use this file as a stable downstream interface
-
-## 9. `final_interpretation.json`
-
-Current status:
-
-- written only in Phase 5 trace mode
-- contains the validated `LLMTableInterpretation`, not the final `ParsedTable`
-
-Top-level shape:
-
 ```json
 {
   "report_timestamp": "...",
   "table_id": "...",
   "interpretation": {
-    "...": "LLMTableInterpretation"
+    "...": "LLMSemanticTableDefinition"
   }
 }
 ```
 
-Canonical interpretation model:
+Design intent:
 
-- `LLMTableInterpretation`
+- preserve the exact semantic LLM payload, monitoring metrics, raw provider output, and validated interpretation for inspection
+- keep these files separate from canonical pipeline outputs such as `table_definitions.json`, `table_definitions_llm.json`, and `parsed_tables.json`
+- preserve stable row and column references so semantic disagreements can still be audited safely
 
-Top-level interpretation components:
-
-- `table_id`
-- `variables`
-- `columns`
-- `notes`
-
-Variable design components:
-
-- `variable_name`
-- `variable_type`
-- `row_start`
-- `row_end`
-- `levels`
-- `confidence`
-
-Level design components:
-
-- `label`
-- `row_idx`
-
-Column design components:
-
-- `col_idx`
-- `column_name`
-- `inferred_role`
-- `confidence`
-
-Important limits of this artifact:
-
-- it does not contain `values`
-- it does not contain `column_label`
-- it does not currently contain `variable_label`
-- it is still a pre-validation interpretation stage
-
-This file is useful for inspection, R helpers, and LLM tracing, but it is not yet the final normalized export format for downstream analysis.
-
-## 10. `ParsedTable` JSON
+## 7. `ParsedTable` JSON
 
 Current status:
 
@@ -738,17 +595,17 @@ A simple rule:
 
 Wrapper files currently include:
 
-- `heuristics.json`
-- `llm_input.json`
-- `llm_output.json`
-- `final_interpretation.json`
+- `table_definition_llm_input.json`
+- `table_definition_llm_metrics.json`
+- `table_definition_llm_output.json`
+- `table_definition_llm_interpretation.json`
 
 Canonical payloads currently include:
 
 - `ExtractedTable`
 - `NormalizedTable`
-- `LLMInputPayload`
-- `LLMTableInterpretation`
+- `TableDefinition`
+- `LLMSemanticTableDefinition`
 - `ParsedTable`
 
 The final parse/export path should prefer canonical model dumps, with wrapper files used only when explicit trace/debug output is wanted.

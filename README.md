@@ -216,7 +216,7 @@ outputs/
 
 This keeps outputs for each paper in a separate directory and leaves room for trace and interpretation-stage outputs.
 The `parse` command is intended to populate this directory with every available stage output from a single pipeline run.
-Standalone trace scripts default to `outputs/traces/<paper_stem>/...`.
+When `LLM_DEBUG=true`, semantic LLM debug artifacts are written under `outputs/papers/<paper_stem>/llm_semantic_debug/<timestamp>/`.
 
 ## How To Read The Outputs
 
@@ -351,7 +351,7 @@ More detail:
 
 ## Developer Tools
 
-The repository also includes internal scripts for pipeline inspection, diagnostics, synthetic data generation, and LLM tracing.
+The repository also includes internal scripts for pipeline inspection, diagnostics, and synthetic data generation.
 
 Pipeline summary:
 
@@ -365,21 +365,7 @@ Diagnostics:
 python3 scripts/debug_quality_report.py testpapers/cobaltpaper.pdf
 ```
 
-Phase 5 LLM trace with a real configured client:
-
-```bash
-python3 scripts/debug_llm_trace.py testpapers/cobaltpaper.pdf --use-configured-client
-```
-
-The trace script writes:
-
-- `heuristics.json`
-- `llm_input.json`
-- `llm_output.json`
-- `final_interpretation.json`
-- `diff.txt`
-
-These trace artifacts live under `outputs/traces/` and are separate from the paper-oriented artifacts under `outputs/papers/`.
+Semantic LLM debug artifacts are written by `table1-parser parse` when `LLM_DEBUG=true`. The per-run directory contains `llm_semantic_monitoring.json` plus per-table files such as `table_definition_llm_input.json`, `table_definition_llm_metrics.json`, `table_definition_llm_output.json`, and `table_definition_llm_interpretation.json`.
 
 ## JSON Contracts
 
@@ -387,10 +373,4 @@ The repository keeps the table pipeline JSON-first. The current output and inter
 
 - [`docs/design/parsing_output_design.md`](docs/design/parsing_output_design.md)
 
-For the Phase 5 LLM input payload specifically:
-
-- the canonical Pydantic model is `table1_parser.llm.schemas.LLMInputPayload`
-- the checked-in JSON schema is [`schemas/table_llm_payload.schema.json`](schemas/table_llm_payload.schema.json)
-- the checked-in sample payload is [`tests/data/sample_table_llm_payload.json`](tests/data/sample_table_llm_payload.json)
-
-The test suite includes drift checks to ensure the checked-in schema and sample payload stay aligned with the live `LLMInputPayload` model.
+For the current semantic LLM path, the main contract model is `table1_parser.llm.semantic_schemas.LLMSemanticTableDefinition`.

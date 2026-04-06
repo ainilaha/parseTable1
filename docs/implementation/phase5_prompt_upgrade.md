@@ -10,7 +10,7 @@ prompts/
 
 Example:
 
-prompts/table_interpretation_prompt.md
+prompts/table_definition_semantic_prompt.md
 
 Do not hardcode full prompts inside Python code.
 
@@ -51,19 +51,10 @@ The payload must include:
 
 - title
 - caption
-- header rows
-- body rows
-- row indices
-- heuristic row classifications
-- heuristic variable block guesses if available
-- heuristic column role guesses if available
-- row structural hints when available
-
-Examples of row hints:
-
-- numeric cell count
-- whether trailing cells contain values
-- indent level if available
+- indexed header rows
+- indexed body rows
+- deterministic `TableDefinition`
+- retrieved paper context
 
 Do not send raw PDF text or page content.
 
@@ -76,10 +67,11 @@ The architecture must remain:
 PDF
 → extraction
 → normalization
-→ heuristic interpretation
-→ LLM refinement
+→ deterministic `TableDefinition`
+→ paper-context retrieval
+→ semantic LLM refinement
 
-The LLM should refine heuristic output, not replace heuristics.
+The LLM should refine deterministic semantics, not replace deterministic parsing.
 
 ---
 
@@ -87,10 +79,9 @@ The LLM should refine heuristic output, not replace heuristics.
 
 When debug mode is enabled, the system should allow inspection of:
 
-- the heuristic interpretation
-- the LLM payload
+- the semantic LLM payload
 - the LLM response
-- the final interpreted structure
+- the validated semantic interpretation
 
 ---
 
