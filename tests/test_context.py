@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
+from table1_parser.context import build_paper_variable_inventory
 from table1_parser.context.markdown_extractor import extract_paper_markdown
 from table1_parser.context.retrieval import build_table_context
 from table1_parser.context.section_parser import parse_markdown_sections
@@ -57,6 +58,23 @@ def test_parse_markdown_sections_detects_methods_and_results() -> None:
     assert [section.role_hint for section in sections] == ["methods_like", "results_like"]
 
 
+def test_parse_markdown_sections_detects_priority_roles_and_references() -> None:
+    """Markdown heading parsing should distinguish abstract, discussion, conclusion, and references."""
+    sections = parse_markdown_sections(
+        "# Abstract\nBackground.\n\n"
+        "# Discussion\nMeaning.\n\n"
+        "# Conclusions\nTakeaway.\n\n"
+        "# References\nAge et al."
+    )
+
+    assert [section.role_hint for section in sections] == [
+        "abstract_like",
+        "discussion_like",
+        "conclusion_like",
+        "references_like",
+    ]
+
+
 def test_build_table_context_collects_table_mentions_and_term_matches() -> None:
     """Per-table retrieval should preserve table mentions and methods-like evidence."""
     definition = TableDefinition(
@@ -104,3 +122,51 @@ def test_build_table_context_collects_table_mentions_and_term_matches() -> None:
     assert any(passage.match_type == "table_reference" for passage in context.passages)
     assert "Age" in context.row_terms
     assert "DKD status" in context.grouping_terms
+
+
+def test_build_paper_variable_inventory_prioritizes_sections_and_excludes_references() -> None:
+    """Paper variable inventory should gather table and text mentions without harvesting references."""
+    definition = TableDefinition(
+        table_id="tbl-1",
+        title="Table 1",
+        caption="Table 1. Baseline characteristics by DKD status",
+        variables=[
+            DefinedVariable(
+                variable_name="Age years",
+                variable_label="Age, years",
+                variable_type="continuous",
+                row_start=1,
+                row_end=1,
+                confidence=0.9,
+            )
+        ],
+        column_definition=ColumnDefinition(
+            grouping_label="DKD status",
+            grouping_name="DKD status",
+            columns=[
+                DefinedColumn(
+                    col_idx=1,
+                    column_name="Overall",
+                    column_label="Overall",
+                    inferred_role="overall",
+                )
+            ],
+        ),
+    )
+    sections = parse_markdown_sections(
+        "# Abstract\nAge, years was a primary baseline covariate.\n\n"
+        "# Methods\nDKD status and Age, years were assessed at baseline.\n\n"
+        "# Results\nTable 1 reports Age, years by DKD status.\n\n"
+        "# References\nAge, years in older cohorts."
+    )
+
+    inventory = build_paper_variable_inventory("paper", sections, [definition])
+
+    text_mentions = [mention for mention in inventory.mentions if mention.source_type == "text_based"]
+    assert any(mention.role_hint == "abstract_like" for mention in text_mentions)
+    assert any(mention.role_hint == "methods_like" for mention in text_mentions)
+    assert any(mention.role_hint == "results_like" for mention in text_mentions)
+    assert all(mention.role_hint != "references_like" for mention in text_mentions)
+    assert all(mention.table_id is None for mention in text_mentions)
+    assert any(mention.source_type == "table_variable_label" for mention in inventory.mentions)
+    assert any(candidate.preferred_label == "Age, years" for candidate in inventory.candidates)

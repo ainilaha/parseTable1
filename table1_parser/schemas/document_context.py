@@ -7,7 +7,15 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-SectionRoleHint = Literal["methods_like", "results_like", "other"]
+SectionRoleHint = Literal[
+    "abstract_like",
+    "methods_like",
+    "results_like",
+    "discussion_like",
+    "conclusion_like",
+    "references_like",
+    "other",
+]
 PassageMatchType = Literal["table_reference", "methods_term_match", "results_term_match"]
 
 

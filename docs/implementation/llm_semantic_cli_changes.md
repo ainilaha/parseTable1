@@ -16,6 +16,7 @@ Make `parse` run semantic LLM table-definition inference when LLM configuration 
    - `table_definitions.json`
    - `paper_markdown.md`
    - `paper_sections.json`
+   - `paper_variable_inventory.json`
    - `table_contexts/*.json`
 2. also write `table_definitions_llm.json` when semantic LLM configuration is available
 

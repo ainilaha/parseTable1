@@ -64,7 +64,7 @@ When designing or revising schemas:
 - keep enum-like string vocabularies stable and documented
 - avoid shapes that are easy in Python but ambiguous or awkward in R
 
-This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifacts, and the planned `paper_variable_inventory.json` artifact.
+This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifacts, and `paper_variable_inventory.json`.
 
 ## Output Layers
 
@@ -75,6 +75,7 @@ This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifa
 | Table routing | `TableProfile` | Written now as `table_profiles.json` by `parse` | Persist deterministic family routing and LLM-gating decisions |
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
 | Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles, with only conservative glyph repair in the markdown text |
+| Paper variable inventory | `PaperVariableInventory`, `VariableMention`, `VariableCandidate` | Written now as `paper_variable_inventory.json` by `parse` | Persist the paper-level candidate variable reference list with explicit text/table provenance |
 | Semantic LLM table definition | `LLMSemanticTableDefinition` | Written now as `table_definitions_llm.json` by `parse` when LLM config is available | Persist value-free semantic interpretation grounded in table indices and retrieved paper context |
 | Semantic LLM debug monitoring | `LLMSemanticMonitoringReport`, `LLMSemanticCallRecord` | Written only when `LLM_DEBUG=true` as `llm_semantic_debug/<timestamp>/llm_semantic_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence |
 | Semantic LLM per-table trace files | wrapper JSON files | Written only when `LLM_DEBUG=true` as `table_definition_llm_input.json`, `table_definition_llm_metrics.json`, `table_definition_llm_output.json`, and `table_definition_llm_interpretation.json` | Preserve prompt payloads, metrics, raw provider responses, and validated semantic interpretations for inspection |
@@ -359,12 +360,15 @@ Current CLI paths:
 ```text
 outputs/papers/<paper_stem>/paper_markdown.md
 outputs/papers/<paper_stem>/paper_sections.json
+outputs/papers/<paper_stem>/paper_variable_inventory.json
 outputs/papers/<paper_stem>/table_contexts/table_<n>_context.json
 ```
 
 Canonical models:
 
 - `PaperSection`
+- `PaperVariableInventory`
+- child models: `VariableMention`, `VariableCandidate`
 - `TableContext`
 - child model: `RetrievedPassage`
 
@@ -374,6 +378,8 @@ Design components:
   raw markdown extracted from the full paper
 - `paper_sections.json`
   markdown-derived sections with heading level and simple role hints
+- `paper_variable_inventory.json`
+  paper-level candidate variable list with flat mention-level and candidate-level records
 - `table_contexts/*.json`
   per-table retrieval bundles keyed by `table_id` and `table_index`
 
@@ -400,6 +406,7 @@ Design components:
 Design intent:
 
 - keep paper-level context in the same per-paper output directory
+- keep the candidate variable reference list explicit and easy to load in both Python and R
 - support future LLM semantic interpretation with compact retrieved evidence
 - avoid tying retrieval to exact section names like `Methods`
 - preserve `paper_markdown.md` as the paper-level markdown artifact, allowing only conservative glyph repair, and move derived structure into `paper_sections.json`

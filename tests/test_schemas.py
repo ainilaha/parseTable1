@@ -15,6 +15,7 @@ from table1_parser.schemas import (
     LLMSemanticMonitoringReport,
     NormalizedTable,
     PaperSection,
+    PaperVariableInventory,
     ParsedColumn,
     ParsedLevel,
     ParsedTable,
@@ -25,6 +26,8 @@ from table1_parser.schemas import (
     TableContext,
     TableDefinition,
     TableProfile,
+    VariableCandidate,
+    VariableMention,
     ValueRecord,
 )
 
@@ -225,6 +228,7 @@ def test_llm_semantic_monitoring_creation_and_serialization() -> None:
     assert dumped["items"][0]["status"] == "success"
     assert dumped["items"][0]["elapsed_seconds"] == 12.4
 
+
 def test_document_context_schemas_create_without_llm_logic() -> None:
     """Document-context schemas should serialize cleanly."""
     section = PaperSection(
@@ -259,6 +263,53 @@ def test_document_context_schemas_create_without_llm_logic() -> None:
 
     assert section.model_dump()["role_hint"] == "methods_like"
     assert context.model_dump(mode="json")["passages"][0]["match_type"] == "methods_term_match"
+
+
+def test_paper_variable_inventory_schema_serializes_cleanly() -> None:
+    """Paper variable inventory schemas should stay explicit and JSON-serializable."""
+    inventory = PaperVariableInventory(
+        paper_id="paper",
+        mentions=[
+            VariableMention(
+                mention_id="mention_0",
+                raw_label="Age, years",
+                normalized_label="Age years",
+                source_type="text_based",
+                section_id="section_0",
+                heading="Abstract",
+                role_hint="abstract_like",
+                paragraph_index=0,
+                evidence_text="Age, years was assessed.",
+                priority_weight=1.0,
+                confidence=0.92,
+            )
+        ],
+        candidates=[
+            VariableCandidate(
+                candidate_id="candidate_0",
+                preferred_label="Age, years",
+                normalized_label="age years",
+                alternate_labels=["Age years"],
+                supporting_mention_ids=["mention_0"],
+                source_types=["text_based"],
+                section_ids=["section_0"],
+                section_role_hints=["abstract_like"],
+                table_ids=[],
+                table_indices=[],
+                text_support_count=1,
+                table_support_count=0,
+                caption_support_count=0,
+                priority_score=1.0,
+                confidence=0.92,
+                interpretation_status="uninterpreted",
+            )
+        ],
+    )
+
+    dumped = inventory.model_dump(mode="json")
+
+    assert dumped["mentions"][0]["source_type"] == "text_based"
+    assert dumped["candidates"][0]["preferred_label"] == "Age, years"
 
 
 def test_schema_validation_rejects_invalid_confidence() -> None:

@@ -12,7 +12,9 @@ from pathlib import Path
 from table1_parser.config import Settings
 from table1_parser.context import (
     build_table_contexts,
+    build_paper_variable_inventory,
     extract_paper_markdown,
+    paper_variable_inventory_to_payload,
     paper_sections_to_payload,
     parse_markdown_sections,
 )
@@ -172,13 +174,13 @@ def _handle_parse(args: argparse.Namespace) -> int:
         parsed_tables = build_parsed_tables(normalized_tables, table_definitions)
         paper_markdown = extract_paper_markdown(args.pdf_path)
         paper_sections = parse_markdown_sections(paper_markdown)
+        paper_variable_inventory = build_paper_variable_inventory(paper_stem := Path(args.pdf_path).stem, paper_sections, table_definitions)
         table_contexts = build_table_contexts(paper_sections, table_definitions)
     except Exception as exc:
         _print_stderr(_error_payload(str(exc)))
         return 1
 
     settings = Settings()
-    paper_stem = Path(args.pdf_path).stem
     llm_debug_dir = (
         Path(args.outdir) / "papers" / paper_stem / "llm_semantic_debug" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         if settings.llm_debug
@@ -272,6 +274,7 @@ def _handle_parse(args: argparse.Namespace) -> int:
     llm_monitoring_output_path = llm_debug_dir / "llm_semantic_monitoring.json" if llm_debug_dir is not None else None
     paper_markdown_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_markdown.md"
     paper_sections_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_sections.json"
+    paper_variable_inventory_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_variable_inventory.json"
     table_context_output_dir = Path(args.outdir) / "papers" / paper_stem / "table_contexts"
     extract_output_path.parent.mkdir(parents=True, exist_ok=True)
     table_context_output_dir.mkdir(parents=True, exist_ok=True)
@@ -307,6 +310,10 @@ def _handle_parse(args: argparse.Namespace) -> int:
     paper_markdown_output_path.write_text(paper_markdown, encoding="utf-8")
     paper_sections_output_path.write_text(
         json.dumps(paper_sections_to_payload(paper_sections), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    paper_variable_inventory_output_path.write_text(
+        json.dumps(paper_variable_inventory_to_payload(paper_variable_inventory), indent=2) + "\n",
         encoding="utf-8",
     )
     for table_context in table_contexts:

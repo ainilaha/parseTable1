@@ -43,6 +43,7 @@ At the moment, the repository can persist:
 - `TableDefinition`
 - `ParsedTable`
 - paper-level markdown context
+- paper-level variable inventory
 
 Today, a single call to `table1-parser parse` writes those artifacts from one extraction pass.
 When LLM configuration is available, the same `parse` call also writes semantic LLM table definitions.
@@ -78,6 +79,7 @@ outputs/papers/<paper_stem>/table_definitions.json
 outputs/papers/<paper_stem>/parsed_tables.json
 outputs/papers/<paper_stem>/paper_markdown.md
 outputs/papers/<paper_stem>/paper_sections.json
+outputs/papers/<paper_stem>/paper_variable_inventory.json
 outputs/papers/<paper_stem>/table_contexts/table_0_context.json
 ```
 
@@ -182,11 +184,13 @@ For paper-level inspection there is also:
 ```r
 source("R/inspect_paper_outputs.R")
 compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
+show_paper_variable_candidates("outputs/papers/cobaltpaper")
+show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based")
 show_table_context("outputs/papers/cobaltpaper", table_index = 0L)
 show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 ```
 
-These helpers are meant to make it easier to compare deterministic syntax-first semantics with LLM semantics and to inspect the retrieved supporting passages.
+These helpers are meant to make it easier to inspect the paper-level candidate variable inventory, compare deterministic syntax-first semantics with LLM semantics, and inspect the retrieved supporting passages.
 
 ## Output Layout
 
@@ -210,6 +214,7 @@ outputs/
       table_definitions_llm.json
       paper_markdown.md
       paper_sections.json
+      paper_variable_inventory.json
       table_contexts/
         table_0_context.json
 ```
@@ -225,9 +230,10 @@ The easiest way to inspect one paper is:
 1. start with `normalized_tables.json` to see the cleaned table structure
 2. read `table_profiles.json` to see how each table was routed
 3. read `table_definitions.json` to see the deterministic row and column interpretation
-4. read `parsed_tables.json` to see the final structured values
-5. read `table_definitions_llm.json` when present to see the context-aware semantic interpretation
-6. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
+4. read `paper_variable_inventory.json` to see the paper-level candidate variable reference list
+5. read `parsed_tables.json` to see the final structured values
+6. read `table_definitions_llm.json` when present to see the context-aware semantic interpretation
+7. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
 
 In practice:
 
@@ -237,6 +243,8 @@ In practice:
   best for stable row and column indices
 - `table_definitions.json`
   best for the syntax-first semantic baseline
+- `paper_variable_inventory.json`
+  best for the paper-level candidate variable list and text/table provenance
 - `table_profiles.json`
   best for understanding whether a table was treated as descriptive, estimate-like, or unknown
 - `parsed_tables.json`
@@ -256,6 +264,8 @@ The repository keeps syntax and semantics separate.
   main files: `table_definitions.json`, `table_definitions_llm.json`
 
 The deterministic and LLM semantic files both refer back to the same `table_id`, `row_idx`, and `col_idx` space. That makes them directly comparable.
+
+The paper-level variable inventory is complementary rather than competitive with those table-level artifacts. It is the paper-scoped candidate reference list that later semantic work can consult while still keeping one table at a time in the LLM prompt.
 
 ## Finding Captions And Supporting Context
 

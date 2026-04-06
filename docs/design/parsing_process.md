@@ -62,7 +62,7 @@ Later stages use the `NormalizedTable` to make progressively stronger interpreta
 - deterministic routing can classify table family
 - deterministic heuristics build a `TableDefinition`
 - paper markdown is chunked into sections and table-focused retrieval bundles
-- a planned paper-level variable inventory can later collect candidate variables from text, captions, and tables
+- a paper-level variable inventory collects candidate variables from text, captions, and tables
 - optional LLM interpretation can later refine ambiguous structure
 - validation checks that the interpretation is consistent with the real table
 - final assembly produces a `ParsedTable`
@@ -81,7 +81,7 @@ This separation keeps the parser safer and easier to debug.
 
 If you are looking at parser outputs:
 
-- `table1-parser parse path/to/paper.pdf` is the main entry point and currently writes `extracted_tables.json`, `normalized_tables.json`, `table_profiles.json`, `table_definitions.json`, `parsed_tables.json`, `paper_markdown.md`, `paper_sections.json`, and per-table context JSON files
+- `table1-parser parse path/to/paper.pdf` is the main entry point and currently writes `extracted_tables.json`, `normalized_tables.json`, `table_profiles.json`, `table_definitions.json`, `parsed_tables.json`, `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and per-table context JSON files
 - `extract` and `normalize` remain useful for inspecting a single stage in isolation
 
 - raw extraction output answers: "What table did the PDF extractor recover?"
@@ -89,5 +89,5 @@ If you are looking at parser outputs:
 - table-profile output answers: "What table family did the deterministic router infer, and should semantic LLM run?"
 - table-definition output answers: "What row variables, levels, and columns did the deterministic parser infer?"
 - paper-context output answers: "What document sections and passages are relevant to this table?"
-- planned paper-variable-inventory output would answer: "What candidate variables recur across the paper text and tables?"
+- paper-variable-inventory output answers: "What candidate variables recur across the paper text and tables?"
 - parsed output answers: "What variables, levels, columns, and values did the system finally infer?"

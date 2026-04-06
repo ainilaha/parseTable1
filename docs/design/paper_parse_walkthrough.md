@@ -32,6 +32,7 @@ Today that directory may contain:
 - `parsed_tables.json`
 - `paper_markdown.md`
 - `paper_sections.json`
+- `paper_variable_inventory.json`
 - `table_contexts/table_<n>_context.json`
 - `table_definitions_llm.json` when semantic LLM inference runs
 - `llm_semantic_debug/...` when semantic LLM debug tracing is enabled
@@ -65,6 +66,7 @@ PDF
 PDF
   -> paper markdown
   -> paper sections
+  -> paper variable inventory
   -> per-table context bundles
 
 normalized table + table definition + table context
@@ -375,7 +377,7 @@ Because row and column semantics can be right even when value parsing is wrong, 
 
 Keeping these apart makes debugging much more honest.
 
-## Step 7: Build Paper-Level Markdown Context
+## Step 7: Build Paper-Level Document Context
 
 The parser also builds a paper-level context representation from the whole document.
 
@@ -384,7 +386,7 @@ This is separate from table extraction.
 The current paper-context path is:
 
 ```text
-PDF -> paper_markdown.md -> paper_sections.json -> table_contexts/*.json
+PDF -> paper_markdown.md -> paper_sections.json -> paper_variable_inventory.json -> table_contexts/*.json
 ```
 
 ### `paper_markdown.md`
@@ -407,6 +409,19 @@ Only conservative glyph repair is allowed here. This artifact is not meant to be
 The markdown is split into a linear list of sections, with simple role hints such as methods-like or results-like.
 
 This gives the parser a document structure that is easier to retrieve from than raw markdown alone.
+
+### `paper_variable_inventory.json`
+
+The parser then builds a paper-level candidate reference list of variables.
+
+This artifact records:
+
+- raw mention-level evidence from prioritized prose sections
+- variable-like labels harvested from deterministic table definitions
+- mentions found in table titles and captions
+- conservative merged candidate variables with provenance back to mentions
+
+This is a Phase 1 search artifact, not a final interpretation layer. It is intended to stay easy to inspect in both Python and R.
 
 ### `table_contexts/*.json`
 
@@ -456,7 +471,7 @@ When a parse looks wrong, inspect the outputs in this order.
 5. `parsed_tables.json`
    If row and column meanings are right but the final values are wrong, the problem is in value parsing.
 
-6. `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json`
+6. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
    If semantic context retrieval is weak, inspect these next.
 
 7. `table_definitions_llm.json`

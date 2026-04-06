@@ -4,6 +4,11 @@ from table1_parser.schemas.document_context import PaperSection, RetrievedPassag
 from table1_parser.schemas.extracted_table import ExtractedTable, TableCell
 from table1_parser.schemas.llm_semantic_monitoring import LLMSemanticCallRecord, LLMSemanticMonitoringReport
 from table1_parser.schemas.normalized_table import NormalizedTable, RowView
+from table1_parser.schemas.paper_variable_inventory import (
+    PaperVariableInventory,
+    VariableCandidate,
+    VariableMention,
+)
 from table1_parser.schemas.parsed_table import (
     ParsedColumn,
     ParsedLevel,
@@ -26,6 +31,7 @@ __all__ = [
     "LLMSemanticMonitoringReport",
     "NormalizedTable",
     "PaperSection",
+    "PaperVariableInventory",
     "ColumnDefinition",
     "DefinedColumn",
     "DefinedLevel",
@@ -39,6 +45,8 @@ __all__ = [
     "TableContext",
     "TableDefinition",
     "TableCell",
+    "VariableCandidate",
+    "VariableMention",
     "ValueRecord",
     "TableProfile",
 ]

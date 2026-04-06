@@ -133,7 +133,7 @@ The paper-context side should be split into two phases.
 
 ### Phase 1: Document Search and Variable Inventory
 
-Before stronger interpretation, the system should build a paper-level candidate-reference list of variables.
+Before stronger interpretation, the system builds a paper-level candidate-reference list of variables.
 
 This phase should:
 

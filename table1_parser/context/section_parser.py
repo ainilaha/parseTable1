@@ -9,6 +9,7 @@ from table1_parser.text_cleaning import clean_text
 
 
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
+ABSTRACT_HINTS = ("abstract",)
 METHODS_HINTS = (
     "method",
     "materials and methods",
@@ -21,6 +22,9 @@ METHODS_HINTS = (
     "statistical analysis",
 )
 RESULTS_HINTS = ("result", "findings")
+DISCUSSION_HINTS = ("discussion",)
+CONCLUSION_HINTS = ("conclusion", "conclusions", "summary")
+REFERENCES_HINTS = ("reference", "references", "bibliography", "works cited")
 
 
 def parse_markdown_sections(markdown: str) -> list[PaperSection]:
@@ -64,9 +68,25 @@ def _build_section(order: int, heading: str | None, level: int, lines: list[str]
         heading=heading,
         level=level,
         role_hint=(
-            "methods_like"
-            if any(token in lowered for token in METHODS_HINTS)
-            else ("results_like" if any(token in lowered for token in RESULTS_HINTS) else "other")
+            "abstract_like"
+            if any(token in lowered for token in ABSTRACT_HINTS)
+            else (
+                "methods_like"
+                if any(token in lowered for token in METHODS_HINTS)
+                else (
+                    "results_like"
+                    if any(token in lowered for token in RESULTS_HINTS)
+                    else (
+                        "discussion_like"
+                        if any(token in lowered for token in DISCUSSION_HINTS)
+                        else (
+                            "conclusion_like"
+                            if any(token in lowered for token in CONCLUSION_HINTS)
+                            else ("references_like" if any(token in lowered for token in REFERENCES_HINTS) else "other")
+                        )
+                    )
+                )
+            )
         ),
         content=content,
     )

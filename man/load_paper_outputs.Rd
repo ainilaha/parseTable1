@@ -12,7 +12,7 @@ load_paper_outputs(paper_dir)
 }
 \value{
 A list containing extracted tables, normalized tables, deterministic and optional LLM table definitions,
-paper markdown, paper sections, and per-table contexts.
+paper markdown, paper sections, the paper-level variable inventory, and per-table contexts.
 }
 \examples{
 \dontrun{

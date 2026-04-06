@@ -31,6 +31,7 @@ paper_output_paths <- function(paper_dir) {
     llm_debug_dir = file.path(paper_dir, "llm_semantic_debug"),
     paper_markdown = file.path(paper_dir, "paper_markdown.md"),
     paper_sections = file.path(paper_dir, "paper_sections.json"),
+    paper_variable_inventory = file.path(paper_dir, "paper_variable_inventory.json"),
     table_context_dir = file.path(paper_dir, "table_contexts")
   )
 }
@@ -62,8 +63,136 @@ load_paper_outputs <- function(paper_dir) {
     table_definitions_llm = read_optional_json(paths$llm),
     paper_markdown = read_text_file(paths$paper_markdown),
     paper_sections = read_json_file(paths$paper_sections),
+    paper_variable_inventory = read_optional_json(paths$paper_variable_inventory),
     table_contexts = read_table_contexts(paths$table_context_dir)
   )
+}
+
+paper_variable_mentions_df <- function(outputs, role_hint = NULL, source_type = NULL) {
+  mentions <- outputs$paper_variable_inventory$mentions %||% list()
+  rows <- lapply(mentions, function(x) {
+    data.frame(
+      mention_id = as.character(x$mention_id %||% ""),
+      raw_label = as.character(x$raw_label %||% ""),
+      normalized_label = as.character(x$normalized_label %||% ""),
+      source_type = as.character(x$source_type %||% ""),
+      section_id = as.character(x$section_id %||% ""),
+      heading = as.character(x$heading %||% ""),
+      role_hint = as.character(x$role_hint %||% ""),
+      paragraph_index = as.integer(x$paragraph_index %||% NA_integer_),
+      evidence_text = as.character(x$evidence_text %||% ""),
+      table_id = as.character(x$table_id %||% ""),
+      table_index = as.integer(x$table_index %||% NA_integer_),
+      table_label = as.character(x$table_label %||% ""),
+      priority_weight = as.numeric(x$priority_weight %||% NA_real_),
+      confidence = as.numeric(x$confidence %||% NA_real_),
+      stringsAsFactors = FALSE
+    )
+  })
+  mentions_df <- if (length(rows) == 0) {
+    data.frame(
+      mention_id = character(),
+      raw_label = character(),
+      normalized_label = character(),
+      source_type = character(),
+      section_id = character(),
+      heading = character(),
+      role_hint = character(),
+      paragraph_index = integer(),
+      evidence_text = character(),
+      table_id = character(),
+      table_index = integer(),
+      table_label = character(),
+      priority_weight = numeric(),
+      confidence = numeric(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    do.call(rbind, rows)
+  }
+  if (!is.null(role_hint)) {
+    mentions_df <- mentions_df[mentions_df$role_hint %in% as.character(role_hint), , drop = FALSE]
+  }
+  if (!is.null(source_type)) {
+    mentions_df <- mentions_df[mentions_df$source_type %in% as.character(source_type), , drop = FALSE]
+  }
+  mentions_df
+}
+
+paper_variable_candidates_df <- function(outputs, min_priority = NULL) {
+  candidates <- outputs$paper_variable_inventory$candidates %||% list()
+  rows <- lapply(candidates, function(x) {
+    data.frame(
+      candidate_id = as.character(x$candidate_id %||% ""),
+      preferred_label = as.character(x$preferred_label %||% ""),
+      normalized_label = as.character(x$normalized_label %||% ""),
+      alternate_labels = paste(unlist(x$alternate_labels %||% list(), use.names = FALSE), collapse = " | "),
+      source_types = paste(unlist(x$source_types %||% list(), use.names = FALSE), collapse = " | "),
+      section_ids = paste(unlist(x$section_ids %||% list(), use.names = FALSE), collapse = " | "),
+      section_role_hints = paste(unlist(x$section_role_hints %||% list(), use.names = FALSE), collapse = " | "),
+      table_ids = paste(unlist(x$table_ids %||% list(), use.names = FALSE), collapse = " | "),
+      table_indices = paste(unlist(x$table_indices %||% list(), use.names = FALSE), collapse = " | "),
+      text_support_count = as.integer(x$text_support_count %||% 0L),
+      table_support_count = as.integer(x$table_support_count %||% 0L),
+      caption_support_count = as.integer(x$caption_support_count %||% 0L),
+      priority_score = as.numeric(x$priority_score %||% NA_real_),
+      confidence = as.numeric(x$confidence %||% NA_real_),
+      interpretation_status = as.character(x$interpretation_status %||% ""),
+      stringsAsFactors = FALSE
+    )
+  })
+  candidates_df <- if (length(rows) == 0) {
+    data.frame(
+      candidate_id = character(),
+      preferred_label = character(),
+      normalized_label = character(),
+      alternate_labels = character(),
+      source_types = character(),
+      section_ids = character(),
+      section_role_hints = character(),
+      table_ids = character(),
+      table_indices = character(),
+      text_support_count = integer(),
+      table_support_count = integer(),
+      caption_support_count = integer(),
+      priority_score = numeric(),
+      confidence = numeric(),
+      interpretation_status = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    do.call(rbind, rows)
+  }
+  if (!is.null(min_priority)) {
+    candidates_df <- candidates_df[candidates_df$priority_score >= as.numeric(min_priority), , drop = FALSE]
+  }
+  candidates_df
+}
+
+show_paper_variable_mentions <- function(paper_dir, role_hint = NULL, source_type = NULL) {
+  outputs <- load_paper_outputs(paper_dir)
+  mentions_df <- paper_variable_mentions_df(outputs, role_hint = role_hint, source_type = source_type)
+
+  cat(sprintf("Paper variable mentions for %s\n\n", normalizePath(paper_dir, winslash = "/", mustWork = TRUE)))
+  if (nrow(mentions_df) == 0) {
+    cat("[No rows]\n")
+    return(invisible(mentions_df))
+  }
+  print(mentions_df, row.names = FALSE, right = FALSE)
+  invisible(mentions_df)
+}
+
+show_paper_variable_candidates <- function(paper_dir, min_priority = NULL) {
+  outputs <- load_paper_outputs(paper_dir)
+  candidates_df <- paper_variable_candidates_df(outputs, min_priority = min_priority)
+
+  cat(sprintf("Paper variable candidates for %s\n\n", normalizePath(paper_dir, winslash = "/", mustWork = TRUE)))
+  if (nrow(candidates_df) == 0) {
+    cat("[No rows]\n")
+    return(invisible(candidates_df))
+  }
+  print(candidates_df, row.names = FALSE, right = FALSE)
+  invisible(candidates_df)
 }
 
 normalized_table_by_index <- function(outputs, table_index = 0L) {

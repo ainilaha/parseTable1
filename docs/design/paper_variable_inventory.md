@@ -1,6 +1,6 @@
 # Paper Variable Inventory
 
-This document proposes a paper-level variable-inventory stage that sits between document-context extraction and later semantic interpretation.
+This document describes the implemented Phase 1 paper-level variable-inventory stage and the intended later uses of that artifact.
 
 The purpose of this stage is to identify likely variable references across the paper and preserve them in a structured artifact before any stronger cross-table interpretation is attempted.
 
@@ -81,9 +81,9 @@ Later phases may use the inventory to:
 
 That later interpretation phase should remain separate from the first search-and-save phase.
 
-## Position In The Planned Pipeline
+## Position In The Current Pipeline
 
-Planned future flow:
+Current flow:
 
 ```text
 PDF
@@ -171,7 +171,7 @@ These should preserve the table they came from.
 
 ## Artifact Path
 
-Planned output path:
+Current output path:
 
 ```text
 outputs/papers/<paper_stem>/paper_variable_inventory.json

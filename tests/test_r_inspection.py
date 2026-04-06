@@ -189,6 +189,79 @@ def _write_sample_paper_outputs(paper_dir: Path, *, include_llm: bool) -> None:
         ),
         encoding="utf-8",
     )
+    (paper_dir / "paper_variable_inventory.json").write_text(
+        json.dumps(
+            {
+                "paper_id": "paper",
+                "mentions": [
+                    {
+                        "mention_id": "mention_0",
+                        "raw_label": "Age, years",
+                        "normalized_label": "Age years",
+                        "source_type": "text_based",
+                        "section_id": "section_1",
+                        "heading": "Results",
+                        "role_hint": "results_like",
+                        "paragraph_index": 0,
+                        "evidence_text": "Table 1 shows baseline characteristics by DKD status.",
+                        "priority_weight": 0.65,
+                        "confidence": 0.78,
+                    },
+                    {
+                        "mention_id": "mention_1",
+                        "raw_label": "DKD status",
+                        "normalized_label": "DKD status",
+                        "source_type": "table_grouping_label",
+                        "table_id": "tbl-1",
+                        "table_index": 0,
+                        "table_label": "Table 1",
+                        "priority_weight": 0.7,
+                        "confidence": 0.72,
+                    },
+                ],
+                "candidates": [
+                    {
+                        "candidate_id": "candidate_0",
+                        "preferred_label": "Age, years",
+                        "normalized_label": "age years",
+                        "alternate_labels": ["Age years"],
+                        "supporting_mention_ids": ["mention_0"],
+                        "source_types": ["text_based"],
+                        "section_ids": ["section_1"],
+                        "section_role_hints": ["results_like"],
+                        "table_ids": [],
+                        "table_indices": [],
+                        "text_support_count": 1,
+                        "table_support_count": 0,
+                        "caption_support_count": 0,
+                        "priority_score": 0.65,
+                        "confidence": 0.78,
+                        "interpretation_status": "uninterpreted",
+                    },
+                    {
+                        "candidate_id": "candidate_1",
+                        "preferred_label": "DKD status",
+                        "normalized_label": "dkd status",
+                        "alternate_labels": [],
+                        "supporting_mention_ids": ["mention_1"],
+                        "source_types": ["table_grouping_label"],
+                        "section_ids": [],
+                        "section_role_hints": [],
+                        "table_ids": ["tbl-1"],
+                        "table_indices": [0],
+                        "text_support_count": 0,
+                        "table_support_count": 1,
+                        "caption_support_count": 0,
+                        "priority_score": 0.7,
+                        "confidence": 0.72,
+                        "interpretation_status": "uninterpreted",
+                    },
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     (context_dir / "table_0_context.json").write_text(
         json.dumps(
             {
@@ -295,6 +368,40 @@ def test_r_inspection_helpers_compare_and_resolve_context(tmp_path) -> None:
     assert "LLM evidence for table_index=0" in result.stdout
     assert "section_1_p0" in result.stdout
     assert "baseline characteristics by DKD status" in result.stdout
+
+
+def test_r_inspection_loads_and_shows_paper_variable_inventory(tmp_path) -> None:
+    """The R helper should expose the paper-level variable inventory as simple row-oriented tables."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "outputs" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_llm=False)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'x <- load_paper_outputs("{paper_dir}"); '
+                'cat(x$paper_variable_inventory$paper_id, "\\n"); '
+                f'show_paper_variable_mentions("{paper_dir}", source_type = "text_based"); '
+                f'show_paper_variable_candidates("{paper_dir}", min_priority = 0.6)'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "paper" in result.stdout
+    assert "Paper variable mentions" in result.stdout
+    assert "Paper variable candidates" in result.stdout
+    assert "Age, years" in result.stdout
+    assert "DKD status" in result.stdout
 
 
 def test_r_inspection_helper_compares_two_runs_at_table_definition_stage(tmp_path) -> None:
