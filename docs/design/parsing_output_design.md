@@ -126,6 +126,7 @@ Important current `metadata` keys produced by extraction may include:
 - `table_numbering_audit`
 - `explicit_grid_refined_from_words`
 - `grid_refinement_source`
+- `geometry_coordinate_frame`
 
 `TableCell` design components:
 
@@ -145,6 +146,7 @@ Design intent:
 - continuation linkage belongs in metadata, not in synthetic renamed titles such as `Table 1a`
 - numbering audits are for inspection only; they must not be used to silently drop extracted tables
 - extraction may refine a coarse explicit backend grid when word geometry inside the table bbox, together with strong horizontal boundaries, supports a better row/column structure
+- rotated explicit tables may be refined in a table-local normalized coordinate frame; when that happens, `row_bounds` and `horizontal_rules` describe that local frame rather than raw page coordinates
 
 ## 2. `NormalizedTable` JSON
 

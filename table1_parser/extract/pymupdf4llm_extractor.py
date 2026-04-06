@@ -16,6 +16,7 @@ from table1_parser.extract.layout_fallback import (
     build_text_layout_candidates,
     build_word_lines,
     detect_horizontal_rules,
+    normalize_positioned_geometry_for_rotation,
 )
 from table1_parser.extract.pymupdf_page_adapter import (
     extract_clipped_line_directions,
@@ -158,107 +159,20 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                         continue
                     bbox = _as_bbox(table.get("bbox")) or _as_bbox(box.get("bbox"))
                     cell_bboxes = _coerce_cell_bboxes(table.get("cells") or [])
-                    row_bounds: list[tuple[float, float]] = []
-                    horizontal_rules_raw: list[float] = []
-                    table_width = max(1.0, bbox[2] - bbox[0]) if bbox is not None else None
-                    for row in cell_bboxes:
-                        populated = [cell_bbox for cell_bbox in row if cell_bbox is not None]
-                        if not populated:
-                            continue
-                        row_top = min(cell_bbox[1] for cell_bbox in populated)
-                        row_bottom = max(cell_bbox[3] for cell_bbox in populated)
-                        row_bounds.append((row_top, row_bottom))
-                        row_left = min(cell_bbox[0] for cell_bbox in populated)
-                        row_right = max(cell_bbox[2] for cell_bbox in populated)
-                        if table_width is None:
-                            coverage_ok = len(populated) >= max(2, len(row) // 2)
-                        else:
-                            coverage_ok = ((row_right - row_left) / table_width) >= 0.8
-                        if coverage_ok:
-                            horizontal_rules_raw.extend([row_top, row_bottom])
-                    horizontal_rules: list[float] = []
-                    for value in sorted(horizontal_rules_raw):
-                        if not horizontal_rules or abs(value - horizontal_rules[-1]) > 1.5:
-                            horizontal_rules.append(value)
-                    full_width_rules = detect_horizontal_rules(page_rule_segments, bbox) if bbox is not None else []
-                    if full_width_rules:
-                        merged_rules = sorted(horizontal_rules + full_width_rules)
-                        horizontal_rules = []
-                        for value in merged_rules:
-                            if not horizontal_rules or abs(value - horizontal_rules[-1]) > 1.5:
-                                horizontal_rules.append(value)
-                    if (
-                        page is not None
-                        and bbox is not None
-                        and len(horizontal_rules) >= 3
-                    ):
-                        header_text = " ".join(
-                            cell
-                            for row in raw_rows[:2]
-                            for cell in row
-                            if isinstance(cell, str) and cell.strip()
-                        )
-                        if (
-                            len(MODEL_HEADER_PATTERN.findall(header_text)) >= 2
-                            and ESTIMATE_HEADER_PATTERN.search(header_text)
-                        ):
-                            clipped_words = [
-                                word
-                                for word in page_words
-                                if float(word["x0"]) >= bbox[0] - 2.0
-                                and float(word["x1"]) <= bbox[2] + 2.0
-                                and float(word["top"]) >= bbox[1] - 2.0
-                                and float(word["bottom"]) <= bbox[3] + 2.0
-                            ]
-                            if clipped_words:
-                                clipped_chars = [
-                                    char
-                                    for char in page_chars
-                                    if float(char["x0"]) >= bbox[0] - 2.0
-                                    and float(char["x1"]) <= bbox[2] + 2.0
-                                    and float(char["top"]) >= bbox[1] - 2.0
-                                    and float(char["bottom"]) <= bbox[3] + 2.0
-                                ]
-                                refined_lines = build_word_lines(clipped_words)
-                                header_boundary = horizontal_rules[1]
-                                header_line_count = sum(
-                                    float(line["bottom"]) <= header_boundary + 2.0
-                                    for line in refined_lines
-                                )
-                                if 1 <= header_line_count < len(refined_lines):
-                                    refined_rows, refined_cell_bboxes = build_row_grid_from_lines(
-                                        refined_lines,
-                                        page_chars=clipped_chars,
-                                    )
-                                    if refined_rows:
-                                        keep_indices = [
-                                            col_idx
-                                            for col_idx in range(len(refined_rows[0]))
-                                            if any(
-                                                col_idx < len(row) and row[col_idx].strip()
-                                                for row in refined_rows
-                                            )
-                                        ]
-                                        if keep_indices:
-                                            refined_rows = [
-                                                [row[col_idx] for col_idx in keep_indices]
-                                                for row in refined_rows
-                                            ]
-                                            refined_cell_bboxes = [
-                                                [row[col_idx] for col_idx in keep_indices]
-                                                for row in refined_cell_bboxes
-                                            ]
-                                        if (
-                                            len(refined_rows) >= len(raw_rows) + 2
-                                            and max((len(row) for row in refined_rows), default=0)
-                                            >= max((len(row) for row in raw_rows), default=0) + 2
-                                        ):
-                                            raw_rows = refined_rows
-                                            cell_bboxes = refined_cell_bboxes
-                                            row_bounds = [
-                                                (float(line["top"]), float(line["bottom"]))
-                                                for line in refined_lines
-                                            ]
+                    orientation_metadata = _infer_table_orientation_metadata(page, bbox)
+                    refinement = _refine_explicit_table_candidate_grid(
+                        raw_rows=raw_rows,
+                        cell_bboxes=cell_bboxes,
+                        bbox=bbox,
+                        page_words=page_words,
+                        page_chars=page_chars,
+                        page_rule_segments=page_rule_segments,
+                        orientation_metadata=orientation_metadata,
+                    )
+                    raw_rows = refinement["raw_rows"]
+                    cell_bboxes = refinement["table_cells"]
+                    row_bounds = refinement["row_bounds"]
+                    horizontal_rules = refinement["horizontal_rules"]
                     nearby_caption_candidates: list[tuple[float, str]] = []
                     table_top = bbox[1] if bbox else float("inf")
                     for candidate_box in page_boxes:
@@ -304,18 +218,16 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                                     "row_count": table.get("row_count"),
                                     "col_count": table.get("col_count"),
                                     "explicit_grid_refined_from_words": raw_rows != original_raw_rows,
-                                    "grid_refinement_source": (
-                                        "word_positions_with_horizontal_rules"
-                                        if raw_rows != original_raw_rows
-                                        else None
-                                    ),
+                                    "grid_refinement_source": refinement["grid_refinement_source"],
+                                    "geometry_coordinate_frame": refinement["geometry_coordinate_frame"],
                                     "table_markdown": table.get("markdown"),
                                     "table_cells": cell_bboxes,
+                                    "refined_table_cells": refinement["refined_table_cells"],
                                     "original_table_cells": table.get("cells") if raw_rows != original_raw_rows else None,
                                     "original_backend_rows": table.get("extract") if raw_rows != original_raw_rows else None,
                                     "row_bounds": row_bounds,
                                     "horizontal_rules": horizontal_rules,
-                                    **_infer_table_orientation_metadata(page, bbox),
+                                    **orientation_metadata,
                                 },
                             )
                         )
@@ -545,6 +457,236 @@ def _infer_table_orientation_metadata(
         "rotation_source": "pymupdf_line_direction",
         "rotation_direction": "upright",
         "rotation_confidence": round(horizontal_count / considered_count, 4),
+    }
+
+
+def _refine_explicit_table_candidate_grid(
+    *,
+    raw_rows: list[list[str]],
+    cell_bboxes: list[list[tuple[float, float, float, float] | None]],
+    bbox: tuple[float, float, float, float] | None,
+    page_words: list[dict[str, object]],
+    page_chars: list[dict[str, object]],
+    page_rule_segments: list[tuple[float, float, float, float]],
+    orientation_metadata: dict[str, Any],
+) -> dict[str, object]:
+    """Refine coarse explicit-table grids using positioned words and structural rules."""
+    table_cells = cell_bboxes
+    refined_table_cells: list[list[tuple[float, float, float, float] | None]] | None = None
+    grid_refinement_source: str | None = None
+    geometry_coordinate_frame = "page"
+
+    row_bounds: list[tuple[float, float]] = []
+    horizontal_rules_raw: list[float] = []
+    table_width = max(1.0, bbox[2] - bbox[0]) if bbox is not None else None
+    for row in cell_bboxes:
+        populated = [cell_bbox for cell_bbox in row if cell_bbox is not None]
+        if not populated:
+            continue
+        row_top = min(cell_bbox[1] for cell_bbox in populated)
+        row_bottom = max(cell_bbox[3] for cell_bbox in populated)
+        row_bounds.append((row_top, row_bottom))
+        row_left = min(cell_bbox[0] for cell_bbox in populated)
+        row_right = max(cell_bbox[2] for cell_bbox in populated)
+        if table_width is None:
+            coverage_ok = len(populated) >= max(2, len(row) // 2)
+        else:
+            coverage_ok = ((row_right - row_left) / table_width) >= 0.8
+        if coverage_ok:
+            horizontal_rules_raw.extend([row_top, row_bottom])
+    horizontal_rules: list[float] = []
+    for value in sorted(horizontal_rules_raw):
+        if not horizontal_rules or abs(value - horizontal_rules[-1]) > 1.5:
+            horizontal_rules.append(value)
+
+    full_width_rules = detect_horizontal_rules(page_rule_segments, bbox) if bbox is not None else []
+    if full_width_rules:
+        for value in sorted(horizontal_rules + full_width_rules):
+            if not horizontal_rules or abs(value - horizontal_rules[-1]) > 1.5:
+                horizontal_rules.append(value)
+
+    if bbox is None or not page_words:
+        return {
+            "raw_rows": raw_rows,
+            "table_cells": table_cells,
+            "refined_table_cells": refined_table_cells,
+            "row_bounds": row_bounds,
+            "horizontal_rules": horizontal_rules,
+            "grid_refinement_source": grid_refinement_source,
+            "geometry_coordinate_frame": geometry_coordinate_frame,
+        }
+
+    clipped_words = [
+        word
+        for word in page_words
+        if float(word["x0"]) >= bbox[0] - 2.0
+        and float(word["x1"]) <= bbox[2] + 2.0
+        and float(word["top"]) >= bbox[1] - 2.0
+        and float(word["bottom"]) <= bbox[3] + 2.0
+    ]
+    if not clipped_words:
+        return {
+            "raw_rows": raw_rows,
+            "table_cells": table_cells,
+            "refined_table_cells": refined_table_cells,
+            "row_bounds": row_bounds,
+            "horizontal_rules": horizontal_rules,
+            "grid_refinement_source": grid_refinement_source,
+            "geometry_coordinate_frame": geometry_coordinate_frame,
+        }
+
+    clipped_chars = [
+        char
+        for char in page_chars
+        if float(char["x0"]) >= bbox[0] - 2.0
+        and float(char["x1"]) <= bbox[2] + 2.0
+        and float(char["top"]) >= bbox[1] - 2.0
+        and float(char["bottom"]) <= bbox[3] + 2.0
+    ]
+
+    is_rotated = (
+        orientation_metadata.get("table_orientation") == "rotated"
+        and float(orientation_metadata.get("rotation_confidence") or 0.0) >= 0.8
+    )
+    collapsed_explicit_grid = (
+        len(raw_rows) <= 1
+        or (
+            len(raw_rows) <= 3
+            and max((len(row) for row in raw_rows), default=0) <= 4
+            and len(clipped_words) >= 12
+        )
+    )
+
+    if is_rotated and collapsed_explicit_grid:
+        clipped_rule_segments = [
+            segment
+            for segment in page_rule_segments
+            if max(float(segment[0]), float(segment[2])) >= bbox[0] - 2.0
+            and min(float(segment[0]), float(segment[2])) <= bbox[2] + 2.0
+            and max(float(segment[1]), float(segment[3])) >= bbox[1] - 2.0
+            and min(float(segment[1]), float(segment[3])) <= bbox[3] + 2.0
+        ]
+        transformed_words, transformed_chars, transformed_rule_segments, transformed_bbox = (
+            normalize_positioned_geometry_for_rotation(
+                words=clipped_words,
+                chars=clipped_chars,
+                rule_segments=clipped_rule_segments,
+                bbox=bbox,
+                rotation_direction=str(orientation_metadata.get("rotation_direction") or ""),
+            )
+        )
+        refined_lines = build_word_lines(transformed_words)
+        transformed_horizontal_rules = detect_horizontal_rules(
+            transformed_rule_segments,
+            transformed_bbox,
+        )
+        if len(transformed_horizontal_rules) >= 3:
+            footer_boundary = sorted(transformed_horizontal_rules)[-1]
+            refined_lines = [
+                line
+                for line in refined_lines
+                if float(line["bottom"]) <= footer_boundary + 1.5
+            ]
+        refined_rows, transformed_cell_bboxes = build_row_grid_from_lines(
+            refined_lines,
+            page_chars=transformed_chars,
+        )
+        if refined_rows:
+            keep_indices = [
+                col_idx
+                for col_idx in range(len(refined_rows[0]))
+                if any(col_idx < len(row) and row[col_idx].strip() for row in refined_rows)
+            ]
+            if keep_indices:
+                refined_rows = [
+                    [row[col_idx] for col_idx in keep_indices]
+                    for row in refined_rows
+                ]
+                transformed_cell_bboxes = [
+                    [row[col_idx] for col_idx in keep_indices]
+                    for row in transformed_cell_bboxes
+                ]
+            if (
+                len(refined_rows) >= len(raw_rows) + 3
+                and max((len(row) for row in refined_rows), default=0)
+                > max((len(row) for row in raw_rows), default=0)
+            ):
+                return {
+                    "raw_rows": refined_rows,
+                    "table_cells": [],
+                    "refined_table_cells": transformed_cell_bboxes,
+                    "row_bounds": [
+                        (float(line["top"]), float(line["bottom"]))
+                        for line in refined_lines
+                    ],
+                    "horizontal_rules": transformed_horizontal_rules,
+                    "grid_refinement_source": "rotated_word_positions_with_rules",
+                    "geometry_coordinate_frame": "table_local_rotated_normalized",
+                }
+
+    header_text = " ".join(
+        cell
+        for row in raw_rows[:2]
+        for cell in row
+        if isinstance(cell, str) and cell.strip()
+    )
+    if (
+        len(horizontal_rules) >= 3
+        and len(MODEL_HEADER_PATTERN.findall(header_text)) >= 2
+        and ESTIMATE_HEADER_PATTERN.search(header_text)
+    ):
+        refined_lines = build_word_lines(clipped_words)
+        header_boundary = horizontal_rules[1]
+        header_line_count = sum(
+            float(line["bottom"]) <= header_boundary + 2.0
+            for line in refined_lines
+        )
+        if 1 <= header_line_count < len(refined_lines):
+            refined_rows, refined_cell_bboxes = build_row_grid_from_lines(
+                refined_lines,
+                page_chars=clipped_chars,
+            )
+            if refined_rows:
+                keep_indices = [
+                    col_idx
+                    for col_idx in range(len(refined_rows[0]))
+                    if any(col_idx < len(row) and row[col_idx].strip() for row in refined_rows)
+                ]
+                if keep_indices:
+                    refined_rows = [
+                        [row[col_idx] for col_idx in keep_indices]
+                        for row in refined_rows
+                    ]
+                    refined_cell_bboxes = [
+                        [row[col_idx] for col_idx in keep_indices]
+                        for row in refined_cell_bboxes
+                    ]
+                if (
+                    len(refined_rows) >= len(raw_rows) + 2
+                    and max((len(row) for row in refined_rows), default=0)
+                    >= max((len(row) for row in raw_rows), default=0) + 2
+                ):
+                    return {
+                        "raw_rows": refined_rows,
+                        "table_cells": refined_cell_bboxes,
+                        "refined_table_cells": refined_cell_bboxes,
+                        "row_bounds": [
+                            (float(line["top"]), float(line["bottom"]))
+                            for line in refined_lines
+                        ],
+                        "horizontal_rules": horizontal_rules,
+                        "grid_refinement_source": "word_positions_with_horizontal_rules",
+                        "geometry_coordinate_frame": "page",
+                    }
+
+    return {
+        "raw_rows": raw_rows,
+        "table_cells": table_cells,
+        "refined_table_cells": refined_table_cells,
+        "row_bounds": row_bounds,
+        "horizontal_rules": horizontal_rules,
+        "grid_refinement_source": grid_refinement_source,
+        "geometry_coordinate_frame": geometry_coordinate_frame,
     }
 
 

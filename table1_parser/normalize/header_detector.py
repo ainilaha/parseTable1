@@ -87,8 +87,25 @@ def detect_header_rows_with_metadata(
             rule_based_headers, rule_strength = [], None
         else:
             rule_based_headers, rule_strength = [], None
+            first_boundary_candidates = [
+                rule_y
+                for rule_y in sorted_rules
+                if rule_y > top_rule + BOUNDARY_RULE_TOLERANCE
+                and rule_y - first_top <= 60.0
+            ]
+            if first_boundary_candidates:
+                first_boundary_rule = first_boundary_candidates[0]
+                boundary_header_count = sum(
+                    row_bottom <= first_boundary_rule + BOUNDARY_RULE_TOLERANCE
+                    for _, row_bottom in row_bounds[:MAX_HEADER_ROWS]
+                )
+                if boundary_header_count:
+                    rule_based_headers = list(range(boundary_header_count))
+                    rule_strength = "strong" if boundary_header_count <= 2 else "moderate"
             max_header_idx = min(len(rows) - 2, MAX_HEADER_ROWS - 1)
             for row_idx in range(max_header_idx + 1):
+                if rule_based_headers:
+                    break
                 current_bottom = row_bounds[row_idx][1]
                 next_top = row_bounds[row_idx + 1][0]
                 boundary_candidates = [
@@ -116,7 +133,9 @@ def detect_header_rows_with_metadata(
     if rule_strength == "strong":
         header_rows = rule_based_headers
         source = "horizontal_rules"
-    elif rule_strength == "moderate" and len(rule_based_headers) <= len(content_headers):
+    elif rule_strength == "moderate" and (
+        not content_headers or len(rule_based_headers) <= len(content_headers)
+    ):
         header_rows = rule_based_headers
         source = "horizontal_rules"
     else:

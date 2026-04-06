@@ -30,25 +30,124 @@ def detect_horizontal_rules(
 
     left, top, right, bottom = bbox
     table_width = max(1.0, float(right) - float(left))
-    rule_positions: list[float] = []
+    rule_segments_by_y: list[tuple[float, float, float]] = []
     for x0, y0, x1, y1 in rule_segments:
         if abs(y1 - y0) > 1.5:
             continue
-        if y0 < top - 12.0 or y0 > bottom + 12.0:
+        y_mid = (float(y0) + float(y1)) / 2.0
+        if y_mid < top - 12.0 or y_mid > bottom + 12.0:
             continue
         overlap_left = max(float(left), min(x0, x1))
         overlap_right = min(float(right), max(x0, x1))
         if overlap_right <= overlap_left:
             continue
-        if (overlap_right - overlap_left) / table_width < 0.8:
+        rule_segments_by_y.append((y_mid, overlap_left, overlap_right))
+
+    if not rule_segments_by_y:
+        return []
+
+    buckets: list[dict[str, object]] = []
+    for y_mid, overlap_left, overlap_right in sorted(rule_segments_by_y):
+        if not buckets or abs(y_mid - float(buckets[-1]["y"])) > 3.0:
+            buckets.append({"y": y_mid, "spans": [(overlap_left, overlap_right)]})
             continue
-        rule_positions.append(y0)
+        bucket_spans = buckets[-1]["spans"]
+        if not isinstance(bucket_spans, list):
+            continue
+        bucket_spans.append((overlap_left, overlap_right))
+        buckets[-1]["y"] = (float(buckets[-1]["y"]) + y_mid) / 2.0
 
     deduped: list[float] = []
-    for value in sorted(rule_positions):
-        if not deduped or abs(value - deduped[-1]) > 3.0:
-            deduped.append(value)
+    for bucket in buckets:
+        spans = sorted(bucket["spans"]) if isinstance(bucket["spans"], list) else []
+        merged_spans: list[list[float]] = []
+        for span_left, span_right in spans:
+            if not merged_spans or span_left > merged_spans[-1][1] + 3.0:
+                merged_spans.append([span_left, span_right])
+                continue
+            merged_spans[-1][1] = max(merged_spans[-1][1], span_right)
+        coverage = sum(span_right - span_left for span_left, span_right in merged_spans)
+        if coverage / table_width < 0.8:
+            continue
+        deduped.append(float(bucket["y"]))
     return deduped
+
+
+def normalize_positioned_geometry_for_rotation(
+    *,
+    words: list[dict[str, object]],
+    chars: list[dict[str, object]] | None,
+    rule_segments: list[tuple[float, float, float, float]] | None,
+    bbox: tuple[float, float, float, float],
+    rotation_direction: str,
+) -> tuple[
+    list[dict[str, object]],
+    list[dict[str, object]],
+    list[tuple[float, float, float, float]],
+    tuple[float, float, float, float],
+]:
+    """Normalize clipped positioned geometry into an upright table-local coordinate frame."""
+    left, top, right, bottom = bbox
+    if rotation_direction not in {"vertical_text_up", "vertical_text_down"}:
+        return (words, chars or [], rule_segments or [], bbox)
+
+    def _transform_point(x: float, y: float) -> tuple[float, float]:
+        if rotation_direction == "vertical_text_up":
+            return (bottom - y, x - left)
+        return (y - top, right - x)
+
+    transformed_words: list[dict[str, object]] = []
+    for word in words:
+        x0 = float(word["x0"])
+        x1 = float(word["x1"])
+        word_top = float(word["top"])
+        word_bottom = float(word["bottom"])
+        transformed_corners = [
+            _transform_point(x0, word_top),
+            _transform_point(x1, word_top),
+            _transform_point(x0, word_bottom),
+            _transform_point(x1, word_bottom),
+        ]
+        transformed_words.append(
+            {
+                "text": word["text"],
+                "x0": min(point[0] for point in transformed_corners),
+                "x1": max(point[0] for point in transformed_corners),
+                "top": min(point[1] for point in transformed_corners),
+                "bottom": max(point[1] for point in transformed_corners),
+            }
+        )
+
+    transformed_chars: list[dict[str, object]] = []
+    for char in chars or []:
+        x0 = float(char["x0"])
+        x1 = float(char["x1"])
+        char_top = float(char["top"])
+        char_bottom = float(char["bottom"])
+        transformed_corners = [
+            _transform_point(x0, char_top),
+            _transform_point(x1, char_top),
+            _transform_point(x0, char_bottom),
+            _transform_point(x1, char_bottom),
+        ]
+        transformed_chars.append(
+            {
+                "text": char["text"],
+                "x0": min(point[0] for point in transformed_corners),
+                "x1": max(point[0] for point in transformed_corners),
+                "top": min(point[1] for point in transformed_corners),
+                "bottom": max(point[1] for point in transformed_corners),
+            }
+        )
+
+    transformed_rule_segments: list[tuple[float, float, float, float]] = []
+    for x0, y0, x1, y1 in rule_segments or []:
+        start_x, start_y = _transform_point(float(x0), float(y0))
+        end_x, end_y = _transform_point(float(x1), float(y1))
+        transformed_rule_segments.append((start_x, start_y, end_x, end_y))
+
+    transformed_bbox = (0.0, 0.0, float(bottom) - float(top), float(right) - float(left))
+    return (transformed_words, transformed_chars, transformed_rule_segments, transformed_bbox)
 
 
 def _is_numeric_like(text: str) -> bool:

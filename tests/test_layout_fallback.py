@@ -5,6 +5,7 @@ from __future__ import annotations
 from table1_parser.extract.layout_fallback import (
     _build_rows_from_line_segment,
     build_text_layout_candidates,
+    detect_horizontal_rules,
 )
 
 
@@ -161,3 +162,21 @@ def test_text_layout_fallback_restores_shifted_label_column_tokens() -> None:
 
     assert rows[1][0].startswith("Other race")
     assert rows[2][0].startswith("Mexican American")
+
+
+def test_detect_horizontal_rules_merges_fragmented_segments_into_one_boundary() -> None:
+    """Collinear rule fragments should count as one wide boundary when coverage is high enough."""
+    rules = [
+        (40.0, 90.0, 160.0, 90.0),
+        (162.0, 91.0, 300.0, 91.0),
+        (40.0, 118.0, 180.0, 118.0),
+        (182.0, 118.0, 320.0, 118.0),
+        (40.0, 156.0, 320.0, 156.0),
+    ]
+
+    detected = detect_horizontal_rules(rules, (40.0, 90.0, 320.0, 170.0))
+
+    assert len(detected) == 3
+    assert detected[0] == 90.5
+    assert detected[1] == 118.0
+    assert detected[2] == 156.0

@@ -102,6 +102,8 @@ The current extractor uses `pymupdf4llm` as the main backend. It tries to recove
 
 For some explicit tables, the backend cell grid is too coarse even though the page still contains enough geometry to do better. When a table shows strong grouped-header signals, such as repeated `Model 1`, `Model 2`, `Model 3` blocks plus wide horizontal boundaries, extraction can now refine the explicit backend grid using word positions inside the table bounding box.
 
+That refinement is no longer limited to upright tables. For rotated explicit tables, extraction can normalize the clipped word and rule coordinates into a table-local upright frame, rebuild the row/column grid there, and then write the improved grid into `ExtractedTable` while preserving the original rotation metadata separately.
+
 The extractor still scores candidates, but the score is now diagnostic rather than a hard keep-drop gate for explicit extracted tables. The current rule is:
 
 - deduplicate exact candidate collisions
@@ -127,6 +129,8 @@ This matters for papers with table continuations, odd numbering, or weak caption
 This is the parser's record of what came out of the PDF layer.
 
 That does not always mean “what one backend reported verbatim.” If the backend emits one fused model column but the table bbox, word positions, and wide horizontal rules clearly support a better grid, extraction may refine that grid before writing `ExtractedTable`.
+
+For rotated refinements, the recovered `row_bounds` and `horizontal_rules` may be expressed in a table-local normalized coordinate frame rather than the original page frame. That is intentional: later stages use those values as structural boundaries, not as page-annotation coordinates.
 
 ### Why `ExtractedTable` Exists
 

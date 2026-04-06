@@ -122,6 +122,32 @@ def test_header_detector_accepts_top_rule_that_sits_slightly_below_first_row_top
     assert body_rows == [2, 3]
 
 
+def test_header_detector_uses_first_boundary_rule_when_rotated_row_bands_overlap() -> None:
+    """A close first boundary rule should still define the header when line boxes overlap slightly."""
+    rows = [
+        ["Urinary PAH", "metabolites", "Quintile_1", "Quintile_2", "P for trend"],
+        ["(ng/g creatinine)", "* 0.01", "", "", ""],
+        ["", "", "OR (95% CI)", "P", ""],
+        ["1-Hydroxynaphthalene", "", "", "", ""],
+        ["Model_1", "Reference", "1.10 (0.90-1.40)", "0.200", ""],
+    ]
+
+    header_rows, body_rows = detect_header_rows(
+        rows,
+        row_bounds=[
+            (1.6, 11.37),
+            (10.6, 20.37),
+            (17.49, 27.27),
+            (35.34, 45.12),
+            (48.15, 57.21),
+        ],
+        horizontal_rules=[-0.22, 31.77, 327.17],
+    )
+
+    assert header_rows == [0, 1, 2]
+    assert body_rows == [3, 4]
+
+
 def test_header_detector_falls_back_when_horizontal_rules_are_missing() -> None:
     """Header detection should keep the existing heuristic behavior when no rules are available."""
     rows = [
@@ -311,6 +337,52 @@ def test_normalization_preserves_table_orientation_metadata() -> None:
     normalized = normalize_extracted_table(extracted)
 
     assert normalized.metadata["table_orientation"] == "rotated"
+
+
+def test_normalization_uses_rotated_local_rule_metadata_after_extraction_refinement() -> None:
+    """Normalized output should recognize headers from rotated local-coordinate refinement metadata."""
+    rows = [
+        ["Urinary PAH", "metabolites", "Quintile_1", "Quintile_2", "P for trend"],
+        ["(ng/g creatinine)", "* 0.01", "", "", ""],
+        ["", "", "OR (95% CI)", "P", ""],
+        ["1-Hydroxynaphthalene", "", "", "", ""],
+        ["Model_1", "Reference", "1.10 (0.90-1.40)", "0.200", ""],
+    ]
+    cells: list[TableCell] = []
+    for row_idx, row in enumerate(rows):
+        for col_idx, value in enumerate(row):
+            cells.append(TableCell(row_idx=row_idx, col_idx=col_idx, text=value))
+
+    extracted = ExtractedTable(
+        table_id="tbl-rotated-refined",
+        source_pdf="paper.pdf",
+        page_num=8,
+        n_rows=len(rows),
+        n_cols=len(rows[0]),
+        cells=cells,
+        extraction_backend="pymupdf4llm",
+        metadata={
+            "table_orientation": "rotated",
+            "rotation_source": "pymupdf_line_direction",
+            "rotation_direction": "vertical_text_up",
+            "rotation_confidence": 1.0,
+            "geometry_coordinate_frame": "table_local_rotated_normalized",
+            "grid_refinement_source": "rotated_word_positions_with_rules",
+            "row_bounds": [
+                (1.6, 11.37),
+                (10.6, 20.37),
+                (17.49, 27.27),
+                (35.34, 45.12),
+                (48.15, 57.21),
+            ],
+            "horizontal_rules": [-0.22, 31.77, 327.17],
+        },
+    )
+
+    normalized = normalize_extracted_table(extracted)
+
+    assert normalized.header_rows == [0, 1, 2]
+    assert normalized.body_rows == [3, 4]
 
 
 def test_normalization_repairs_split_count_percent_columns_and_promotes_following_header_row() -> None:

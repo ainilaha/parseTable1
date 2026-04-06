@@ -394,6 +394,133 @@ def test_pymupdf4llm_extractor_marks_rotated_tables_in_metadata(tmp_path, monkey
     assert tables[0].metadata["rotation_confidence"] == 1.0
 
 
+def test_pymupdf4llm_extractor_refines_rotated_explicit_tables_from_words_and_rules(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Collapsed rotated explicit tables should be rebuilt in table-local upright coordinates."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    table_bbox = [100.0, 60.0, 280.0, 220.0]
+
+    def to_page_bbox(
+        local_x0: float,
+        local_top: float,
+        local_x1: float,
+        local_bottom: float,
+    ) -> tuple[float, float, float, float]:
+        left, _, _, bottom = table_bbox
+        corners = [
+            (left + local_top, bottom - local_x0),
+            (left + local_top, bottom - local_x1),
+            (left + local_bottom, bottom - local_x0),
+            (left + local_bottom, bottom - local_x1),
+        ]
+        return (
+            min(point[0] for point in corners),
+            min(point[1] for point in corners),
+            max(point[0] for point in corners),
+            max(point[1] for point in corners),
+        )
+
+    upright_words = [
+        {"text": "Urinary", "x0": 10.0, "x1": 34.0, "top": 4.0, "bottom": 12.0},
+        {"text": "PAH", "x0": 38.0, "x1": 50.0, "top": 4.0, "bottom": 12.0},
+        {"text": "Quintile_1", "x0": 70.0, "x1": 92.0, "top": 4.0, "bottom": 12.0},
+        {"text": "Quintile_2", "x0": 102.0, "x1": 124.0, "top": 4.0, "bottom": 12.0},
+        {"text": "P", "x0": 134.0, "x1": 138.0, "top": 4.0, "bottom": 12.0},
+        {"text": "OR", "x0": 70.0, "x1": 78.0, "top": 18.0, "bottom": 26.0},
+        {"text": "P", "x0": 88.0, "x1": 92.0, "top": 18.0, "bottom": 26.0},
+        {"text": "OR", "x0": 102.0, "x1": 110.0, "top": 18.0, "bottom": 26.0},
+        {"text": "P", "x0": 134.0, "x1": 138.0, "top": 18.0, "bottom": 26.0},
+        {"text": "Metabolite_A", "x0": 10.0, "x1": 56.0, "top": 36.0, "bottom": 44.0},
+        {"text": "Model_1", "x0": 10.0, "x1": 36.0, "top": 48.0, "bottom": 56.0},
+        {"text": "Reference", "x0": 70.0, "x1": 96.0, "top": 48.0, "bottom": 56.0},
+        {"text": "1.10", "x0": 102.0, "x1": 116.0, "top": 48.0, "bottom": 56.0},
+        {"text": "0.200", "x0": 134.0, "x1": 148.0, "top": 48.0, "bottom": 56.0},
+        {"text": "Model_2", "x0": 10.0, "x1": 36.0, "top": 60.0, "bottom": 68.0},
+        {"text": "Reference", "x0": 70.0, "x1": 96.0, "top": 60.0, "bottom": 68.0},
+        {"text": "1.30", "x0": 102.0, "x1": 116.0, "top": 60.0, "bottom": 68.0},
+        {"text": "0.040", "x0": 134.0, "x1": 148.0, "top": 60.0, "bottom": 68.0},
+    ]
+    rotated_words = [
+        {
+            "text": word["text"],
+            "x0": to_page_bbox(word["x0"], word["top"], word["x1"], word["bottom"])[0],
+            "x1": to_page_bbox(word["x0"], word["top"], word["x1"], word["bottom"])[2],
+            "top": to_page_bbox(word["x0"], word["top"], word["x1"], word["bottom"])[1],
+            "bottom": to_page_bbox(word["x0"], word["top"], word["x1"], word["bottom"])[3],
+        }
+        for word in upright_words
+    ]
+    rotated_rule_segments = [
+        (100.0, 220.0, 100.0, 60.0),
+        (130.0, 220.0, 130.0, 60.0),
+        (196.0, 220.0, 196.0, 60.0),
+    ]
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [100, 36, 340, 52],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 3. Rotated estimates"}]}],
+                        },
+                        {
+                            "bbox": table_bbox,
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": table_bbox,
+                                "row_count": 1,
+                                "col_count": 3,
+                                "extract": [["Header blob", "Body blob", "Note blob"]],
+                                "cells": [
+                                    [
+                                        [100.0, 60.0, 130.0, 220.0],
+                                        [130.0, 60.0, 250.0, 220.0],
+                                        [250.0, 60.0, 280.0, 220.0],
+                                    ]
+                                ],
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        pymupdf4llm_extractor_module,
+        "extract_clipped_line_directions",
+        lambda page, clip_bbox: [(0.0, -1.0), (0.0, -1.0), (0.0, -1.0)],
+    )
+    _install_fake_pymupdf_document(
+        monkeypatch,
+        [
+            FakePyMuPage(
+                text="Table 3. Rotated estimates",
+                words=rotated_words,
+                rule_segments=rotated_rule_segments,
+            )
+        ],
+    )
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=5, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].metadata["table_orientation"] == "rotated"
+    assert tables[0].metadata["grid_refinement_source"] == "rotated_word_positions_with_rules"
+    assert tables[0].metadata["geometry_coordinate_frame"] == "table_local_rotated_normalized"
+    assert tables[0].metadata["explicit_grid_refined_from_words"] is True
+    assert tables[0].n_rows >= 5
+    assert tables[0].n_cols >= 4
+    assert tables[0].metadata["refined_table_cells"] is not None
+    assert tables[0].cells[0].bbox is None
+
+
 def test_pymupdf4llm_extractor_uses_text_layout_fallback_when_json_has_no_tables(
     tmp_path,
     monkeypatch,
