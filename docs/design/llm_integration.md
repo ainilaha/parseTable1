@@ -77,6 +77,14 @@ Optional for Qwen:
 
 - `QWEN_BASE_URL`
 
+Recommended Qwen base URL:
+
+- `https://dashscope.aliyuncs.com/compatible-mode/v1`
+
+Compatibility note:
+
+- legacy `https://dashscope.aliyuncs.com/api/v1` values are auto-mapped to the compatible chat endpoint
+
 Debug note:
 
 - set `LLM_DEBUG=true` to write timestamped semantic-LLM debug artifacts during `table1-parser parse`

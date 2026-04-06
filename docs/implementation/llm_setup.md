@@ -46,7 +46,7 @@ Qwen:
 export LLM_PROVIDER=qwen
 export DASHSCOPE_API_KEY=your_api_key_here
 export QWEN_MODEL=qwen-plus
-export QWEN_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+export QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 export LLM_TEMPERATURE=0
 export LLM_TIMEOUT_SECONDS=60
 export LLM_MAX_RETRIES=2
@@ -74,7 +74,7 @@ Qwen:
 $env:LLM_PROVIDER = "qwen"
 $env:DASHSCOPE_API_KEY = "your_api_key_here"
 $env:QWEN_MODEL = "qwen-plus"
-$env:QWEN_BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
+$env:QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 $env:LLM_TEMPERATURE = "0"
 $env:LLM_TIMEOUT_SECONDS = "60"
 $env:LLM_MAX_RETRIES = "2"

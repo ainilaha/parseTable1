@@ -165,11 +165,11 @@ class QwenClient(LLMClient):
     ) -> None:
         self.api_key = api_key
         self.model = model
-        self.base_url = base_url or "https://dashscope.aliyuncs.com/api/v1"
+        self.base_url = base_url or "https://dashscope.aliyuncs.com/compatible-mode/v1"
         self.temperature = temperature
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
-        self._endpoint = self.base_url.rstrip("/") + "/services/aigc/multimodal-generation/generation"
+        self._endpoint = _resolve_qwen_chat_completions_endpoint(self.base_url)
         self._opener = urllib_request.build_opener(urllib_request.ProxyHandler({}))
 
     def structured_completion(
@@ -187,8 +187,8 @@ class QwenClient(LLMClient):
             data=json.dumps(
                 {
                     "model": self.model,
-                    "input": {"messages": [{"role": "user", "content": [{"text": strict_prompt}]}]},
-                    "parameters": {"temperature": self.temperature},
+                    "messages": [{"role": "user", "content": strict_prompt}],
+                    "temperature": self.temperature,
                 }
             ).encode("utf-8"),
             headers={
@@ -263,6 +263,18 @@ def _extract_qwen_message_text(response: Any) -> str:
                 texts.append(text.strip())
         return "\n".join(texts).strip()
     return ""
+
+
+def _resolve_qwen_chat_completions_endpoint(base_url: str) -> str:
+    """Build a DashScope OpenAI-compatible chat endpoint from a user-provided base URL."""
+    normalized = base_url.strip().rstrip("/")
+    if normalized.endswith("/chat/completions"):
+        return normalized
+    if normalized.endswith("/compatible-mode/v1"):
+        return normalized + "/chat/completions"
+    if normalized.endswith("/api/v1"):
+        return normalized[: -len("/api/v1")] + "/compatible-mode/v1/chat/completions"
+    return normalized + "/chat/completions"
 
 
 def _parse_json_object_from_text(text: str) -> dict[str, Any]:

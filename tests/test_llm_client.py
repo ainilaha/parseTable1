@@ -215,8 +215,10 @@ def test_build_llm_client_returns_qwen_client_and_parses_json_response() -> None
     assert response["notes"] == ["from fake qwen"]
     assert fake_opener.calls[0]["timeout"] == 15
     assert '"model": "qwen-plus"' in body
+    assert '"messages": [{"role": "user", "content":' in body
     assert "Output contract:" in body
     assert "Output schema:" not in body
+    assert request.full_url.endswith("/compatible-mode/v1/chat/completions")  # type: ignore[attr-defined]
     assert client.embeds_output_schema_in_prompt is True
 
 
@@ -316,3 +318,17 @@ def test_qwen_client_raises_provider_error_for_http_failures() -> None:
         )
 
     assert "network down" in str(exc_info.value)
+
+
+def test_qwen_client_converts_legacy_api_base_url_to_compatible_mode_endpoint() -> None:
+    """Legacy /api/v1 QWEN_BASE_URL values should map to the chat-completions endpoint."""
+    client = build_llm_client(
+        settings=Settings(
+            llm_provider="qwen",
+            qwen_api_key="dash-key",
+            qwen_model="qwen-plus",
+            qwen_base_url="https://dashscope.aliyuncs.com/api/v1",
+        )
+    )
+
+    assert client._endpoint == "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"  # type: ignore[attr-defined]

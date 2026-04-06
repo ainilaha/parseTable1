@@ -344,9 +344,9 @@ Minimum Qwen setup:
 export LLM_PROVIDER=qwen
 export DASHSCOPE_API_KEY=your_api_key_here
 export QWEN_MODEL=qwen-plus
-export QWEN_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+export QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 export LLM_TEMPERATURE=0
-export LLM_TIMEOUT_SECONDS=60
+export LLM_TIMEOUT_SECONDS=180
 export LLM_MAX_RETRIES=2
 export LLM_DEBUG=false
 ```
