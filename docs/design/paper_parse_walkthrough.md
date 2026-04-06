@@ -444,6 +444,14 @@ If enabled and eligible, the parser can run semantic LLM inference using:
 
 This produces `table_definitions_llm.json`.
 
+Current implemented scope:
+
+- interpret row variables
+- interpret categorical levels under those variables
+- attach supporting evidence passages
+
+Columns remain deterministic in this phase.
+
 This is not the same thing as raw extraction or generic OCR assistance. It is a later semantic interpretation phase grounded in already extracted table structure.
 
 Why this stage is optional:
