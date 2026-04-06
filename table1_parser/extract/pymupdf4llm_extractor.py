@@ -66,9 +66,39 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
         if not selected_candidates:
             return []
 
-        return [
+        tables = [
             self._build_extracted_table(pdf_path=pdf_path, candidate=candidate)
             for candidate in selected_candidates
+        ]
+        observed_table_numbers = sorted(
+            {
+                table_number
+                for table_number in (table.metadata.get("table_number") for table in tables)
+                if isinstance(table_number, int)
+            }
+        )
+        if observed_table_numbers:
+            missing_table_numbers = [
+                table_number
+                for table_number in range(observed_table_numbers[0], observed_table_numbers[-1] + 1)
+                if table_number not in observed_table_numbers
+            ]
+        else:
+            missing_table_numbers = []
+        table_numbering_audit = {
+            "observed_table_numbers": observed_table_numbers,
+            "missing_table_numbers": missing_table_numbers,
+        }
+        return [
+            table.model_copy(
+                update={
+                    "metadata": {
+                        **table.metadata,
+                        "table_numbering_audit": table_numbering_audit,
+                    }
+                }
+            )
+            for table in tables
         ]
 
     def _detect_table_candidates(self, pdf_path: str) -> list[DetectedTableCandidate]:
@@ -143,6 +173,17 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                         if not caption_lines:
                             continue
                         nearby_caption_candidates.append((table_top - candidate_bbox[3], caption_lines[-1]))
+                    nearby_caption = (
+                        min(nearby_caption_candidates, key=lambda item: item[0])[1]
+                        if nearby_caption_candidates
+                        else None
+                    )
+                    caption = _caption_for_index(
+                        nearby_caption,
+                        page_text,
+                        table_index,
+                        table_count,
+                    )
                     page_candidates.append(
                         score_candidate(
                             DetectedTableCandidate(
@@ -150,15 +191,15 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                                 table_index=table_index,
                                 bbox=bbox,
                                 raw_rows=raw_rows,
-                                caption=_caption_for_index(
-                                    min(nearby_caption_candidates, key=lambda item: item[0])[1] if nearby_caption_candidates else None,
-                                    page_text,
-                                    table_index,
-                                    table_count,
-                                ),
+                                caption=caption,
                                 page_text=page_text,
                                 metadata={
                                     "layout_source": "pymupdf4llm_json",
+                                    "caption_source": (
+                                        "nearby_above_table"
+                                        if nearby_caption is not None and caption == nearby_caption
+                                        else "page_text_fallback" if caption is not None else None
+                                    ),
                                     "primary_representation": "json",
                                     "extractor_used": self.backend_name,
                                     "fallback_used": False,
@@ -399,6 +440,8 @@ def _infer_table_orientation_metadata(
         "rotation_direction": "upright",
         "rotation_confidence": round(horizontal_count / considered_count, 4),
     }
+
+
 def _column_count(candidate: DetectedTableCandidate) -> int:
     """Return the candidate column count."""
     return max((len(row) for row in candidate.raw_rows), default=0)

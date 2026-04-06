@@ -116,6 +116,15 @@ Top-level design components:
 - `extraction_backend`: extractor name, currently `pymupdf4llm`
 - `metadata`: extractor-specific extensions
 
+Important current `metadata` keys produced by extraction may include:
+
+- `candidate_score`
+- `caption_source`
+- `table_number`
+- `is_continuation`
+- `continuation_of_table_number`
+- `table_numbering_audit`
+
 `TableCell` design components:
 
 - `row_idx`, `col_idx`: grid location
@@ -130,6 +139,9 @@ Design intent:
 - this is the canonical extraction contract
 - raw values are preserved here
 - extractor-specific details belong in `metadata`, not in renamed top-level fields
+- literal displayed captions should be preserved even for continuations such as `Table 1 (continued)`
+- continuation linkage belongs in metadata, not in synthetic renamed titles such as `Table 1a`
+- numbering audits are for inspection only; they must not be used to silently drop extracted tables
 
 ## 2. `NormalizedTable` JSON
 
@@ -189,6 +201,11 @@ Important current `metadata` keys produced by normalization:
 
 - `source_page_num`
 - `extraction_backend`
+- `caption_source`
+- `table_number`
+- `is_continuation`
+- `continuation_of_table_number`
+- `table_numbering_audit`
 - `cleaned_rows`
 - `dropped_leading_cols`
 - `dropped_trailing_cols`

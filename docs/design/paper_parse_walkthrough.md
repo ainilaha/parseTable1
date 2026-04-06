@@ -96,11 +96,17 @@ Conceptually, this stage does three things:
 
 1. inspect the PDF page layout
 2. find table candidates
-3. build `ExtractedTable` objects for the selected candidates
+3. build `ExtractedTable` objects for the deduplicated candidates
 
 The current extractor uses `pymupdf4llm` as the main backend. It tries to recover explicit table boxes and table cell grids from the backend JSON output. When that is not enough, it can fall back to text-position-based layout reconstruction.
 
-The extractor also scores candidates and keeps the strongest ones rather than trusting every box on every page.
+The extractor still scores candidates, but the score is now diagnostic rather than a hard keep-drop gate for explicit extracted tables. The current rule is:
+
+- deduplicate exact candidate collisions
+- preserve explicit extracted table candidates in stable page/index order
+- record confidence and caption signals in metadata instead of silently dropping low-scoring tables
+
+This matters for papers with table continuations, odd numbering, or weak captions. A bad score should be inspectable, not silently destructive.
 
 ### What `ExtractedTable` Contains
 
@@ -109,6 +115,7 @@ The extractor also scores candidates and keeps the strongest ones rather than tr
 - `table_id`
 - page number
 - detected title and caption when available
+- detected table-number and continuation metadata in `metadata` when a caption supports it
 - row and column counts
 - raw cell text
 - optional cell bounding boxes

@@ -9,6 +9,13 @@ from pydantic import BaseModel, Field
 
 
 TABLE_CAPTION_LINE_PATTERN = re.compile(r"^\s*table\s*(\d+)\b(?:\s*[:.])?", re.IGNORECASE)
+TABLE_CONTINUATION_PATTERN = re.compile(r"^(?:\(\s*continued\s*\)|continued)(?:\b|$)", re.IGNORECASE)
+TABLE_PROSE_REFERENCE_PATTERN = re.compile(
+    r"^(?:displays?|shows?|presents?|describes?|illustrates?|reports?|lists?|contains?|"
+    r"summarizes?|compares?|demonstrates?|highlights?|details?|examines?|provides?|"
+    r"gives?|outlines?|depicts?|indicates?|reveals?)\b",
+    re.IGNORECASE,
+)
 NUMERIC_TOKEN_PATTERN = re.compile(r"\d")
 ALPHA_TOKEN_PATTERN = re.compile(r"[A-Za-z]")
 
@@ -45,9 +52,37 @@ def _find_table_caption_lines(text_block: str) -> list[str]:
     captions: list[str] = []
     for raw_line in text_block.splitlines():
         line = raw_line.strip()
-        if line and TABLE_CAPTION_LINE_PATTERN.match(line):
+        if line and _table_caption_metadata(line) is not None:
             captions.append(line)
     return captions
+
+
+def _table_caption_metadata(line: str) -> dict[str, Any] | None:
+    """Parse table-caption metadata while rejecting prose references."""
+    stripped = line.strip()
+    if not stripped:
+        return None
+    match = TABLE_CAPTION_LINE_PATTERN.match(stripped)
+    if match is None:
+        return None
+    table_number = int(match.group(1))
+    remainder = stripped[match.end():].strip()
+    continuation_match = TABLE_CONTINUATION_PATTERN.match(remainder)
+    if continuation_match is not None:
+        return {
+            "caption": stripped,
+            "table_number": table_number,
+            "is_continuation": True,
+            "continuation_of_table_number": table_number,
+        }
+    if remainder and TABLE_PROSE_REFERENCE_PATTERN.match(remainder):
+        return None
+    return {
+        "caption": stripped,
+        "table_number": table_number,
+        "is_continuation": False,
+        "continuation_of_table_number": None,
+    }
 
 
 def _find_table_line(page_text: str) -> str | None:
@@ -91,21 +126,31 @@ def _safe_extract_text(page: Any) -> str:
 
 def score_candidate(candidate: DetectedTableCandidate) -> DetectedTableCandidate:
     """Assign a table-likelihood score to an extracted table candidate."""
+    caption_source = candidate.metadata.get("caption_source")
     if candidate.caption:
         effective_caption = candidate.caption
     elif candidate.raw_rows and candidate.raw_rows[0]:
         first_cell = candidate.raw_rows[0][0].strip()
         first_line = first_cell.splitlines()[0].strip() if first_cell else ""
-        effective_caption = first_line if TABLE_CAPTION_LINE_PATTERN.match(first_line) else None
+        effective_caption = first_line if _table_caption_metadata(first_line) is not None else None
+        if effective_caption is not None:
+            caption_source = "embedded_first_cell"
     else:
         effective_caption = None
-    if not effective_caption:
-        caption_table_number = None
-    else:
+    if effective_caption:
         caption_line = _find_table_line(effective_caption)
-        match = TABLE_CAPTION_LINE_PATTERN.match(caption_line) if caption_line else None
-        caption_table_number = int(match.group(1)) if match is not None else None
-    caption_match = caption_table_number is not None
+        caption_metadata = _table_caption_metadata(caption_line) if caption_line else None
+    else:
+        caption_metadata = None
+    if caption_metadata is None:
+        caption_table_number = None
+        is_continuation = False
+        continuation_of_table_number = None
+    else:
+        caption_table_number = int(caption_metadata["table_number"])
+        is_continuation = bool(caption_metadata["is_continuation"])
+        continuation_of_table_number = caption_metadata["continuation_of_table_number"]
+    caption_match = caption_metadata is not None
     table_1_match = caption_table_number == 1
     first_column_values = [row[0] for row in candidate.raw_rows if row]
     populated_first_column = [value for value in first_column_values if value.strip()]
@@ -140,10 +185,15 @@ def score_candidate(candidate: DetectedTableCandidate) -> DetectedTableCandidate
                     "caption_match": caption_match,
                     "table_1_match": table_1_match,
                     "caption_table_number": caption_table_number,
+                    "caption_is_continuation": is_continuation,
                     "first_column_text_ratio": round(first_column_text_ratio, 4),
                     "later_column_numeric_ratio": round(later_column_numeric_ratio, 4),
                     "rectangular": rectangular,
                 },
+                "caption_source": caption_source,
+                "table_number": caption_table_number,
+                "is_continuation": is_continuation,
+                "continuation_of_table_number": continuation_of_table_number,
             },
         }
     )
@@ -189,9 +239,7 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
         for table_index, table in enumerate(raw_tables):
             raw_rows = table.extract() if hasattr(table, "extract") else table
             bbox = getattr(table, "bbox", None)
-            if bbox is None or not hasattr(page, "crop"):
-                nearby_caption = _find_table_line(page_text)
-            else:
+            if bbox is not None and hasattr(page, "crop"):
                 top = bbox[1]
                 crop_bbox = (0.0, max(0.0, top - 90.0), float(getattr(page, "width", bbox[2])), top)
                 try:
@@ -199,6 +247,14 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
                 except Exception:
                     cropped_page_text = ""
                 nearby_caption = _find_table_line(cropped_page_text)
+            else:
+                nearby_caption = None
+            caption = _caption_for_index(
+                nearby_caption,
+                page_text,
+                table_index,
+                table_count,
+            )
             candidates.append(
                 score_candidate(
                     DetectedTableCandidate(
@@ -206,16 +262,16 @@ def detect_page_candidates(page: Any, page_num: int) -> list[DetectedTableCandid
                         table_index=table_index,
                         bbox=bbox,
                         raw_rows=_normalize_rows(raw_rows),
-                        caption=_caption_for_index(
-                            nearby_caption,
-                            page_text,
-                            table_index,
-                            table_count,
-                        ),
+                        caption=caption,
                         page_text=page_text,
                         metadata={
                             "is_rectangular": _is_rectangular(raw_rows),
                             "horizontal_rules": detect_horizontal_rules(rule_segments, bbox),
+                            "caption_source": (
+                                "nearby_above_table"
+                                if nearby_caption is not None and caption == nearby_caption
+                                else "page_text_fallback" if caption is not None else None
+                            ),
                         },
                     )
                 )

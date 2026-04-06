@@ -288,6 +288,14 @@ def test_pymupdf4llm_extractor_returns_structured_tables(tmp_path, monkeypatch) 
     assert tables[0].page_num == 8
     assert tables[0].title == "Table 1. Baseline characteristics"
     assert tables[0].metadata["layout_source"] == "pymupdf4llm_json"
+    assert tables[0].metadata["caption_source"] == "nearby_above_table"
+    assert tables[0].metadata["table_number"] == 1
+    assert tables[0].metadata["is_continuation"] is False
+    assert tables[0].metadata["continuation_of_table_number"] is None
+    assert tables[0].metadata["table_numbering_audit"] == {
+        "observed_table_numbers": [1],
+        "missing_table_numbers": [],
+    }
     assert tables[0].metadata["primary_representation"] == "json"
     assert tables[0].metadata["fallback_used"] is False
     assert tables[0].metadata["table_orientation"] == "upright"
@@ -551,6 +559,32 @@ def test_detect_table_candidates_assigns_page_caption_lines_by_order() -> None:
     assert candidates[1].metadata["signals"]["table_1_match"] is False
 
 
+def test_detect_table_candidates_rejects_prose_reference_as_caption() -> None:
+    """Prose references should not outrank a real table caption on the same page."""
+    pdf = FakePDF(
+        pages=[
+            FakePage(
+                text=(
+                    "Table 3 displays weighted logistic regression models.\n"
+                    "Table 2. Secondary outcomes\n"
+                ),
+                tables=[FakeTable([["Outcome", "Cases"], ["BMI", "27.4"]])],
+                cropped_text=(
+                    "Table 3 displays weighted logistic regression models.\n"
+                    "Table 2. Secondary outcomes\n"
+                ),
+            )
+        ]
+    )
+
+    candidates = detect_table_candidates(pdf)
+
+    assert len(candidates) == 1
+    assert candidates[0].caption == "Table 2. Secondary outcomes"
+    assert candidates[0].metadata["caption_source"] == "nearby_above_table"
+    assert candidates[0].metadata["table_number"] == 2
+
+
 def test_select_top_candidates_keeps_uncaptioned_continuations() -> None:
     """Continuation pages should survive selection without needing a score exception."""
     candidates = [
@@ -716,6 +750,91 @@ def test_select_top_candidates_does_not_cap_explicit_extracted_tables() -> None:
         (6, 0),
         (7, 0),
     ]
+
+
+def test_pymupdf4llm_extractor_preserves_continuation_metadata(tmp_path, monkeypatch) -> None:
+    """Continuation captions should remain literal while linking back to the base table number."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 5,
+                    "boxes": [
+                        {
+                            "bbox": [100, 100, 280, 116],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 1 (continued)"}]}],
+                        },
+                        {
+                            "bbox": [100, 124, 360, 180],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [100, 124, 360, 180],
+                                "extract": [
+                                    ["Variable", "Overall", "P"],
+                                    ["BMI", "27.4", "0.03"],
+                                ],
+                                "cells": [
+                                    [[100, 124, 200, 152], [200, 124, 280, 152], [280, 124, 360, 152]],
+                                    [[100, 152, 200, 180], [200, 152, 280, 180], [280, 152, 360, 180]],
+                                ],
+                            },
+                        },
+                    ],
+                },
+                {
+                    "page_number": 6,
+                    "boxes": [
+                        {
+                            "bbox": [100, 100, 280, 116],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 2. Secondary outcomes"}]}],
+                        },
+                        {
+                            "bbox": [100, 124, 360, 180],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [100, 124, 360, 180],
+                                "extract": [
+                                    ["Outcome", "Cases", "P"],
+                                    ["High TG", "27", "0.04"],
+                                ],
+                                "cells": [
+                                    [[100, 124, 200, 152], [200, 124, 280, 152], [280, 124, 360, 152]],
+                                    [[100, 152, 200, 180], [200, 152, 280, 180], [280, 152, 360, 180]],
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        pymupdf4llm_extractor_module,
+        "extract_clipped_line_directions",
+        lambda page, clip_bbox: [(1.0, 0.0), (1.0, 0.0)],
+    )
+    _install_fake_pymupdf_document(monkeypatch, [FakePyMuPage(text="", words=[]), FakePyMuPage(text="", words=[])])
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
+
+    assert [table.caption for table in tables] == [
+        "Table 1 (continued)",
+        "Table 2. Secondary outcomes",
+    ]
+    assert tables[0].metadata["table_number"] == 1
+    assert tables[0].metadata["is_continuation"] is True
+    assert tables[0].metadata["continuation_of_table_number"] == 1
+    assert tables[1].metadata["table_number"] == 2
+    assert tables[1].metadata["is_continuation"] is False
+    assert tables[0].metadata["table_numbering_audit"] == {
+        "observed_table_numbers": [1, 2],
+        "missing_table_numbers": [],
+    }
 
 
 def test_pymupdf4llm_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> None:
