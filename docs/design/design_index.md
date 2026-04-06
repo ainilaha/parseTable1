@@ -55,6 +55,9 @@ Then use the documents below as needed.
 - `docs/design/paper_markdown_spec.md`
   Design intent for `paper_markdown.md`, including expected variation in section naming and heading structure.
 
+- `docs/design/paper_variable_inventory.md`
+  Planned paper-level variable-search and inventory artifact for cross-table consistency support.
+
 - `docs/design/llm_integration.md`
   Current LLM integration and trace-artifact behavior.
 
@@ -94,4 +97,7 @@ Then use the documents below as needed.
   Keep both documents aligned with the current implementation, not just the intended architecture.
 
 - If you are changing markdown extraction, section parsing, or table-context retrieval:
-  read `docs/design/paper_markdown_spec.md` and `docs/design/llm_semantic_inference_phase.md`.
+  read `docs/design/paper_markdown_spec.md`, `docs/design/paper_variable_inventory.md`, and `docs/design/llm_semantic_inference_phase.md`.
+
+- If you are changing paper-level variable search, section-priority logic, or cross-table semantic support:
+  read `docs/design/paper_variable_inventory.md`, `docs/design/paper_markdown_spec.md`, and `docs/design/llm_semantic_inference_phase.md`.

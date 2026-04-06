@@ -11,6 +11,7 @@ It exists to support:
 - section detection
 - `Table X` reference retrieval
 - variable and column-context retrieval
+- paper-level candidate variable inventory building
 - later LLM semantic interpretation
 
 It is not the source of truth for table grid syntax.
@@ -58,6 +59,7 @@ The pipeline should therefore:
 - derive structure in `paper_sections.json`
 - tolerate section-name variation
 - avoid hardcoding exact heading names as the only way to find methods-like or results-like content
+- avoid using the references or bibliography as a primary source for paper-level variable inventory
 
 ## Relationship To Section Parsing
 

@@ -27,6 +27,10 @@ If you change the implemented parse flow, the order of pipeline stages, the purp
 
 This document is the human-readable explanation of how one paper is processed end to end, so it must stay aligned with the actual implementation.
 
+If you change paper-level variable search, section-priority logic, or any planned/implemented `paper_variable_inventory.json` artifact, also update:
+
+- `docs/design/paper_variable_inventory.md`
+
 ---
 
 # Project Goals
@@ -85,6 +89,9 @@ Use rule-based parsing wherever possible.
 
 LLM usage should be limited to semantic disambiguation, not raw extraction.
 
+Paper-level candidate variable inventories are a first-class design artifact for later cross-table consistency.
+Keep them explicit, inspectable, and easy to consume from R.
+
 ### LLM safety rules
 
 When the LLM is used:
@@ -93,6 +100,8 @@ When the LLM is used:
 - It must only refer to rows that exist in the table
 - It must return structured JSON
 - All results must be validated before being accepted
+- LLM prompts should remain scoped to one table at a time
+- Cross-table consistency should come from separate paper-level artifacts, not from multi-table prompting
 
 ### Preserve raw data
 

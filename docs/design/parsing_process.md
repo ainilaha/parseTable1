@@ -62,6 +62,7 @@ Later stages use the `NormalizedTable` to make progressively stronger interpreta
 - deterministic routing can classify table family
 - deterministic heuristics build a `TableDefinition`
 - paper markdown is chunked into sections and table-focused retrieval bundles
+- a planned paper-level variable inventory can later collect candidate variables from text, captions, and tables
 - optional LLM interpretation can later refine ambiguous structure
 - validation checks that the interpretation is consistent with the real table
 - final assembly produces a `ParsedTable`
@@ -88,4 +89,5 @@ If you are looking at parser outputs:
 - table-profile output answers: "What table family did the deterministic router infer, and should semantic LLM run?"
 - table-definition output answers: "What row variables, levels, and columns did the deterministic parser infer?"
 - paper-context output answers: "What document sections and passages are relevant to this table?"
+- planned paper-variable-inventory output would answer: "What candidate variables recur across the paper text and tables?"
 - parsed output answers: "What variables, levels, columns, and values did the system finally infer?"

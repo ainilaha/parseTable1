@@ -27,6 +27,11 @@ Use two interpreters:
 
 Both should speak. The system should preserve agreement and disagreement rather than hiding one behind the other.
 
+One more principle is important:
+
+- semantic LLM prompts should remain scoped to one table at a time
+- paper-wide consistency should come from separate paper-level artifacts, not from prompting on multiple tables together
+
 ## Safety Rule
 
 The LLM must never:
@@ -48,6 +53,8 @@ PDF
 -> ExtractedTable
 -> NormalizedTable
 -> deterministic TableDefinition
+-> paper_sections.json
+-> paper_variable_inventory.json
 -> document-context retrieval
 -> LLM semantic TableDefinition
 -> comparison / adjudication
@@ -98,6 +105,7 @@ outputs/papers/<paper_stem>/
   table_definitions.json
   paper_markdown.md
   paper_sections.json
+  paper_variable_inventory.json
   table_contexts/
     table_0_context.json
     table_1_context.json
@@ -118,6 +126,35 @@ outputs/papers/<paper_stem>/llm_semantic_debug/20260324T101500Z/
 ```
 
 This keeps debug monitoring opt-in and prevents one debug run from overwriting another.
+
+## Two-Phase Paper Context Strategy
+
+The paper-context side should be split into two phases.
+
+### Phase 1: Document Search and Variable Inventory
+
+Before stronger interpretation, the system should build a paper-level candidate-reference list of variables.
+
+This phase should:
+
+- search likely prose sections for variable mentions
+- prioritize abstract-like, methods-like, and conclusion-like sections
+- harvest variable-like labels from tables, titles, and captions
+- exclude or strongly deprioritize references / bibliography content
+- save a structured `paper_variable_inventory.json` artifact
+
+This inventory should be a first-class paper-level artifact, not a hidden debug output.
+
+### Phase 2: Table-Focused Retrieval and Interpretation
+
+After the paper-level variable inventory exists, each table can still build its own focused retrieval bundle and LLM prompt.
+
+The LLM should receive:
+
+- one table's normalized structure
+- one table's deterministic `TableDefinition`
+- one table's retrieved passages
+- the relevant subset of paper-level candidate variables
 
 ## Context Retrieval
 
@@ -171,6 +208,7 @@ The LLM should receive:
 - deterministic row and column guesses
 - caption and footnotes
 - retrieved evidence passages with stable passage IDs
+- the relevant subset of `paper_variable_inventory.json`
 
 Those passages may come from differently named but methods-like, results-like, or model-description sections.
 
@@ -185,7 +223,7 @@ Current simplification:
 Keep the LLM phase split into small modules:
 
 - `table1_parser/context/`
-  markdown extraction, section parsing, and `Table X` retrieval
+  markdown extraction, section parsing, paper-level variable inventory building, and `Table X` retrieval
 - `table1_parser/llm/`
   semantic schemas, prompt building, and provider calls
 - `table1_parser/adjudication/`
@@ -201,6 +239,12 @@ Monitoring expectation:
 - it should record payload-size proxies such as row counts, passage counts, and prompt character counts
 - it should preserve raw structured LLM responses when a provider call succeeds
 - it should preserve failure status and error text when a call times out or validation fails
+
+Inventory expectation:
+
+- the paper-level candidate variable inventory should preserve where each mention came from
+- text-based mentions should preserve section identity and heading
+- the inventory should be easy to inspect from R as a mention-level table and a candidate-level table
 
 ## LLM Outputs
 
