@@ -40,23 +40,6 @@ def compact_qwen_prompt(prompt: str, response_model: type[BaseModel] | None) -> 
 
 def _compact_contract_for_model(model: type[BaseModel]) -> str:
     """Return a compact, readable output contract derived from a Pydantic model."""
-    if model.__name__ == "LLMTableInterpretation":
-        return (
-            '{ "table_id": "string", '
-            '"variables": [ { '
-            '"variable_name": "string", '
-            '"variable_type": "continuous" | "categorical" | "binary" | "unknown", '
-            '"row_start": integer, '
-            '"row_end": integer, '
-            '"levels": [ { "label": "string", "row_idx": integer } ], '
-            '"confidence": number | null } ], '
-            '"columns": [ { '
-            '"col_idx": integer, '
-            '"column_name": "string", '
-            '"inferred_role": "group" | "overall" | "p_value" | "statistic" | "unknown", '
-            '"confidence": number | null } ], '
-            '"notes": [ "string" ] }'
-        )
     if model.__name__ == "LLMSemanticTableDefinition":
         return (
             '{ "table_id": "string", '

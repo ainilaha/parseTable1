@@ -12,7 +12,7 @@ import pytest
 
 from table1_parser.config import Settings
 from table1_parser.llm.client import LLMConfigurationError, LLMProviderError, build_llm_client
-from table1_parser.llm.schemas import LLMTableInterpretation
+from table1_parser.llm.semantic_schemas import LLMSemanticTableDefinition
 
 
 class _FakeResponsesAPI:
@@ -32,10 +32,10 @@ class _FakeOpenAI:
         self.max_retries = max_retries
         self.responses = _FakeResponsesAPI(
             SimpleNamespace(
-                output_parsed=LLMTableInterpretation(
+                output_parsed=LLMSemanticTableDefinition(
                     table_id="tbl-llm",
                     variables=[],
-                    columns=[],
+                    column_definition={"columns": []},
                     notes=["from fake openai"],
                 )
             )
@@ -151,12 +151,13 @@ def test_build_llm_client_returns_openai_client_with_fake_sdk(monkeypatch) -> No
     client = build_llm_client(settings=settings)
     response = client.structured_completion(
         "prompt text",
-        LLMTableInterpretation.model_json_schema(),
-        response_model=LLMTableInterpretation,
+        LLMSemanticTableDefinition.model_json_schema(),
+        response_model=LLMSemanticTableDefinition,
     )
 
     assert response["table_id"] == "tbl-llm"
     assert response["notes"] == ["from fake openai"]
+    assert response["column_definition"]["columns"] == []
     assert client._client.api_key == "test-key"  # type: ignore[attr-defined]
     assert client._client.timeout == 15  # type: ignore[attr-defined]
     assert client._client.max_retries == 3  # type: ignore[attr-defined]
@@ -188,7 +189,8 @@ def test_build_llm_client_returns_qwen_client_and_parses_json_response() -> None
                                     {
                                         "text": (
                                             "```json\n"
-                                            '{"table_id":"tbl-llm","variables":[],"columns":[],"notes":["from fake qwen"]}'
+                                            '{"table_id":"tbl-llm","variables":[],"column_definition":{"columns":[]},'
+                                            '"notes":["from fake qwen"]}'
                                             "\n```"
                                         )
                                     }
@@ -204,14 +206,15 @@ def test_build_llm_client_returns_qwen_client_and_parses_json_response() -> None
 
     response = client.structured_completion(
         "prompt text\n\nOutput schema:\n{...}",
-        LLMTableInterpretation.model_json_schema(),
-        response_model=LLMTableInterpretation,
+        LLMSemanticTableDefinition.model_json_schema(),
+        response_model=LLMSemanticTableDefinition,
     )
 
     request = fake_opener.calls[0]["request"]
     body = request.data.decode("utf-8")  # type: ignore[attr-defined]
     assert response["table_id"] == "tbl-llm"
     assert response["notes"] == ["from fake qwen"]
+    assert response["column_definition"]["columns"] == []
     assert fake_opener.calls[0]["timeout"] == 15
     assert '"model": "qwen-plus"' in body
     assert "Output contract:" in body
@@ -267,8 +270,8 @@ def test_openai_client_raises_provider_error_when_no_parsed_payload(monkeypatch)
     with pytest.raises(LLMProviderError):
         client.structured_completion(
             "prompt text",
-            LLMTableInterpretation.model_json_schema(),
-            response_model=LLMTableInterpretation,
+            LLMSemanticTableDefinition.model_json_schema(),
+            response_model=LLMSemanticTableDefinition,
         )
 
 
@@ -288,8 +291,8 @@ def test_qwen_client_raises_provider_error_for_invalid_json_response() -> None:
     with pytest.raises(LLMProviderError):
         client.structured_completion(
             "prompt text",
-            LLMTableInterpretation.model_json_schema(),
-            response_model=LLMTableInterpretation,
+            LLMSemanticTableDefinition.model_json_schema(),
+            response_model=LLMSemanticTableDefinition,
         )
 
 
@@ -309,8 +312,8 @@ def test_qwen_client_raises_provider_error_for_http_failures() -> None:
     with pytest.raises(LLMProviderError) as exc_info:
         client.structured_completion(
             "prompt text",
-            LLMTableInterpretation.model_json_schema(),
-            response_model=LLMTableInterpretation,
+            LLMSemanticTableDefinition.model_json_schema(),
+            response_model=LLMSemanticTableDefinition,
         )
 
     assert "network down" in str(exc_info.value)
