@@ -552,7 +552,7 @@ def test_detect_table_candidates_assigns_page_caption_lines_by_order() -> None:
 
 
 def test_select_top_candidates_keeps_uncaptioned_continuations() -> None:
-    """Continuation pages should survive selection once a nearby table is confirmed."""
+    """Continuation pages should survive selection without needing a score exception."""
     candidates = [
         DetectedTableCandidate(
             page_num=24,
@@ -612,7 +612,7 @@ def test_select_top_candidates_keeps_uncaptioned_continuations() -> None:
 
 
 def test_select_top_candidates_keeps_numbered_gap_fillers_below_main_threshold() -> None:
-    """Missing caption numbers inside a selected run should be retained on a relaxed threshold."""
+    """Caption-numbered tables should remain in output even below the old threshold."""
     candidates = [
         DetectedTableCandidate(
             page_num=4,
@@ -646,7 +646,7 @@ def test_select_top_candidates_keeps_numbered_gap_fillers_below_main_threshold()
 
 
 def test_select_top_candidates_recovers_discarded_caption_match_below_gap_threshold() -> None:
-    """A discarded caption-matched candidate should be recovered to fill a numbering gap."""
+    """Low-scoring caption-matched tables should remain without recovery metadata."""
     candidates = [
         DetectedTableCandidate(
             page_num=4,
@@ -677,8 +677,45 @@ def test_select_top_candidates_recovers_discarded_caption_match_below_gap_thresh
     selected = select_top_candidates(candidates, max_candidates=10, confidence_threshold=0.7)
 
     assert [candidate.page_num for candidate in selected] == [4, 5, 6]
-    assert selected[1].metadata["sequence_gap_recovered"] is True
-    assert selected[1].metadata["sequence_gap_recovery_reason"] == "caption_matched_below_threshold"
+    assert "sequence_gap_recovered" not in selected[1].metadata
+
+
+def test_select_top_candidates_does_not_cap_explicit_extracted_tables() -> None:
+    """Detected tables should not be dropped just because a max-candidate setting is small."""
+    candidates = [
+        DetectedTableCandidate(
+            page_num=5,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 1",
+            score=0.95,
+            metadata={"layout_source": "pymupdf4llm_json", "primary_representation": "json", "fallback_used": False},
+        ),
+        DetectedTableCandidate(
+            page_num=6,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 1 (continued)",
+            score=0.50,
+            metadata={"layout_source": "pymupdf4llm_json", "primary_representation": "json", "fallback_used": False},
+        ),
+        DetectedTableCandidate(
+            page_num=7,
+            table_index=0,
+            raw_rows=[["A", "1"], ["B", "2"]],
+            caption="Table 2",
+            score=0.45,
+            metadata={"layout_source": "pymupdf4llm_json", "primary_representation": "json", "fallback_used": False},
+        ),
+    ]
+
+    selected = select_top_candidates(candidates, max_candidates=1, confidence_threshold=0.95)
+
+    assert [(candidate.page_num, candidate.table_index) for candidate in selected] == [
+        (5, 0),
+        (6, 0),
+        (7, 0),
+    ]
 
 
 def test_pymupdf4llm_extractor_returns_indexed_cells(tmp_path, monkeypatch) -> None:
