@@ -39,15 +39,6 @@ class LLMDeterministicVariablePayload(_CompactPayloadModel):
     row_end: int = Field(alias="r1", ge=0)
     levels: list[LLMIndexedLevelPayload] = Field(default_factory=list)
 
-
-class LLMRetrievedPassagePayload(_CompactPayloadModel):
-    """One compact retrieved passage supplied to the semantic LLM."""
-
-    passage_id: str = Field(alias="id")
-    heading: str | None = Field(default=None, alias="h")
-    text: str = Field(alias="t")
-
-
 class LLMSemanticInputPayload(_CompactPayloadModel):
     """Structured compact payload for row-focused LLM semantic interpretation."""
 
@@ -55,7 +46,6 @@ class LLMSemanticInputPayload(_CompactPayloadModel):
     table_text: str | None = Field(default=None, alias="table")
     body_rows: list[LLMIndexedRowPayload] = Field(default_factory=list, alias="rows")
     deterministic_variables: list[LLMDeterministicVariablePayload] = Field(default_factory=list, alias="vars")
-    retrieved_passages: list[LLMRetrievedPassagePayload] = Field(default_factory=list, alias="passages")
 
 
 class LLMSemanticLevelInterpretation(BaseModel):
@@ -64,7 +54,6 @@ class LLMSemanticLevelInterpretation(BaseModel):
     level_name: str
     level_label: str
     row_idx: int = Field(ge=0)
-    evidence_passage_ids: list[str] = Field(default_factory=list)
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     disagrees_with_deterministic: bool = False
 
@@ -78,7 +67,6 @@ class LLMSemanticVariableInterpretation(BaseModel):
     row_start: int = Field(ge=0)
     row_end: int = Field(ge=0)
     levels: list[LLMSemanticLevelInterpretation] = Field(default_factory=list)
-    evidence_passage_ids: list[str] = Field(default_factory=list)
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     disagrees_with_deterministic: bool = False
 

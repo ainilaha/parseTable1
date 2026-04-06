@@ -11,7 +11,6 @@ from table1_parser.llm.semantic_schemas import (
     LLMDeterministicVariablePayload,
     LLMIndexedLevelPayload,
     LLMIndexedRowPayload,
-    LLMRetrievedPassagePayload,
     LLMSemanticInputPayload,
 )
 from table1_parser.schemas import NormalizedTable, TableContext, TableDefinition
@@ -20,8 +19,6 @@ from table1_parser.text_cleaning import clean_text
 
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 TABLE_DEFINITION_SEMANTIC_PROMPT = PROMPTS_DIR / "table_definition_semantic_prompt.md"
-MAX_SEMANTIC_PASSAGES = 4
-MAX_PASSAGE_CHARS = 450
 
 
 def build_llm_semantic_input_payload(
@@ -30,6 +27,7 @@ def build_llm_semantic_input_payload(
     retrieved_context: TableContext,
 ) -> LLMSemanticInputPayload:
     """Build the row-focused semantic payload supplied to the LLM."""
+    del retrieved_context
     row_view_by_idx = {row_view.row_idx: row_view for row_view in table.row_views}
     return LLMSemanticInputPayload(
         table_id=table.table_id,
@@ -50,15 +48,6 @@ def build_llm_semantic_input_payload(
                 ],
             )
             for variable in deterministic_table_definition.variables
-        ],
-        retrieved_passages=[
-            LLMRetrievedPassagePayload(
-                passage_id=passage.passage_id,
-                heading=clean_text(passage.heading or "") or None,
-                text=_truncate_text(clean_text(passage.text), MAX_PASSAGE_CHARS),
-            )
-            for passage in retrieved_context.passages[:MAX_SEMANTIC_PASSAGES]
-            if clean_text(passage.text)
         ],
     )
 
@@ -132,14 +121,3 @@ def _merge_table_text(title: str | None, caption: str | None) -> str | None:
     if cleaned_caption:
         return cleaned_caption
     return None
-
-
-def _truncate_text(text: str, max_chars: int) -> str:
-    """Trim passage text to a compact, sentence-aware prefix for LLM prompting."""
-    cleaned = clean_text(text)
-    if len(cleaned) <= max_chars:
-        return cleaned
-    clipped = cleaned[:max_chars].rsplit(" ", 1)[0].strip()
-    if not clipped:
-        clipped = cleaned[:max_chars].strip()
-    return clipped + "..."

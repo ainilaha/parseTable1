@@ -190,7 +190,7 @@ show_table_context("outputs/papers/cobaltpaper", table_index = 0L)
 show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 ```
 
-These helpers are meant to make it easier to inspect the paper-level candidate variable inventory, distinguish broad mentions from promoted candidates, compare deterministic syntax-first row semantics with LLM semantics, and inspect the retrieved supporting passages.
+These helpers are meant to make it easier to inspect the paper-level candidate variable inventory, distinguish broad mentions from promoted candidates, compare deterministic syntax-first row semantics with LLM semantics, and inspect the separate table-context retrieval artifacts.
 
 ## Output Layout
 
@@ -232,8 +232,8 @@ The easiest way to inspect one paper is:
 3. read `table_definitions.json` to see the deterministic row and column interpretation
 4. read `paper_variable_inventory.json` to see the paper-level candidate variable reference list
 5. read `parsed_tables.json` to see the final structured values
-6. read `table_definitions_llm.json` when present to see the context-aware row interpretation
-7. use `paper_sections.json` and `table_contexts/*.json` to see the paper passages that support the semantic interpretation
+6. read `table_definitions_llm.json` when present to see the row-only semantic interpretation
+7. use `paper_sections.json` and `table_contexts/*.json` separately when you want to inspect the paper-context artifacts that may support later grounding work
 
 In practice:
 
@@ -250,7 +250,7 @@ In practice:
 - `parsed_tables.json`
   best for the final structured row, column, and value output
 - `table_definitions_llm.json`
-  best for the paper-context-aware row-semantic view
+  best for the row-only semantic view
 
 ## Syntax vs Semantics
 
@@ -308,14 +308,11 @@ To evaluate it:
 
 1. compare `table_definitions.json` with `table_definitions_llm.json`
 2. check whether they point to the same rows
-3. inspect the `evidence_passage_ids` in the LLM file
-4. look up those passage IDs in the matching `table_contexts/table_<n>_context.json`
-5. read the surrounding section in `paper_sections.json` when needed
+3. inspect whether the LLM made small plausible row/level refinements
+4. inspect `table_contexts/table_<n>_context.json` separately if you want to review the paper-context artifact for future grounding work
 
 Helpful signals already present in the LLM output:
 
-- `evidence_passage_ids`
-  which retrieved passages support a semantic claim
 - `disagrees_with_deterministic`
   whether the LLM is explicitly challenging the deterministic interpretation
 

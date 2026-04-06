@@ -78,8 +78,8 @@ def _build_context_and_definition() -> tuple[NormalizedTable, object, object]:
     return table, definition, context
 
 
-def test_semantic_prompt_payload_contains_context_and_deterministic_definition() -> None:
-    """Semantic payload should carry compact row hints, deterministic row spans, and compact passages."""
+def test_semantic_prompt_payload_contains_compact_row_structure() -> None:
+    """Semantic payload should carry compact row hints and deterministic row spans only."""
     table, definition, context = _build_context_and_definition()
 
     payload = build_llm_semantic_input_payload(table, definition, context)
@@ -90,35 +90,38 @@ def test_semantic_prompt_payload_contains_context_and_deterministic_definition()
     assert payload.body_rows[2].numeric_cell_count == 2
     assert payload.deterministic_variables[0].label == "Age, years"
     assert payload.deterministic_variables[1].levels[0].label == "Male"
-    assert payload.retrieved_passages[0].passage_id == context.passages[0].passage_id
     assert payload.table_text == "Characteristics by DKD status"
     dumped = payload.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_defaults=True)
     assert "rows" in dumped
     assert "vars" in dumped
-    assert "passages" in dumped
     assert "deterministic_variables" not in dumped
     assert "cells" not in json.dumps(dumped)
-    assert "section_id" not in json.dumps(dumped)
-    assert "match_type" not in json.dumps(dumped)
+    assert "passages" not in dumped
 
 
-def test_semantic_prompt_includes_safety_and_evidence_requirements() -> None:
-    """The semantic prompt should explicitly require strict JSON and evidence passage IDs."""
+def test_semantic_prompt_includes_structure_and_safety_requirements() -> None:
+    """The semantic prompt should explicitly require strict JSON and row-structure safety."""
     table, definition, context = _build_context_and_definition()
     payload = build_llm_semantic_input_payload(table, definition, context)
 
     prompt = build_llm_semantic_prompt(payload, LLMSemanticTableDefinition.model_json_schema())
 
-    assert "Return strict JSON only." in prompt
-    assert "Do not invent rows, levels, variables, values, or evidence passages." in prompt
-    assert "Use evidence_passage_ids whenever you make a semantic claim." in prompt
+    assert "Goal:" in prompt
+    assert "Inputs:" in prompt
+    assert "Desired outputs:" in prompt
+    assert "Constraints:" in prompt
+    assert "Failure modes to minimize:" in prompt
+    assert "Success criteria:" in prompt
+    assert "Working style:" in prompt
+    assert "return strict JSON only" in prompt
+    assert "inventing rows, levels, or variables" in prompt
     assert "Output schema:" in prompt
     assert "units_hint" not in prompt
     assert "summary_style_hint" not in prompt
-    assert "columns" not in prompt
+    assert '"column_definition"' not in prompt
     assert '"rows"' in prompt
     assert '"vars"' in prompt
-    assert '"passages"' in prompt
+    assert '"passages"' not in prompt
     assert "deterministic_variables" not in prompt
     assert '"cells"' not in prompt
 
@@ -127,7 +130,8 @@ def test_semantic_prompt_template_is_repo_file() -> None:
     """The semantic prompt should live in a version-controlled template file."""
     template = load_prompt_template(TABLE_DEFINITION_SEMANTIC_PROMPT)
 
-    assert "Use evidence_passage_ids whenever you make a semantic claim." in template
+    assert "Failure modes to minimize:" in template
+    assert "use only the provided `rows` and `vars`" in template
     assert "{{TABLE_PAYLOAD_JSON}}" in template
     assert "{{OUTPUT_SCHEMA_SECTION}}" in template
 
@@ -143,9 +147,8 @@ def test_semantic_prompt_omits_schema_section_when_not_requested() -> None:
 
 
 def test_semantic_parser_validates_safe_structured_response(tmp_path) -> None:
-    """The semantic parser should return a typed interpretation when indices and evidence are valid."""
+    """The semantic parser should return a typed interpretation when indices are valid."""
     table, definition, context = _build_context_and_definition()
-    passage_id = context.passages[0].passage_id
     client = StaticStructuredLLMClient(
         response={
             "table_id": "tbl-semantic",
@@ -157,7 +160,6 @@ def test_semantic_parser_validates_safe_structured_response(tmp_path) -> None:
                     "row_start": 1,
                     "row_end": 1,
                     "levels": [],
-                    "evidence_passage_ids": [passage_id],
                     "confidence": 0.94,
                     "disagrees_with_deterministic": False,
                 },
@@ -172,21 +174,18 @@ def test_semantic_parser_validates_safe_structured_response(tmp_path) -> None:
                             "level_name": "Male",
                             "level_label": "Male",
                             "row_idx": 3,
-                            "evidence_passage_ids": [passage_id],
                         },
                         {
                             "level_name": "Female",
                             "level_label": "Female",
                             "row_idx": 4,
-                            "evidence_passage_ids": [passage_id],
                         },
                     ],
-                    "evidence_passage_ids": [passage_id],
                     "confidence": 0.9,
                     "disagrees_with_deterministic": False,
                 },
             ],
-            "notes": ["Context supports DKD grouping."],
+            "notes": ["Variable grouping is plausible."],
             "overall_confidence": 0.92,
         }
     )
@@ -199,35 +198,6 @@ def test_semantic_parser_validates_safe_structured_response(tmp_path) -> None:
     assert (tmp_path / "table_definition_llm_metrics.json").exists()
     assert (tmp_path / "table_definition_llm_output.json").exists()
     assert (tmp_path / "table_definition_llm_interpretation.json").exists()
-
-
-def test_semantic_parser_rejects_unknown_evidence_passage() -> None:
-    """LLM semantic output should fail if it cites evidence not present in the retrieved context."""
-    table, definition, context = _build_context_and_definition()
-    client = StaticStructuredLLMClient(
-        response={
-            "table_id": "tbl-semantic",
-            "variables": [
-                {
-                    "variable_name": "Age years",
-                    "variable_label": "Age, years",
-                    "variable_type": "continuous",
-                    "row_start": 1,
-                    "row_end": 1,
-                    "levels": [],
-                    "evidence_passage_ids": ["missing_passage"],
-                }
-            ],
-            "notes": [],
-        }
-    )
-
-    with pytest.raises(LLMSemanticInterpretationError) as exc_info:
-        LLMSemanticTableDefinitionParser(client).parse(table, definition, context)
-
-    assert exc_info.value.payload is not None
-    assert exc_info.value.raw_response is not None
-
 
 def test_semantic_parser_rejects_invalid_row_reference() -> None:
     """LLM semantic output should fail if it invents a row index."""
@@ -243,7 +213,6 @@ def test_semantic_parser_rejects_invalid_row_reference() -> None:
                     "row_start": 99,
                     "row_end": 99,
                     "levels": [],
-                    "evidence_passage_ids": [],
                 }
             ],
             "notes": [],

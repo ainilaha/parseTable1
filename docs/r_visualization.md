@@ -16,7 +16,7 @@ The table display helper can display:
 
 - stored normalized-table JSON such as `normalized_tables.json`
 - row-oriented semantic debug payload JSON such as `table_definition_llm_input.json`
-  these payloads currently use compact keys such as `rows`, `vars`, and `passages`
+  these payloads currently use compact keys such as `rows` and `vars`
 - parsed-table-style JSON that contains `variables`, `columns`, and `values`
 - trace wrapper files that store the actual payload under `payload`, `interpretation`, or `response`
 
@@ -103,7 +103,7 @@ What these are for:
 - `show_table_context(...)`
   inspect the retrieved passages for one table
 - `show_llm_evidence(...)`
-  resolve variable- and level-level `evidence_passage_ids` in the LLM output back to the actual retrieved passages
+  print a note that the current Part A row-semantic output does not yet include document-evidence passage IDs
 
 Current limitation:
 

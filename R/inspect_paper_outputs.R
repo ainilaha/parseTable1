@@ -669,27 +669,11 @@ show_llm_evidence <- function(paper_dir, table_index = 0L) {
   if (is.null(definitions$llm)) {
     stop("No table_definitions_llm.json found for this paper.", call. = FALSE)
   }
-  context <- table_context_by_index(outputs, table_index)
   llm <- definitions$llm
 
   cat(sprintf("LLM evidence for table_index=%s\n\n", as.integer(table_index)))
-
-  for (variable in llm$variables %||% list()) {
-    ids <- variable$evidence_passage_ids %||% list()
-    if (length(ids) == 0) {
-      next
-    }
-    cat(sprintf("Variable: %s [%s-%s]\n", variable$variable_label %||% variable$variable_name %||% "", variable$row_start %||% "", variable$row_end %||% ""))
-    cat(sprintf("disagrees_with_deterministic: %s\n", as.character(variable$disagrees_with_deterministic %||% FALSE)))
-    for (passage in resolve_evidence_passages(context, ids)) {
-      if (is.null(passage)) {
-        next
-      }
-      cat(sprintf("  [%s] %s\n", passage$passage_id, passage$heading %||% ""))
-      cat(sprintf("  %s\n", passage$text %||% ""))
-    }
-    cat("\n")
-  }
+  cat("[Current Part A row-semantic output does not include document-evidence passage IDs.]\n")
+  cat("[Use show_table_structure(...) and compare_table_definitions(...) to inspect the row-only semantic output.]\n")
 
   invisible(llm)
 }

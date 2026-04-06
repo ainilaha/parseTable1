@@ -130,7 +130,6 @@ def test_r_visualization_supports_compact_llm_payload_json(tmp_path) -> None:
                     "levels": [{"i": 3, "label": "Male"}, {"i": 4, "label": "Female"}],
                 },
             ],
-            "passages": [{"id": "section_1_p0", "h": "Results", "t": "Table 2 shows baseline characteristics by DKD status."}],
         },
     }
     json_path = tmp_path / "table_definition_llm_input.json"

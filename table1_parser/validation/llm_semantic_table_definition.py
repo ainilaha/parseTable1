@@ -24,6 +24,7 @@ def validate_llm_semantic_table_definition(
     context: TableContext,
 ) -> LLMSemanticTableDefinition:
     """Validate one row-focused LLM semantic interpretation against table structure and retrieved context."""
+    del context
     _require(definition.table_id == table.table_id, "LLM semantic table_id does not match the normalized table.")
     projected = TableDefinition(
         table_id=definition.table_id,
@@ -54,18 +55,6 @@ def validate_llm_semantic_table_definition(
         overall_confidence=definition.overall_confidence,
     )
     validate_table_definition(projected, table)
-
-    valid_passage_ids = {passage.passage_id for passage in context.passages}
-    for variable in definition.variables:
-        _require(
-            all(passage_id in valid_passage_ids for passage_id in variable.evidence_passage_ids),
-            f"Unknown evidence passage on variable {variable.variable_name}.",
-        )
-        for level in variable.levels:
-            _require(
-                all(passage_id in valid_passage_ids for passage_id in level.evidence_passage_ids),
-                f"Unknown evidence passage on level {level.level_name}.",
-            )
     return definition
 
 

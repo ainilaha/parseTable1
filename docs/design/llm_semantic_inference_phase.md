@@ -1,6 +1,6 @@
 # LLM Semantic Inference Phase
 
-This document scopes the current row-focused semantic phase: using an LLM to interpret row semantics from the deterministic table structure and the surrounding paper text.
+This document scopes the current row-focused semantic phase. The active implementation is Part A only: using an LLM to interpret row semantics from deterministic table structure without document grounding. A later Part B can add separate paper-text alignment.
 
 See also:
 
@@ -12,7 +12,6 @@ Add an optional LLM-driven semantic interpretation stage that can:
 
 - interpret row-variable meaning
 - interpret categorical levels
-- use paper context to challenge or support deterministic output
 - preserve strict row safety
 
 This phase is not for raw extraction or value parsing.
@@ -22,7 +21,7 @@ This phase is not for raw extraction or value parsing.
 Use two interpreters:
 
 - deterministic parser for syntax and stable structure
-- LLM interpreter for semantics and paper context
+- LLM interpreter for row semantics
 
 Both should speak. The system should preserve agreement and disagreement rather than hiding one behind the other.
 

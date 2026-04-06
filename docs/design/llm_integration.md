@@ -4,27 +4,26 @@ The repository's active LLM path is the row-focused semantic post-`TableDefiniti
 
 Current flow:
 
-`NormalizedTable -> TableDefinition -> TableContext -> LLMSemanticTableDefinition`
+`NormalizedTable -> TableDefinition -> LLMSemanticTableDefinition`
 
-The LLM is used only for optional row interpretation after deterministic table-definition assembly and paper-context retrieval.
+The LLM is used only for optional table-local row interpretation after deterministic table-definition assembly.
 
 Current scope:
 
 - row variables
 - categorical levels under those variables
-- evidence passage attribution for row claims
 
 Current non-scope:
 
 - column reinterpretation
 - grouping-label reinterpretation
+- document grounding
 - cross-table prompting
 
 Current prompt-shaping strategy:
 
 - compact row hints rather than full cell arrays
 - compact deterministic variable spans rather than full `TableDefinition` dumps
-- a small truncated passage bundle rather than the full retrieval payload
 
 ## Current provider path
 

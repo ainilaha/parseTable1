@@ -440,7 +440,6 @@ If enabled and eligible, the parser can run semantic LLM inference using:
 
 - compact body-row hints
 - compact deterministic variable spans
-- the per-table paper context
 
 This produces `table_definitions_llm.json`.
 
@@ -448,7 +447,6 @@ Current implemented scope:
 
 - interpret row variables
 - interpret categorical levels under those variables
-- attach supporting evidence passages
 
 Columns remain deterministic in this phase.
 

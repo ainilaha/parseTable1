@@ -130,7 +130,6 @@ def _write_sample_paper_outputs(paper_dir: Path, *, include_llm: bool) -> None:
                                 "row_start": 1,
                                 "row_end": 1,
                                 "levels": [],
-                                "evidence_passage_ids": ["section_1_p0"],
                                 "confidence": 0.95,
                                 "disagrees_with_deterministic": True,
                             }
@@ -308,8 +307,8 @@ def _write_sample_llm_semantic_debug_run(paper_dir: Path, run_id: str = "2026032
     )
 
 
-def test_r_inspection_helpers_compare_and_resolve_context(tmp_path) -> None:
-    """The paper-output inspection helpers should compare semantics and resolve evidence passages."""
+def test_r_inspection_helpers_compare_and_show_part_a_note(tmp_path) -> None:
+    """The paper-output inspection helpers should compare semantics and note that Part A omits document evidence."""
     if not _r_dependencies_available():
         return
 
@@ -341,6 +340,7 @@ def test_r_inspection_helpers_compare_and_resolve_context(tmp_path) -> None:
     assert "row-only" in result.stdout
     assert "Table context for table_index=0" in result.stdout
     assert "LLM evidence for table_index=0" in result.stdout
+    assert "does not include document-evidence passage IDs" in result.stdout
     assert "section_1_p0" in result.stdout
     assert "baseline characteristics by DKD status" in result.stdout
 
