@@ -98,6 +98,30 @@ def test_header_detector_lets_strong_rules_override_weaker_text_heuristics() -> 
     assert body_rows == [2, 3]
 
 
+def test_header_detector_accepts_top_rule_that_sits_slightly_below_first_row_top() -> None:
+    """Small geometry jitter should not stop rule-based header detection from firing."""
+    rows = [
+        ["PAHs quintiles", "Model_1", "", "Model_2", "", "Model_3", ""],
+        ["", "OR (95% CI)", "P", "OR (95% CI)", "P", "OR (95% CI)", "P"],
+        ["Quintile_1", "Reference", "", "Reference", "", "Reference", ""],
+        ["Quintile_2", "1.19 (0.94-1.51)", "0.200", "1.15 (0.90-1.48)", "0.300", "1.13 (0.87-1.48)", "0.400"],
+    ]
+
+    header_rows, body_rows = detect_header_rows(
+        rows,
+        row_bounds=[
+            (576.29, 589.96),
+            (594.79, 604.57),
+            (613.43, 622.49),
+            (625.53, 634.60),
+        ],
+        horizontal_rules=[577.44, 609.07, 682.0],
+    )
+
+    assert header_rows == [0, 1]
+    assert body_rows == [2, 3]
+
+
 def test_header_detector_falls_back_when_horizontal_rules_are_missing() -> None:
     """Header detection should keep the existing heuristic behavior when no rules are available."""
     rows = [

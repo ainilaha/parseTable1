@@ -124,6 +124,8 @@ Important current `metadata` keys produced by extraction may include:
 - `is_continuation`
 - `continuation_of_table_number`
 - `table_numbering_audit`
+- `explicit_grid_refined_from_words`
+- `grid_refinement_source`
 
 `TableCell` design components:
 
@@ -142,6 +144,7 @@ Design intent:
 - literal displayed captions should be preserved even for continuations such as `Table 1 (continued)`
 - continuation linkage belongs in metadata, not in synthetic renamed titles such as `Table 1a`
 - numbering audits are for inspection only; they must not be used to silently drop extracted tables
+- extraction may refine a coarse explicit backend grid when word geometry inside the table bbox, together with strong horizontal boundaries, supports a better row/column structure
 
 ## 2. `NormalizedTable` JSON
 
@@ -219,6 +222,7 @@ Design intent:
 - `cleaned_rows` may support later prompting and debugging, but raw cell text still lives in extraction output
 - `row_views` are the compact per-row features that later heuristic and LLM stages consume
 - saved normalized tables can be reloaded as formal downstream input
+- when wide horizontal boundaries sit just slightly above or below the first extracted text line, header detection may still use them as the top table boundary; minor geometry jitter should not suppress obvious header/body bracketing
 - normalization may apply conservative structural repairs when extraction has clearly split one logical value across adjacent columns
 - those repairs should be driven by row-style expectations and body-value patterns, not by paper-specific header templates
 - normalization may also repair a small set of extractor-facing glyph-to-Unicode failures in parser-facing text, such as a broken replacement character before a numeric threshold becoming `<=`

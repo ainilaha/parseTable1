@@ -5,12 +5,18 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 from table1_parser.config import Settings
 from table1_parser.extract.base import BaseExtractor
-from table1_parser.extract.layout_fallback import build_text_layout_candidates
+from table1_parser.extract.layout_fallback import (
+    build_row_grid_from_lines,
+    build_text_layout_candidates,
+    build_word_lines,
+    detect_horizontal_rules,
+)
 from table1_parser.extract.pymupdf_page_adapter import (
     extract_clipped_line_directions,
     extract_page_chars,
@@ -28,6 +34,10 @@ from table1_parser.extract.table_detector import (
 )
 from table1_parser.extract.table_selector import select_top_candidates
 from table1_parser.schemas import ExtractedTable, TableCell
+
+
+MODEL_HEADER_PATTERN = re.compile(r"\bmodel[_\s]*\d+\b", re.IGNORECASE)
+ESTIMATE_HEADER_PATTERN = re.compile(r"\b(?:or\b|95%\s*ci|p(?:-value)?\b)\b", re.IGNORECASE)
 
 
 class PyMuPDF4LLMExtractor(BaseExtractor):
@@ -129,13 +139,22 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                     page = document.load_page(page_num - 1)
                 page_boxes = payload_page.get("boxes", []) or []
                 page_text = _collect_page_text(page_boxes)
+                if page is None:
+                    page_words = []
+                    page_chars = []
+                    page_rule_segments = []
+                else:
+                    page_words = extract_page_words(page)
+                    page_chars = extract_page_chars(page)
+                    page_rule_segments = extract_page_rule_segments(page)
                 page_candidates: list[DetectedTableCandidate] = []
                 table_boxes = [box for box in page_boxes if isinstance(box, dict) and box.get("table")]
                 table_count = len(table_boxes)
                 for table_index, box in enumerate(table_boxes):
                     table = box.get("table") or {}
-                    raw_rows = _normalize_rows(table.get("extract") or [])
-                    if not raw_rows:
+                    original_raw_rows = _normalize_rows(table.get("extract") or [])
+                    raw_rows = original_raw_rows
+                    if not original_raw_rows:
                         continue
                     bbox = _as_bbox(table.get("bbox")) or _as_bbox(box.get("bbox"))
                     cell_bboxes = _coerce_cell_bboxes(table.get("cells") or [])
@@ -161,6 +180,85 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                     for value in sorted(horizontal_rules_raw):
                         if not horizontal_rules or abs(value - horizontal_rules[-1]) > 1.5:
                             horizontal_rules.append(value)
+                    full_width_rules = detect_horizontal_rules(page_rule_segments, bbox) if bbox is not None else []
+                    if full_width_rules:
+                        merged_rules = sorted(horizontal_rules + full_width_rules)
+                        horizontal_rules = []
+                        for value in merged_rules:
+                            if not horizontal_rules or abs(value - horizontal_rules[-1]) > 1.5:
+                                horizontal_rules.append(value)
+                    if (
+                        page is not None
+                        and bbox is not None
+                        and len(horizontal_rules) >= 3
+                    ):
+                        header_text = " ".join(
+                            cell
+                            for row in raw_rows[:2]
+                            for cell in row
+                            if isinstance(cell, str) and cell.strip()
+                        )
+                        if (
+                            len(MODEL_HEADER_PATTERN.findall(header_text)) >= 2
+                            and ESTIMATE_HEADER_PATTERN.search(header_text)
+                        ):
+                            clipped_words = [
+                                word
+                                for word in page_words
+                                if float(word["x0"]) >= bbox[0] - 2.0
+                                and float(word["x1"]) <= bbox[2] + 2.0
+                                and float(word["top"]) >= bbox[1] - 2.0
+                                and float(word["bottom"]) <= bbox[3] + 2.0
+                            ]
+                            if clipped_words:
+                                clipped_chars = [
+                                    char
+                                    for char in page_chars
+                                    if float(char["x0"]) >= bbox[0] - 2.0
+                                    and float(char["x1"]) <= bbox[2] + 2.0
+                                    and float(char["top"]) >= bbox[1] - 2.0
+                                    and float(char["bottom"]) <= bbox[3] + 2.0
+                                ]
+                                refined_lines = build_word_lines(clipped_words)
+                                header_boundary = horizontal_rules[1]
+                                header_line_count = sum(
+                                    float(line["bottom"]) <= header_boundary + 2.0
+                                    for line in refined_lines
+                                )
+                                if 1 <= header_line_count < len(refined_lines):
+                                    refined_rows, refined_cell_bboxes = build_row_grid_from_lines(
+                                        refined_lines,
+                                        page_chars=clipped_chars,
+                                    )
+                                    if refined_rows:
+                                        keep_indices = [
+                                            col_idx
+                                            for col_idx in range(len(refined_rows[0]))
+                                            if any(
+                                                col_idx < len(row) and row[col_idx].strip()
+                                                for row in refined_rows
+                                            )
+                                        ]
+                                        if keep_indices:
+                                            refined_rows = [
+                                                [row[col_idx] for col_idx in keep_indices]
+                                                for row in refined_rows
+                                            ]
+                                            refined_cell_bboxes = [
+                                                [row[col_idx] for col_idx in keep_indices]
+                                                for row in refined_cell_bboxes
+                                            ]
+                                        if (
+                                            len(refined_rows) >= len(raw_rows) + 2
+                                            and max((len(row) for row in refined_rows), default=0)
+                                            >= max((len(row) for row in raw_rows), default=0) + 2
+                                        ):
+                                            raw_rows = refined_rows
+                                            cell_bboxes = refined_cell_bboxes
+                                            row_bounds = [
+                                                (float(line["top"]), float(line["bottom"]))
+                                                for line in refined_lines
+                                            ]
                     nearby_caption_candidates: list[tuple[float, str]] = []
                     table_top = bbox[1] if bbox else float("inf")
                     for candidate_box in page_boxes:
@@ -205,8 +303,16 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                                     "fallback_used": False,
                                     "row_count": table.get("row_count"),
                                     "col_count": table.get("col_count"),
+                                    "explicit_grid_refined_from_words": raw_rows != original_raw_rows,
+                                    "grid_refinement_source": (
+                                        "word_positions_with_horizontal_rules"
+                                        if raw_rows != original_raw_rows
+                                        else None
+                                    ),
                                     "table_markdown": table.get("markdown"),
-                                    "table_cells": table.get("cells"),
+                                    "table_cells": cell_bboxes,
+                                    "original_table_cells": table.get("cells") if raw_rows != original_raw_rows else None,
+                                    "original_backend_rows": table.get("extract") if raw_rows != original_raw_rows else None,
                                     "row_bounds": row_bounds,
                                     "horizontal_rules": horizontal_rules,
                                     **_infer_table_orientation_metadata(page, bbox),

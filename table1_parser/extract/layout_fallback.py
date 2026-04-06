@@ -56,11 +56,30 @@ def _is_numeric_like(text: str) -> bool:
     return bool(NUMERIC_TOKEN_PATTERN.search(text))
 
 
-def _build_rows_from_line_segment(
+def build_word_lines(words: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Cluster positioned words into reading-order text lines."""
+    if not words:
+        return []
+    lines: list[dict[str, object]] = []
+    for word in sorted(words, key=lambda item: (float(item["top"]), float(item["x0"]))):
+        top = float(word["top"])
+        bottom = float(word["bottom"])
+        if not lines or abs(top - float(lines[-1]["top"])) > LINE_MERGE_TOLERANCE:
+            lines.append({"top": top, "bottom": bottom, "words": [word]})
+            continue
+        lines[-1]["words"].append(word)
+        lines[-1]["bottom"] = max(float(lines[-1]["bottom"]), bottom)
+    for line in lines:
+        line["words"] = sorted(line["words"], key=lambda item: float(item["x0"]))
+        line["text"] = " ".join(str(word["text"]).strip() for word in line["words"]).strip()
+    return lines
+
+
+def build_row_grid_from_lines(
     lines: list[dict[str, object]],
     page_chars: list[dict[str, object]] | None = None,
-) -> list[list[str]]:
-    """Convert a line segment into a row-major grid using x-position anchors."""
+) -> tuple[list[list[str]], list[list[tuple[float, float, float, float] | None]]]:
+    """Convert text lines into a row-major grid and cell bounding boxes."""
     numeric_positions = sorted(
         float(word["x0"])
         for line in lines
@@ -78,15 +97,17 @@ def _build_rows_from_line_segment(
                 clusters.append([position])
         numeric_anchors = [sum(cluster) / len(cluster) for cluster in clusters]
     if not numeric_anchors:
-        return []
+        return ([], [])
 
     boundaries = [
         (numeric_anchors[index] + numeric_anchors[index + 1]) / 2.0
         for index in range(len(numeric_anchors) - 1)
     ]
     rows: list[list[str]] = []
+    bbox_rows: list[list[tuple[float, float, float, float] | None]] = []
     for line in lines:
         row_cells = [""] * (len(numeric_anchors) + 1)
+        row_bboxes: list[tuple[float, float, float, float] | None] = [None] * (len(numeric_anchors) + 1)
         for word in line["words"]:
             text = str(word["text"]).strip()
             column_index = 0
@@ -135,8 +156,37 @@ def _build_rows_from_line_segment(
                         if restored:
                             text = restored
             row_cells[column_index] = f"{row_cells[column_index]} {text}".strip()
+            word_bbox = (
+                float(word["x0"]),
+                float(word["top"]),
+                float(word["x1"]),
+                float(word["bottom"]),
+            )
+            existing_bbox = row_bboxes[column_index]
+            if existing_bbox is None:
+                row_bboxes[column_index] = word_bbox
+            else:
+                row_bboxes[column_index] = (
+                    min(existing_bbox[0], word_bbox[0]),
+                    min(existing_bbox[1], word_bbox[1]),
+                    max(existing_bbox[2], word_bbox[2]),
+                    max(existing_bbox[3], word_bbox[3]),
+                )
         rows.append(row_cells)
-    return _normalize_rows(rows)
+        bbox_rows.append(row_bboxes)
+    normalized_rows = _normalize_rows(rows)
+    max_cols = max((len(row) for row in normalized_rows), default=0)
+    normalized_bboxes = [row + [None] * (max_cols - len(row)) for row in bbox_rows]
+    return (normalized_rows, normalized_bboxes)
+
+
+def _build_rows_from_line_segment(
+    lines: list[dict[str, object]],
+    page_chars: list[dict[str, object]] | None = None,
+) -> list[list[str]]:
+    """Convert a line segment into a row-major grid using x-position anchors."""
+    rows, _ = build_row_grid_from_lines(lines, page_chars=page_chars)
+    return rows
 
 
 def build_text_layout_candidates(
@@ -150,21 +200,7 @@ def build_text_layout_candidates(
 ) -> list[DetectedTableCandidate]:
     """Build scored candidates from page word and char geometry."""
     page_chars = chars or []
-    if not words:
-        lines = []
-    else:
-        lines = []
-        for word in sorted(words, key=lambda item: (float(item["top"]), float(item["x0"]))):
-            top = float(word["top"])
-            bottom = float(word["bottom"])
-            if not lines or abs(top - float(lines[-1]["top"])) > LINE_MERGE_TOLERANCE:
-                lines.append({"top": top, "bottom": bottom, "words": [word]})
-                continue
-            lines[-1]["words"].append(word)
-            lines[-1]["bottom"] = max(float(lines[-1]["bottom"]), bottom)
-        for line in lines:
-            line["words"] = sorted(line["words"], key=lambda item: float(item["x0"]))
-            line["text"] = " ".join(str(word["text"]).strip() for word in line["words"]).strip()
+    lines = build_word_lines(words)
 
     caption_indices = [index for index, line in enumerate(lines) if TABLE_CAPTION_PATTERN.search(str(line["text"]))]
     candidates: list[DetectedTableCandidate] = []

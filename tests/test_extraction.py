@@ -1131,6 +1131,125 @@ def test_pymupdf4llm_extractor_rescues_low_quality_explicit_table_with_text_layo
     assert tables[0].metadata["fallback_used"] is True
 
 
+def test_pymupdf4llm_extractor_refines_model_table_columns_from_words_and_rules(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Explicit model tables with wide horizontal boundaries should be rebuilt from word geometry."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [40, 50, 260, 66],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 2. Association with hyperlipidemia"}]}],
+                        },
+                        {
+                            "bbox": [40, 90, 560, 170],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [40, 90, 560, 170],
+                                "extract": [
+                                    ["PAHs quintiles", "Model_1\nOR (95% CI)\nP", "Model_2\nOR (95% CI)\nP", "Model_3\nOR (95% CI)\nP"],
+                                    ["", "", "", ""],
+                                    [
+                                        "Quintile_1\nQuintile_2\nP for trend",
+                                        "Reference\n1.19 (0.94-1.51)\n0.200\n<0.001",
+                                        "Reference\n1.15 (0.90-1.48)\n0.300\n<0.001",
+                                        "Reference\n1.13 (0.87-1.48)\n0.400\n0.075",
+                                    ],
+                                ],
+                                "cells": [
+                                    [[40, 90, 130, 105], [130, 90, 270, 105], [270, 90, 410, 105], [410, 90, 560, 105]],
+                                    [[40, 105, 130, 120], [130, 105, 270, 120], [270, 105, 410, 120], [410, 105, 560, 120]],
+                                    [[40, 120, 130, 170], [130, 120, 270, 170], [270, 120, 410, 170], [410, 120, 560, 170]],
+                                ],
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
+    )
+    _install_fake_pymupdf_document(
+        monkeypatch,
+        [
+            FakePyMuPage(
+                text="Table 2. Association with hyperlipidemia",
+                words=[
+                    {"text": "PAHs", "x0": 50.0, "x1": 78.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "quintiles", "x0": 82.0, "x1": 126.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "Model_1", "x0": 150.0, "x1": 182.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "Model_2", "x0": 294.0, "x1": 326.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "Model_3", "x0": 438.0, "x1": 470.0, "top": 90.0, "bottom": 98.0},
+                    {"text": "OR", "x0": 150.0, "x1": 162.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "(95%", "x0": 164.0, "x1": 184.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "CI)", "x0": 186.0, "x1": 198.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "P", "x0": 234.0, "x1": 238.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "OR", "x0": 294.0, "x1": 306.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "(95%", "x0": 308.0, "x1": 328.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "CI)", "x0": 330.0, "x1": 342.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "P", "x0": 378.0, "x1": 382.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "OR", "x0": 438.0, "x1": 450.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "(95%", "x0": 452.0, "x1": 472.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "CI)", "x0": 474.0, "x1": 486.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "P", "x0": 522.0, "x1": 526.0, "top": 104.0, "bottom": 112.0},
+                    {"text": "Quintile_1", "x0": 50.0, "x1": 92.0, "top": 118.0, "bottom": 126.0},
+                    {"text": "Reference", "x0": 150.0, "x1": 182.0, "top": 118.0, "bottom": 126.0},
+                    {"text": "Reference", "x0": 294.0, "x1": 326.0, "top": 118.0, "bottom": 126.0},
+                    {"text": "Reference", "x0": 438.0, "x1": 470.0, "top": 118.0, "bottom": 126.0},
+                    {"text": "Quintile_2", "x0": 50.0, "x1": 92.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "1.19", "x0": 150.0, "x1": 166.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "(0.94-1.51)", "x0": 168.0, "x1": 208.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "0.200", "x0": 234.0, "x1": 252.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "1.15", "x0": 294.0, "x1": 310.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "(0.90-1.48)", "x0": 312.0, "x1": 352.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "0.300", "x0": 378.0, "x1": 396.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "1.13", "x0": 438.0, "x1": 454.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "(0.87-1.48)", "x0": 456.0, "x1": 496.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "0.400", "x0": 522.0, "x1": 540.0, "top": 132.0, "bottom": 140.0},
+                    {"text": "P", "x0": 50.0, "x1": 54.0, "top": 146.0, "bottom": 154.0},
+                    {"text": "for", "x0": 58.0, "x1": 68.0, "top": 146.0, "bottom": 154.0},
+                    {"text": "trend", "x0": 72.0, "x1": 94.0, "top": 146.0, "bottom": 154.0},
+                    {"text": "<0.001", "x0": 234.0, "x1": 258.0, "top": 146.0, "bottom": 154.0},
+                    {"text": "<0.001", "x0": 378.0, "x1": 402.0, "top": 146.0, "bottom": 154.0},
+                    {"text": "0.075", "x0": 522.0, "x1": 540.0, "top": 146.0, "bottom": 154.0},
+                ],
+                rule_segments=[
+                    (40.0, 90.0, 560.0, 90.0),
+                    (40.0, 116.0, 560.0, 116.0),
+                    (40.0, 156.0, 560.0, 156.0),
+                ],
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        pymupdf4llm_extractor_module,
+        "extract_clipped_line_directions",
+        lambda page, clip_bbox: [(1.0, 0.0), (1.0, 0.0)],
+    )
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=5, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].n_rows == 5
+    assert tables[0].n_cols == 7
+    cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}
+    assert cell_map[(0, 1)] == "Model_1"
+    assert cell_map[(1, 2)] == "P"
+    assert cell_map[(3, 3)] == "1.15 (0.90-1.48)"
+    assert cell_map[(4, 6)] == "0.075"
+    assert tables[0].metadata["explicit_grid_refined_from_words"] is True
+    assert tables[0].metadata["grid_refinement_source"] == "word_positions_with_horizontal_rules"
+    assert tables[0].metadata["original_backend_rows"] is not None
+
+
 def test_text_layout_fallback_restores_spaces_in_collapsed_first_column_tokens(
     tmp_path,
     monkeypatch,

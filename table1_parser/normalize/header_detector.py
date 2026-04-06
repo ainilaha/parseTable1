@@ -77,7 +77,11 @@ def detect_header_rows_with_metadata(
     else:
         sorted_rules = sorted(horizontal_rules)
         first_top = row_bounds[0][0]
-        top_rule_candidates = [rule_y for rule_y in sorted_rules if 0.0 <= first_top - rule_y <= TOP_RULE_GAP]
+        top_rule_candidates = [
+            rule_y
+            for rule_y in sorted_rules
+            if -BOUNDARY_RULE_TOLERANCE <= first_top - rule_y <= TOP_RULE_GAP
+        ]
         top_rule = max(top_rule_candidates) if top_rule_candidates else None
         if top_rule is None:
             rule_based_headers, rule_strength = [], None

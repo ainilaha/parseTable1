@@ -100,11 +100,14 @@ Conceptually, this stage does three things:
 
 The current extractor uses `pymupdf4llm` as the main backend. It tries to recover explicit table boxes and table cell grids from the backend JSON output. When that is not enough, it can fall back to text-position-based layout reconstruction.
 
+For some explicit tables, the backend cell grid is too coarse even though the page still contains enough geometry to do better. When a table shows strong grouped-header signals, such as repeated `Model 1`, `Model 2`, `Model 3` blocks plus wide horizontal boundaries, extraction can now refine the explicit backend grid using word positions inside the table bounding box.
+
 The extractor still scores candidates, but the score is now diagnostic rather than a hard keep-drop gate for explicit extracted tables. The current rule is:
 
 - deduplicate exact candidate collisions
 - preserve explicit extracted table candidates in stable page/index order
 - record confidence and caption signals in metadata instead of silently dropping low-scoring tables
+- allow explicit-table grid refinement when rule and word geometry clearly support a better internal column structure
 
 This matters for papers with table continuations, odd numbering, or weak captions. A bad score should be inspectable, not silently destructive.
 
@@ -122,6 +125,8 @@ This matters for papers with table continuations, odd numbering, or weak caption
 - extractor metadata
 
 This is the parser's record of what came out of the PDF layer.
+
+That does not always mean “what one backend reported verbatim.” If the backend emits one fused model column but the table bbox, word positions, and wide horizontal rules clearly support a better grid, extraction may refine that grid before writing `ExtractedTable`.
 
 ### Why `ExtractedTable` Exists
 
