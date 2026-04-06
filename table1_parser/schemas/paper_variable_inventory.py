@@ -18,6 +18,7 @@ VariableMentionSourceType = Literal[
     "table_grouping_label",
 ]
 
+VariableMentionRole = Literal["variable", "level", "range_bin", "artifact", "unknown"]
 VariableInterpretationStatus = Literal["uninterpreted", "merged_conservatively", "needs_review"]
 
 
@@ -28,6 +29,8 @@ class VariableMention(BaseModel):
     raw_label: str
     normalized_label: str
     source_type: VariableMentionSourceType
+    mention_role: VariableMentionRole = "unknown"
+    canonical_label: str | None = None
     section_id: str | None = None
     heading: str | None = None
     role_hint: SectionRoleHint | None = None
@@ -46,7 +49,10 @@ class VariableCandidate(BaseModel):
 
     candidate_id: str
     preferred_label: str
+    canonical_label: str
     normalized_label: str
+    canonical_label_source: str = "derived"
+    promotion_basis: str = "conservative"
     alternate_labels: list[str] = Field(default_factory=list)
     supporting_mention_ids: list[str] = Field(default_factory=list)
     source_types: list[VariableMentionSourceType] = Field(default_factory=list)
@@ -57,6 +63,7 @@ class VariableCandidate(BaseModel):
     text_support_count: int = Field(default=0, ge=0)
     table_support_count: int = Field(default=0, ge=0)
     caption_support_count: int = Field(default=0, ge=0)
+    filtered_mention_count: int = Field(default=0, ge=0)
     priority_score: float = Field(default=0.0, ge=0.0)
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     interpretation_status: VariableInterpretationStatus = "uninterpreted"

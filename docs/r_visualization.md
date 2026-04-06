@@ -44,7 +44,7 @@ The paper-output inspection helper is for comparing deterministic and LLM semant
 Public functions:
 
 - `load_paper_outputs(paper_dir)`
-- `show_paper_variable_mentions(paper_dir, role_hint = NULL, source_type = NULL)`
+- `show_paper_variable_mentions(paper_dir, role_hint = NULL, source_type = NULL, mention_role = NULL)`
 - `show_paper_variable_candidates(paper_dir, min_priority = NULL)`
 - `show_table_structure(paper_dir, table_index = 0L, variant = "deterministic", max_rows = NULL)`
 - `compare_table_definitions(paper_dir, table_index = 0L)`
@@ -65,7 +65,7 @@ source("R/inspect_paper_outputs.R")
 
 x <- load_paper_outputs("outputs/papers/cobaltpaper")
 show_paper_variable_candidates("outputs/papers/cobaltpaper")
-show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based")
+show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based", mention_role = "variable")
 show_table_structure("outputs/papers/cobaltpaper", table_index = 1L)
 compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
 compare_table_definition_runs(
@@ -86,9 +86,9 @@ show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 What these are for:
 
 - `show_paper_variable_mentions(...)`
-  print the raw mention-level evidence records from `paper_variable_inventory.json`
+  print the raw mention-level evidence records from `paper_variable_inventory.json`, including `mention_role` and `canonical_label`
 - `show_paper_variable_candidates(...)`
-  print the merged candidate-variable records from `paper_variable_inventory.json`
+  print the merged candidate-variable records from `paper_variable_inventory.json`, including canonical labels and promotion metadata
 - `show_table_structure(...)`
   print one saved table's normalized rows, semantic columns, and row-variable definitions together
 - `compare_table_definitions(...)`
@@ -109,6 +109,7 @@ Current limitation:
 - the context helpers currently expose `section_id`, `heading`, `passage_id`, and passage text
 - they do not yet expose page-number or line-number anchors
 - the paper-variable inventory is currently a Phase 1 search artifact and does not yet alter table-context retrieval or LLM prompts
+- raw mentions are intentionally broader than promoted candidates; ranges, levels, and artifacts may still appear in `show_paper_variable_mentions(...)`
 
 ## Observed TableOne Helper
 

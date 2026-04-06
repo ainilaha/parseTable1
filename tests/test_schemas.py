@@ -275,6 +275,8 @@ def test_paper_variable_inventory_schema_serializes_cleanly() -> None:
                 raw_label="Age, years",
                 normalized_label="Age years",
                 source_type="text_based",
+                mention_role="variable",
+                canonical_label="Age",
                 section_id="section_0",
                 heading="Abstract",
                 role_hint="abstract_like",
@@ -287,8 +289,11 @@ def test_paper_variable_inventory_schema_serializes_cleanly() -> None:
         candidates=[
             VariableCandidate(
                 candidate_id="candidate_0",
-                preferred_label="Age, years",
-                normalized_label="age years",
+                preferred_label="Age",
+                canonical_label="Age",
+                normalized_label="age",
+                canonical_label_source="deterministic_variable_name",
+                promotion_basis="priority_text_support",
                 alternate_labels=["Age years"],
                 supporting_mention_ids=["mention_0"],
                 source_types=["text_based"],
@@ -299,6 +304,7 @@ def test_paper_variable_inventory_schema_serializes_cleanly() -> None:
                 text_support_count=1,
                 table_support_count=0,
                 caption_support_count=0,
+                filtered_mention_count=0,
                 priority_score=1.0,
                 confidence=0.92,
                 interpretation_status="uninterpreted",
@@ -309,7 +315,8 @@ def test_paper_variable_inventory_schema_serializes_cleanly() -> None:
     dumped = inventory.model_dump(mode="json")
 
     assert dumped["mentions"][0]["source_type"] == "text_based"
-    assert dumped["candidates"][0]["preferred_label"] == "Age, years"
+    assert dumped["mentions"][0]["mention_role"] == "variable"
+    assert dumped["candidates"][0]["preferred_label"] == "Age"
 
 
 def test_schema_validation_rejects_invalid_confidence() -> None:

@@ -379,7 +379,7 @@ Design components:
 - `paper_sections.json`
   markdown-derived sections with heading level and simple role hints
 - `paper_variable_inventory.json`
-  paper-level candidate variable list with flat mention-level and candidate-level records
+  paper-level variable-search artifact with broad mention-level records and a stricter consolidated candidate-variable list
 - `table_contexts/*.json`
   per-table retrieval bundles keyed by `table_id` and `table_index`
 
@@ -407,6 +407,7 @@ Design intent:
 
 - keep paper-level context in the same per-paper output directory
 - keep the candidate variable reference list explicit and easy to load in both Python and R
+- preserve a distinction between broad harvested mentions and the narrower promoted candidate list
 - support future LLM semantic interpretation with compact retrieved evidence
 - avoid tying retrieval to exact section names like `Methods`
 - preserve `paper_markdown.md` as the paper-level markdown artifact, allowing only conservative glyph repair, and move derived structure into `paper_sections.json`

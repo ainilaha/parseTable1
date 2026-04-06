@@ -8,6 +8,7 @@ from table1_parser.schemas.paper_variable_inventory import (
     PaperVariableInventory,
     VariableCandidate,
     VariableMention,
+    VariableMentionRole,
 )
 from table1_parser.schemas.parsed_table import (
     ParsedColumn,
@@ -47,6 +48,7 @@ __all__ = [
     "TableCell",
     "VariableCandidate",
     "VariableMention",
+    "VariableMentionRole",
     "ValueRecord",
     "TableProfile",
 ]

@@ -169,4 +169,4 @@ def test_build_paper_variable_inventory_prioritizes_sections_and_excludes_refere
     assert all(mention.role_hint != "references_like" for mention in text_mentions)
     assert all(mention.table_id is None for mention in text_mentions)
     assert any(mention.source_type == "table_variable_label" for mention in inventory.mentions)
-    assert any(candidate.preferred_label == "Age, years" for candidate in inventory.candidates)
+    assert any(candidate.preferred_label == "Age years" for candidate in inventory.candidates)

@@ -169,6 +169,16 @@ Table-derived mentions should come from:
 
 These should preserve the table they came from.
 
+Important implementation rule:
+
+- mention harvesting may stay broad
+- candidate promotion must be much stricter than mention harvesting
+
+The artifact is intentionally split this way:
+
+- `mentions` are the audit trail of what was observed
+- `candidates` are the consolidated paper-level variable list
+
 ## Artifact Path
 
 Current output path:
@@ -225,6 +235,8 @@ Suggested fields:
 - `raw_label`
 - `normalized_label`
 - `source_type`
+- `mention_role`
+- `canonical_label`
 - `section_id`
 - `heading`
 - `role_hint`
@@ -251,6 +263,8 @@ Interpretation notes:
 - `text_based` means the mention was found in paper prose
 - text-based mentions should always preserve the section location
 - table-derived mentions should always preserve table identity
+- `mention_role` should distinguish likely variables from levels, range bins, and artifacts
+- a mention can be preserved in `mentions` even when it is intentionally excluded from `candidates`
 
 ## Proposed Candidate Record
 
@@ -258,7 +272,10 @@ Suggested fields:
 
 - `candidate_id`
 - `preferred_label`
+- `canonical_label`
 - `normalized_label`
+- `canonical_label_source`
+- `promotion_basis`
 - `alternate_labels`
 - `supporting_mention_ids`
 - `source_types`
@@ -268,6 +285,7 @@ Suggested fields:
 - `table_indices`
 - `text_support_count`
 - `table_support_count`
+- `filtered_mention_count`
 - `priority_score`
 - `confidence`
 - `interpretation_status`
@@ -280,6 +298,13 @@ Suggested `interpretation_status` values for the first phase:
 - `needs_review`
 
 The first phase should prefer conservative merging and leave harder semantic consolidation for the later interpretation phase.
+
+Current implementation rule:
+
+- `candidates` should contain likely variables, not every harvested mention
+- levels such as `Male` and `Female` must remain context-sensitive rather than globally banned
+- range bins such as `25-30` should remain mention-level evidence, not candidate variables
+- decorated table labels such as `BMI group (kg/m2), n (%)` should consolidate to a cleaner variable identity such as `BMI`
 
 ## R Accessibility Requirements
 
@@ -305,7 +330,7 @@ Planned downstream support should include a small R helper that can:
 
 - load `paper_variable_inventory.json`
 - return mention-level and candidate-level tables
-- filter by section role, source type, or table index
+- filter by section role, source type, mention role, or table index
 
 ## Section Priority Model
 
@@ -325,15 +350,18 @@ This priority should affect:
 - merge confidence
 - later selection of inventory entries for per-table prompting
 
+The current implementation also uses section priority as part of candidate promotion.
+High-priority text support is allowed to promote a candidate even when the table labels are messy.
+
 ## Conservative Merge Rules
 
 The first phase should merge mentions conservatively.
 
 Safe merge signals may include:
 
-- exact normalized-label match
-- exact table-variable-label match after light normalization
+- canonical-label match after deterministic reduction
 - repeated appearance across high-priority sections and table labels
+- agreement between deterministic `variable_name` and text support
 
 Unsafe merges should be deferred when:
 
@@ -343,6 +371,11 @@ Unsafe merges should be deferred when:
 - two labels overlap lexically but may refer to different measurements
 
 When uncertain, preserve multiple candidates rather than forcing a merge.
+
+Current implementation note:
+
+- aggressive consolidation is appropriate for adornments such as units, `n (%)`, `mean (SD)`, trailing `group`, and trailing `quintiles`
+- aggressive consolidation is not appropriate for labels that might be true variables in one paper and levels in another; those require context-aware classification
 
 ## How Later Table-Level LLM Calls Should Use This Artifact
 

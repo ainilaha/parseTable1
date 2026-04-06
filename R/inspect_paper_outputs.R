@@ -68,7 +68,7 @@ load_paper_outputs <- function(paper_dir) {
   )
 }
 
-paper_variable_mentions_df <- function(outputs, role_hint = NULL, source_type = NULL) {
+paper_variable_mentions_df <- function(outputs, role_hint = NULL, source_type = NULL, mention_role = NULL) {
   mentions <- outputs$paper_variable_inventory$mentions %||% list()
   rows <- lapply(mentions, function(x) {
     data.frame(
@@ -76,6 +76,8 @@ paper_variable_mentions_df <- function(outputs, role_hint = NULL, source_type = 
       raw_label = as.character(x$raw_label %||% ""),
       normalized_label = as.character(x$normalized_label %||% ""),
       source_type = as.character(x$source_type %||% ""),
+      mention_role = as.character(x$mention_role %||% ""),
+      canonical_label = as.character(x$canonical_label %||% ""),
       section_id = as.character(x$section_id %||% ""),
       heading = as.character(x$heading %||% ""),
       role_hint = as.character(x$role_hint %||% ""),
@@ -95,6 +97,8 @@ paper_variable_mentions_df <- function(outputs, role_hint = NULL, source_type = 
       raw_label = character(),
       normalized_label = character(),
       source_type = character(),
+      mention_role = character(),
+      canonical_label = character(),
       section_id = character(),
       heading = character(),
       role_hint = character(),
@@ -116,6 +120,9 @@ paper_variable_mentions_df <- function(outputs, role_hint = NULL, source_type = 
   if (!is.null(source_type)) {
     mentions_df <- mentions_df[mentions_df$source_type %in% as.character(source_type), , drop = FALSE]
   }
+  if (!is.null(mention_role)) {
+    mentions_df <- mentions_df[mentions_df$mention_role %in% as.character(mention_role), , drop = FALSE]
+  }
   mentions_df
 }
 
@@ -125,7 +132,10 @@ paper_variable_candidates_df <- function(outputs, min_priority = NULL) {
     data.frame(
       candidate_id = as.character(x$candidate_id %||% ""),
       preferred_label = as.character(x$preferred_label %||% ""),
+      canonical_label = as.character(x$canonical_label %||% ""),
       normalized_label = as.character(x$normalized_label %||% ""),
+      canonical_label_source = as.character(x$canonical_label_source %||% ""),
+      promotion_basis = as.character(x$promotion_basis %||% ""),
       alternate_labels = paste(unlist(x$alternate_labels %||% list(), use.names = FALSE), collapse = " | "),
       source_types = paste(unlist(x$source_types %||% list(), use.names = FALSE), collapse = " | "),
       section_ids = paste(unlist(x$section_ids %||% list(), use.names = FALSE), collapse = " | "),
@@ -135,6 +145,7 @@ paper_variable_candidates_df <- function(outputs, min_priority = NULL) {
       text_support_count = as.integer(x$text_support_count %||% 0L),
       table_support_count = as.integer(x$table_support_count %||% 0L),
       caption_support_count = as.integer(x$caption_support_count %||% 0L),
+      filtered_mention_count = as.integer(x$filtered_mention_count %||% 0L),
       priority_score = as.numeric(x$priority_score %||% NA_real_),
       confidence = as.numeric(x$confidence %||% NA_real_),
       interpretation_status = as.character(x$interpretation_status %||% ""),
@@ -145,7 +156,10 @@ paper_variable_candidates_df <- function(outputs, min_priority = NULL) {
     data.frame(
       candidate_id = character(),
       preferred_label = character(),
+      canonical_label = character(),
       normalized_label = character(),
+      canonical_label_source = character(),
+      promotion_basis = character(),
       alternate_labels = character(),
       source_types = character(),
       section_ids = character(),
@@ -155,6 +169,7 @@ paper_variable_candidates_df <- function(outputs, min_priority = NULL) {
       text_support_count = integer(),
       table_support_count = integer(),
       caption_support_count = integer(),
+      filtered_mention_count = integer(),
       priority_score = numeric(),
       confidence = numeric(),
       interpretation_status = character(),
@@ -169,9 +184,14 @@ paper_variable_candidates_df <- function(outputs, min_priority = NULL) {
   candidates_df
 }
 
-show_paper_variable_mentions <- function(paper_dir, role_hint = NULL, source_type = NULL) {
+show_paper_variable_mentions <- function(paper_dir, role_hint = NULL, source_type = NULL, mention_role = NULL) {
   outputs <- load_paper_outputs(paper_dir)
-  mentions_df <- paper_variable_mentions_df(outputs, role_hint = role_hint, source_type = source_type)
+  mentions_df <- paper_variable_mentions_df(
+    outputs,
+    role_hint = role_hint,
+    source_type = source_type,
+    mention_role = mention_role
+  )
 
   cat(sprintf("Paper variable mentions for %s\n\n", normalizePath(paper_dir, winslash = "/", mustWork = TRUE)))
   if (nrow(mentions_df) == 0) {

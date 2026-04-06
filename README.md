@@ -185,12 +185,12 @@ For paper-level inspection there is also:
 source("R/inspect_paper_outputs.R")
 compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
 show_paper_variable_candidates("outputs/papers/cobaltpaper")
-show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based")
+show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based", mention_role = "variable")
 show_table_context("outputs/papers/cobaltpaper", table_index = 0L)
 show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 ```
 
-These helpers are meant to make it easier to inspect the paper-level candidate variable inventory, compare deterministic syntax-first semantics with LLM semantics, and inspect the retrieved supporting passages.
+These helpers are meant to make it easier to inspect the paper-level candidate variable inventory, distinguish broad mentions from promoted candidates, compare deterministic syntax-first semantics with LLM semantics, and inspect the retrieved supporting passages.
 
 ## Output Layout
 
