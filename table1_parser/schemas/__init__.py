@@ -24,6 +24,7 @@ from table1_parser.schemas.table_definition import (
     DefinedVariable,
     TableDefinition,
 )
+from table1_parser.schemas.table_processing_status import TableProcessingAttempt, TableProcessingStatus
 from table1_parser.schemas.table_profile import TableProfile
 
 __all__ = [
@@ -46,6 +47,8 @@ __all__ = [
     "TableContext",
     "TableDefinition",
     "TableCell",
+    "TableProcessingAttempt",
+    "TableProcessingStatus",
     "VariableCandidate",
     "VariableMention",
     "VariableMentionRole",

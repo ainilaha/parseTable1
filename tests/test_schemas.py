@@ -25,6 +25,8 @@ from table1_parser.schemas import (
     TableCell,
     TableContext,
     TableDefinition,
+    TableProcessingAttempt,
+    TableProcessingStatus,
     TableProfile,
     VariableCandidate,
     VariableMention,
@@ -200,6 +202,32 @@ def test_table_profile_creation_and_serialization() -> None:
 
     assert dumped["table_family"] == "descriptive_characteristics"
     assert dumped["should_run_llm_semantics"] is True
+
+
+def test_table_processing_status_creation_and_serialization() -> None:
+    """Table processing status schemas should serialize rescue attempts cleanly."""
+    status = TableProcessingStatus(
+        table_id="tbl-status",
+        status="failed",
+        failure_stage="table_definition",
+        failure_reason="no_variables_for_descriptive_table",
+        attempts=[
+            TableProcessingAttempt(
+                stage="table_definition",
+                name="deterministic_definition",
+                considered=True,
+                ran=True,
+                succeeded=False,
+                note="variables=0, usable_columns=1",
+            )
+        ],
+        notes=["parse_failed:no_variables_for_descriptive_table"],
+    )
+
+    dumped = status.model_dump(mode="json")
+
+    assert dumped["status"] == "failed"
+    assert dumped["attempts"][0]["name"] == "deterministic_definition"
 
 
 def test_llm_semantic_monitoring_creation_and_serialization() -> None:

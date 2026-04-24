@@ -9,8 +9,20 @@ from types import SimpleNamespace
 from table1_parser import cli
 from table1_parser.llm.client import LLMConfigurationError
 from table1_parser.llm.semantic_schemas import LLMSemanticTableDefinition
-from table1_parser.schemas import LLMSemanticCallRecord, PaperSection, TableContext
-from table1_parser.schemas import ExtractedTable, TableCell
+from table1_parser.schemas import (
+    ColumnDefinition,
+    DefinedColumn,
+    ExtractedTable,
+    LLMSemanticCallRecord,
+    NormalizedTable,
+    PaperSection,
+    ParsedTable,
+    RowView,
+    TableCell,
+    TableContext,
+    TableDefinition,
+    TableProfile,
+)
 
 
 def _build_extracted_table() -> ExtractedTable:
@@ -89,6 +101,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     table_profile_path = tmp_path / "outputs" / "papers" / "paper" / "table_profiles.json"
     table_definition_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions.json"
     parsed_path = tmp_path / "outputs" / "papers" / "paper" / "parsed_tables.json"
+    processing_status_path = tmp_path / "outputs" / "papers" / "paper" / "table_processing_status.json"
     paper_markdown_path = tmp_path / "outputs" / "papers" / "paper" / "paper_markdown.md"
     paper_sections_path = tmp_path / "outputs" / "papers" / "paper" / "paper_sections.json"
     paper_variable_inventory_path = tmp_path / "outputs" / "papers" / "paper" / "paper_variable_inventory.json"
@@ -101,6 +114,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert table_profile_path.exists()
     assert table_definition_path.exists()
     assert parsed_path.exists()
+    assert processing_status_path.exists()
     assert paper_markdown_path.exists()
     assert paper_sections_path.exists()
     assert paper_variable_inventory_path.exists()
@@ -110,12 +124,149 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert json.loads(table_profile_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(table_definition_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(parsed_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert json.loads(processing_status_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
     assert json.loads(paper_sections_path.read_text(encoding="utf-8"))[0]["section_id"] == "section_0"
     assert json.loads(paper_variable_inventory_path.read_text(encoding="utf-8"))["paper_id"] == "paper"
     assert json.loads(table_context_path.read_text(encoding="utf-8"))["table_id"] == "tbl-1"
     assert captured.out == ""
     assert "LLM semantic interpretation skipped:" not in captured.err
+
+
+def test_cli_parse_marks_descriptive_tables_with_empty_definitions_as_failed(tmp_path, monkeypatch, capsys) -> None:
+    """Descriptive tables with zero variables or usable columns should write failed processing status."""
+    monkeypatch.chdir(tmp_path)
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+
+    normalized_table = NormalizedTable(
+        table_id="tbl-1",
+        title="Table 1",
+        caption="Baseline characteristics",
+        header_rows=[0],
+        body_rows=[1, 2],
+        row_views=[
+            RowView(
+                row_idx=1,
+                raw_cells=["Age, years", "52.1"],
+                first_cell_raw="Age, years",
+                first_cell_normalized="Age years",
+                first_cell_alpha_only="Age years",
+                nonempty_cell_count=2,
+                numeric_cell_count=1,
+                has_trailing_values=True,
+                indent_level=0,
+                likely_role="unknown",
+            ),
+            RowView(
+                row_idx=2,
+                raw_cells=["Male", "34"],
+                first_cell_raw="Male",
+                first_cell_normalized="Male",
+                first_cell_alpha_only="Male",
+                nonempty_cell_count=2,
+                numeric_cell_count=1,
+                has_trailing_values=True,
+                indent_level=0,
+                likely_role="unknown",
+            )
+        ],
+        n_rows=3,
+        n_cols=2,
+        metadata={"cleaned_rows": [["Variable", "Overall"], ["Age, years", "52.1"], ["Male", "34"]]},
+    )
+
+    class FakeExtractor:
+        def extract(self, _: str) -> list[ExtractedTable]:
+            return [_build_extracted_table()]
+
+    monkeypatch.setattr(cli, "build_extractor", lambda _: FakeExtractor())
+    monkeypatch.setattr(cli, "normalize_extracted_tables", lambda tables: [normalized_table])
+    monkeypatch.setattr(
+        cli,
+        "build_table_profiles",
+        lambda tables: [
+            TableProfile(
+                table_id="tbl-1",
+                title="Table 1",
+                caption="Baseline characteristics",
+                table_family="descriptive_characteristics",
+                should_run_llm_semantics=True,
+                family_confidence=0.9,
+                evidence=["title_or_caption_mentions_characteristics"],
+                notes=[],
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_table_definitions",
+        lambda tables: [
+            TableDefinition(
+                table_id="tbl-1",
+                title="Table 1",
+                caption="Baseline characteristics",
+                variables=[],
+                column_definition=ColumnDefinition(columns=[DefinedColumn(col_idx=1, column_name="overall", column_label="Overall", inferred_role="unknown")]),
+                notes=[],
+                overall_confidence=None,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_parsed_tables",
+        lambda tables, definitions: [
+            ParsedTable(
+                table_id="tbl-1",
+                title="Table 1",
+                caption="Baseline characteristics",
+                variables=[],
+                columns=[],
+                values=[],
+                notes=[],
+                overall_confidence=None,
+            )
+        ],
+    )
+    monkeypatch.setattr(cli, "extract_paper_markdown", lambda _: "# Methods\nExample study population.")
+    monkeypatch.setattr(
+        cli,
+        "parse_markdown_sections",
+        lambda _: [PaperSection(section_id="section_0", order=0, heading="Methods", level=1, role_hint="methods_like", content="Example study population.")],
+    )
+    monkeypatch.setattr(
+        cli,
+        "build_table_contexts",
+        lambda sections, definitions: [
+            TableContext(
+                table_id=definitions[0].table_id,
+                table_index=0,
+                table_label="Table 1",
+                title=definitions[0].title,
+                caption=definitions[0].caption,
+                methods_like_section_ids=[sections[0].section_id],
+            )
+        ],
+    )
+
+    exit_code = cli.main(["parse", str(pdf_path), "--no-llm-semantic"])
+
+    captured = capsys.readouterr()
+    processing_status_path = tmp_path / "outputs" / "papers" / "paper" / "table_processing_status.json"
+    table_definition_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions.json"
+    parsed_path = tmp_path / "outputs" / "papers" / "paper" / "parsed_tables.json"
+    processing_status_payload = json.loads(processing_status_path.read_text(encoding="utf-8"))
+    table_definition_payload = json.loads(table_definition_path.read_text(encoding="utf-8"))
+    parsed_payload = json.loads(parsed_path.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert captured.out == ""
+    assert processing_status_payload[0]["status"] == "failed"
+    assert processing_status_payload[0]["failure_stage"] == "table_definition"
+    assert processing_status_payload[0]["failure_reason"] == "no_variables_for_descriptive_table"
+    assert "parse_failed:no_variables_for_descriptive_table" in table_definition_payload[0]["notes"]
+    assert "parse_failed:no_variables_for_descriptive_table" in parsed_payload[0]["notes"]
 
 
 def test_cli_parse_writes_semantic_llm_output_when_available(tmp_path, monkeypatch, capsys) -> None:

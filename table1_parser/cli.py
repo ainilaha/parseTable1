@@ -28,6 +28,7 @@ from table1_parser.llm import (
 )
 from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
 from table1_parser.parse import build_parsed_tables, parsed_tables_to_payload
+from table1_parser.processing_status import build_table_processing_statuses
 from table1_parser.schemas import LLMSemanticCallRecord, LLMSemanticMonitoringReport
 
 DEFAULT_OUTPUT_DIR = Path("outputs")
@@ -270,12 +271,48 @@ def _handle_parse(args: argparse.Namespace) -> int:
     table_profile_output_path = Path(args.outdir) / "papers" / paper_stem / "table_profiles.json"
     table_definition_output_path = Path(args.outdir) / "papers" / paper_stem / "table_definitions.json"
     parsed_output_path = Path(args.outdir) / "papers" / paper_stem / "parsed_tables.json"
+    processing_status_output_path = Path(args.outdir) / "papers" / paper_stem / "table_processing_status.json"
     llm_table_definition_output_path = Path(args.outdir) / "papers" / paper_stem / "table_definitions_llm.json"
     llm_monitoring_output_path = llm_debug_dir / "llm_semantic_monitoring.json" if llm_debug_dir is not None else None
     paper_markdown_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_markdown.md"
     paper_sections_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_sections.json"
     paper_variable_inventory_output_path = Path(args.outdir) / "papers" / paper_stem / "paper_variable_inventory.json"
     table_context_output_dir = Path(args.outdir) / "papers" / paper_stem / "table_contexts"
+    table_processing_statuses = build_table_processing_statuses(
+        extracted_tables,
+        normalized_tables,
+        table_profiles,
+        table_definitions,
+        parsed_tables,
+        monitoring_items,
+    )
+    status_by_table_id = {status.table_id: status for status in table_processing_statuses}
+    table_definitions = [
+        definition.model_copy(
+            update={
+                "notes": (
+                    [*definition.notes, f"parse_failed:{status_by_table_id[definition.table_id].failure_reason}"]
+                    if status_by_table_id[definition.table_id].status == "failed"
+                    and f"parse_failed:{status_by_table_id[definition.table_id].failure_reason}" not in definition.notes
+                    else definition.notes
+                )
+            }
+        )
+        for definition in table_definitions
+    ]
+    parsed_tables = [
+        parsed_table.model_copy(
+            update={
+                "notes": (
+                    [*parsed_table.notes, f"parse_failed:{status_by_table_id[parsed_table.table_id].failure_reason}"]
+                    if status_by_table_id[parsed_table.table_id].status == "failed"
+                    and f"parse_failed:{status_by_table_id[parsed_table.table_id].failure_reason}" not in parsed_table.notes
+                    else parsed_table.notes
+                )
+            }
+        )
+        for parsed_table in parsed_tables
+    ]
     extract_output_path.parent.mkdir(parents=True, exist_ok=True)
     table_context_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -294,6 +331,10 @@ def _handle_parse(args: argparse.Namespace) -> int:
     )
     parsed_output_path.write_text(
         json.dumps(parsed_tables_to_payload(parsed_tables), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    processing_status_output_path.write_text(
+        json.dumps([status.model_dump(mode="json") for status in table_processing_statuses], indent=2) + "\n",
         encoding="utf-8",
     )
     if llm_table_definitions is not None:

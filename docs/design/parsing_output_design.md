@@ -80,6 +80,7 @@ This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifa
 | Semantic LLM debug monitoring | `LLMSemanticMonitoringReport`, `LLMSemanticCallRecord` | Written only when `LLM_DEBUG=true` as `llm_semantic_debug/<timestamp>/llm_semantic_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence |
 | Semantic LLM per-table trace files | wrapper JSON files | Written only when `LLM_DEBUG=true` as `table_definition_llm_input.json`, `table_definition_llm_metrics.json`, `table_definition_llm_output.json`, and `table_definition_llm_interpretation.json` | Preserve prompt payloads, metrics, raw provider responses, and validated semantic interpretations for inspection |
 | Final parsed output | `ParsedTable` | Written now as `parsed_tables.json` by `parse` | Validated downstream structured table data |
+| Table processing status | `TableProcessingStatus`, `TableProcessingAttempt` | Written now as `table_processing_status.json` by `parse` | Persist rescue attempts, terminal failure stage, and failure reason without overloading semantic artifacts |
 
 Design note for future multitable support:
 
@@ -619,6 +620,48 @@ Design note for future value parsing:
 - the overall-column 100% rule should be limited to columns that are truly `overall` or clearly equivalent, while subgroup columns may legitimately sum to their share of the full study population instead of 100
 
 This is the richest JSON design in the repo because it joins variable semantics, column semantics, and cell-level values into one validated representation.
+
+## 8. `table_processing_status.json`
+
+Current status:
+
+- canonical status schema exists now
+- written by the `parse` CLI command as `table_processing_status.json`
+
+Current CLI path:
+
+```text
+outputs/papers/<paper_stem>/table_processing_status.json
+```
+
+This file is written by:
+
+- `table1-parser parse`
+
+Top-level design components:
+
+- `table_id`
+- `status`
+- `failure_stage`
+- `failure_reason`
+- `attempts`
+- `notes`
+
+`attempts` design components:
+
+- `stage`
+- `name`
+- `considered`
+- `ran`
+- `succeeded`
+- `note`
+
+Design intent:
+
+- record which existing rescue and repair paths were considered
+- record which ones actually ran
+- record whether a table ended as `ok`, `rescued`, or `failed`
+- make empty descriptive-table parses explicit failures rather than silent success
 
 ## Trace Wrappers vs Canonical Payloads
 

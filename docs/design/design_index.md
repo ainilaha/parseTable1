@@ -21,6 +21,9 @@ Then use the documents below as needed.
 - `docs/design/parsing_output_design.md`
   Current JSON artifact design, canonical models, and output-file intent.
 
+- `docs/design/rescue_failure_logic.md`
+  Structured rescue ordering, adequacy checks, and failure tracking for collapsed or empty table parses.
+
 - `docs/design/value_parsing_spec.md`
   Planned symbol canonicalization and Table 1 `n (%)` parsing heuristics for the later value-parsing path.
 

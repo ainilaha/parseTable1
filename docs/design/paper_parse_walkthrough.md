@@ -30,6 +30,7 @@ Today that directory may contain:
 - `table_profiles.json`
 - `table_definitions.json`
 - `parsed_tables.json`
+- `table_processing_status.json`
 - `paper_markdown.md`
 - `paper_sections.json`
 - `paper_variable_inventory.json`
@@ -62,6 +63,7 @@ PDF
   -> table profiles
   -> table definitions
   -> parsed tables
+  -> table processing statuses
 
 PDF
   -> paper markdown
@@ -78,6 +80,8 @@ Two points matter here.
 First, the table pipeline and the paper-context pipeline are related but separate.
 
 Second, the optional semantic LLM path currently produces an additional semantic artifact. It does not replace the deterministic parsed table path by default.
+
+The parse command also writes a table-level processing-status artifact so rescue attempts and terminal failures are explicit.
 
 ## Step 1: CLI Entry And Paper Setup
 
@@ -458,6 +462,17 @@ Why this stage is optional:
 - LLM use should be focused on ambiguity, not raw PDF recovery
 - semantic calls should be inspectable and skippable
 
+## Step 9: Write Table Processing Status
+
+After deterministic parsing and any optional semantic LLM attempt, the parser writes `table_processing_status.json`.
+
+This artifact records:
+
+- which existing rescue or repair paths were considered
+- which ones ran
+- whether the table ended as `ok`, `rescued`, or `failed`
+- the terminal failure stage and failure reason when rescue was exhausted
+
 ## What A Human Should Inspect First
 
 When a parse looks wrong, inspect the outputs in this order.
@@ -477,10 +492,13 @@ When a parse looks wrong, inspect the outputs in this order.
 5. `parsed_tables.json`
    If row and column meanings are right but the final values are wrong, the problem is in value parsing.
 
-6. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
+6. `table_processing_status.json`
+   If a table is empty or incomplete, inspect this next to see which rescue paths were attempted and where failure was recorded.
+
+7. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
    If semantic context retrieval is weak, inspect these next.
 
-7. `table_definitions_llm.json`
+8. `table_definitions_llm.json`
    If deterministic semantics were reasonable but the semantic LLM output is poor, the issue is in context retrieval, prompting, provider behavior, or validation.
 
 ## Why This Pipeline Shape Is Worth Keeping
