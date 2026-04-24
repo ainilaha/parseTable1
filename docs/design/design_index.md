@@ -24,6 +24,9 @@ Then use the documents below as needed.
 - `docs/design/rescue_failure_logic.md`
   Structured rescue ordering, adequacy checks, and failure tracking for collapsed or empty table parses.
 
+- `docs/design/collapsed_grid_refinement_scope.md`
+  Narrow scope for consolidating the duplicated rotated/upright collapsed-grid refinement logic in the extractor.
+
 - `docs/design/value_parsing_spec.md`
   Planned symbol canonicalization and Table 1 `n (%)` parsing heuristics for the later value-parsing path.
 
@@ -52,6 +55,9 @@ Then use the documents below as needed.
 
 - `docs/implementation/normalized_column_repair_plan.md`
   Focused implementation plan for conservative normalization-time repair of split value columns and missed header rows.
+
+- `docs/implementation/collapsed_grid_refinement_implementation_plan.md`
+  Narrow implementation plan for consolidating duplicated rotated/upright collapsed-grid refinement logic in the extractor.
 
 ## Supporting References
 

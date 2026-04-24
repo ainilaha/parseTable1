@@ -557,77 +557,48 @@ def _refine_explicit_table_candidate_grid(
         )
     )
 
-    if is_rotated and collapsed_explicit_grid:
-        clipped_rule_segments = [
-            segment
-            for segment in page_rule_segments
-            if max(float(segment[0]), float(segment[2])) >= bbox[0] - 2.0
-            and min(float(segment[0]), float(segment[2])) <= bbox[2] + 2.0
-            and max(float(segment[1]), float(segment[3])) >= bbox[1] - 2.0
-            and min(float(segment[1]), float(segment[3])) <= bbox[3] + 2.0
-        ]
-        transformed_words, transformed_chars, transformed_rule_segments, transformed_bbox = (
-            normalize_positioned_geometry_for_rotation(
+    if collapsed_explicit_grid:
+        working_words = clipped_words
+        working_chars = clipped_chars
+        working_horizontal_rules = horizontal_rules
+        working_refinement_source = "collapsed_explicit_grid_word_positions"
+        working_coordinate_frame = "page"
+        minimum_row_gain = 4
+        use_empty_table_cells = False
+
+        if is_rotated:
+            clipped_rule_segments = [
+                segment
+                for segment in page_rule_segments
+                if max(float(segment[0]), float(segment[2])) >= bbox[0] - 2.0
+                and min(float(segment[0]), float(segment[2])) <= bbox[2] + 2.0
+                and max(float(segment[1]), float(segment[3])) >= bbox[1] - 2.0
+                and min(float(segment[1]), float(segment[3])) <= bbox[3] + 2.0
+            ]
+            (
+                working_words,
+                working_chars,
+                transformed_rule_segments,
+                transformed_bbox,
+            ) = normalize_positioned_geometry_for_rotation(
                 words=clipped_words,
                 chars=clipped_chars,
                 rule_segments=clipped_rule_segments,
                 bbox=bbox,
                 rotation_direction=str(orientation_metadata.get("rotation_direction") or ""),
             )
-        )
-        refined_lines = build_word_lines(transformed_words)
-        transformed_horizontal_rules = detect_horizontal_rules(
-            transformed_rule_segments,
-            transformed_bbox,
-        )
-        if len(transformed_horizontal_rules) >= 3:
-            footer_boundary = sorted(transformed_horizontal_rules)[-1]
-            refined_lines = [
-                line
-                for line in refined_lines
-                if float(line["bottom"]) <= footer_boundary + 1.5
-            ]
-        refined_rows, transformed_cell_bboxes = build_row_grid_from_lines(
-            refined_lines,
-            page_chars=transformed_chars,
-        )
-        if refined_rows:
-            keep_indices = [
-                col_idx
-                for col_idx in range(len(refined_rows[0]))
-                if any(col_idx < len(row) and row[col_idx].strip() for row in refined_rows)
-            ]
-            if keep_indices:
-                refined_rows = [
-                    [row[col_idx] for col_idx in keep_indices]
-                    for row in refined_rows
-                ]
-                transformed_cell_bboxes = [
-                    [row[col_idx] for col_idx in keep_indices]
-                    for row in transformed_cell_bboxes
-                ]
-            if (
-                len(refined_rows) >= len(raw_rows) + 3
-                and max((len(row) for row in refined_rows), default=0)
-                > max((len(row) for row in raw_rows), default=0)
-            ):
-                return {
-                    "raw_rows": refined_rows,
-                    "table_cells": [],
-                    "refined_table_cells": transformed_cell_bboxes,
-                    "row_bounds": [
-                        (float(line["top"]), float(line["bottom"]))
-                        for line in refined_lines
-                    ],
-                    "horizontal_rules": transformed_horizontal_rules,
-                    "grid_refinement_source": "rotated_word_positions_with_rules",
-                    "geometry_coordinate_frame": "table_local_rotated_normalized",
-                }
+            working_horizontal_rules = detect_horizontal_rules(
+                transformed_rule_segments,
+                transformed_bbox,
+            )
+            working_refinement_source = "rotated_word_positions_with_rules"
+            working_coordinate_frame = "table_local_rotated_normalized"
+            minimum_row_gain = 3
+            use_empty_table_cells = True
 
-    if collapsed_explicit_grid:
-        refined_lines = build_word_lines(clipped_words)
-        if len(horizontal_rules) >= 3:
-            footer_boundary = sorted(horizontal_rules)[-1]
+        refined_lines = build_word_lines(working_words)
+        if len(working_horizontal_rules) >= 3:
+            footer_boundary = sorted(working_horizontal_rules)[-1]
             refined_lines = [
                 line
                 for line in refined_lines
@@ -635,7 +606,7 @@ def _refine_explicit_table_candidate_grid(
             ]
         refined_rows, refined_cell_bboxes = build_row_grid_from_lines(
             refined_lines,
-            page_chars=clipped_chars,
+            page_chars=working_chars,
         )
         if refined_rows:
             keep_indices = [
@@ -653,21 +624,21 @@ def _refine_explicit_table_candidate_grid(
                     for row in refined_cell_bboxes
                 ]
             if (
-                len(refined_rows) >= len(raw_rows) + 4
+                len(refined_rows) >= len(raw_rows) + minimum_row_gain
                 and max((len(row) for row in refined_rows), default=0)
                 > max((len(row) for row in raw_rows), default=0)
             ):
                 return {
                     "raw_rows": refined_rows,
-                    "table_cells": refined_cell_bboxes,
+                    "table_cells": [] if use_empty_table_cells else refined_cell_bboxes,
                     "refined_table_cells": refined_cell_bboxes,
                     "row_bounds": [
                         (float(line["top"]), float(line["bottom"]))
                         for line in refined_lines
                     ],
-                    "horizontal_rules": horizontal_rules,
-                    "grid_refinement_source": "collapsed_explicit_grid_word_positions",
-                    "geometry_coordinate_frame": "page",
+                    "horizontal_rules": working_horizontal_rules,
+                    "grid_refinement_source": working_refinement_source,
+                    "geometry_coordinate_frame": working_coordinate_frame,
                 }
 
     header_text = " ".join(
