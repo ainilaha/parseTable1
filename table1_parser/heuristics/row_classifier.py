@@ -26,6 +26,9 @@ CONTINUOUS_TEXT_CUE_PATTERN = re.compile(
 DECIMAL_SUMMARY_PATTERN = re.compile(
     r"^\s*[<>]?\d+\.\d+\s*(?:\(\s*[<>]?\d+(?:\.\d+)?(?:\s*[,/-]\s*[<>]?\d+(?:\.\d+)?)?\s*\))?\s*$"
 )
+INTERVAL_SUMMARY_PATTERN = re.compile(
+    r"^-?\d+(?:\.\d+)?\s*[\(\[]\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*[\)\]]$"
+)
 INTEGER_VALUE_PATTERN = re.compile(r"^\s*\d+\s*$")
 COUNT_LIKE_VALUE_PATTERN = re.compile(r"^\s*\d[\d,]*\s*$")
 
@@ -125,12 +128,18 @@ def classify_row(
         for col_idx in range(1, len(row_view.raw_cells))
         if clean_text(row_view.raw_cells[col_idx])
     }
+    non_statistic_col_indices = {
+        col_idx for col_idx in range(1, len(row_view.raw_cells)) if col_idx not in (statistic_col_indices or set())
+    }
     non_statistic_trailing_cells = [
         clean_text(row_view.raw_cells[col_idx])
         for col_idx in range(1, len(row_view.raw_cells))
         if clean_text(row_view.raw_cells[col_idx]) and col_idx not in (statistic_col_indices or set())
     ]
     has_only_statistic_values = bool(populated_trailing_col_indices) and bool(statistic_col_indices) and populated_trailing_col_indices.issubset(statistic_col_indices)
+    has_statistic_values = bool(populated_trailing_col_indices.intersection(statistic_col_indices or set()))
+    has_data_and_statistic_values = bool(non_statistic_trailing_cells) and has_statistic_values
+    all_non_statistic_columns_populated = bool(non_statistic_col_indices) and non_statistic_col_indices.issubset(populated_trailing_col_indices)
     next_is_level_like = bool(next_row_view and is_likely_level_row(next_row_view))
     categorical_parent_cue = _has_categorical_parent_cue(row_view)
     child_level_count = 0
@@ -188,6 +197,18 @@ def classify_row(
     ]
     count_pct_non_stat_count = sum(pattern == "count_pct" for pattern in non_statistic_trailing_patterns)
     p_value_non_stat_count = sum(pattern == "p_value" for pattern in non_statistic_trailing_patterns)
+    interval_non_stat_count = sum(
+        bool(INTERVAL_SUMMARY_PATTERN.fullmatch(cell)) for cell in non_statistic_trailing_cells
+    )
+    looks_like_interval_summary_row = (
+        row_view.has_trailing_values
+        and len(non_statistic_trailing_cells) >= 2
+        and all_non_statistic_columns_populated
+        and interval_non_stat_count == len(non_statistic_trailing_cells)
+        and has_data_and_statistic_values
+        and not categorical_parent_cue
+        and not is_common_level_label(label)
+    )
     looks_like_binary_variable_row = (
         row_view.has_trailing_values
         and len(non_statistic_trailing_cells) >= 2
@@ -212,6 +233,7 @@ def classify_row(
         row_view.has_trailing_values
         and not categorical_parent_cue
         and not strong_continuous_layout
+        and not has_data_and_statistic_values
         and not has_only_statistic_values
         and not looks_like_binary_variable_row
         and not _looks_scalar_count_row(
@@ -226,6 +248,13 @@ def classify_row(
         return RowClassification(
             row_idx=row_view.row_idx,
             classification="binary_variable_row",
+            confidence=0.9,
+        )
+
+    if looks_like_interval_summary_row:
+        return RowClassification(
+            row_idx=row_view.row_idx,
+            classification="continuous_variable_row",
             confidence=0.9,
         )
 
@@ -266,7 +295,12 @@ def classify_row(
             confidence=0.82,
         )
 
-    if is_common_level_label(label) and row_view.has_trailing_values and not has_only_statistic_values:
+    if (
+        is_common_level_label(label)
+        and row_view.has_trailing_values
+        and not has_only_statistic_values
+        and not has_data_and_statistic_values
+    ):
         return RowClassification(
             row_idx=row_view.row_idx,
             classification="level_row",

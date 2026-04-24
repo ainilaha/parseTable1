@@ -582,6 +582,55 @@ def test_smoking_levels_remain_categorical_not_binary_rows() -> None:
     assert blocks[0].level_row_indices == [2, 3, 4]
 
 
+def test_interval_rows_with_p_values_do_not_form_false_categorical_block() -> None:
+    """Top-level interval-summary rows with p-values should stay standalone, not parent-plus-level blocks."""
+    table = NormalizedTable(
+        table_id="tbl-interval-rows",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4, 5, 6],
+        row_views=[
+            _build_row(1, "Alcohol consumption", ["", "", "", "<0.001"], indent_level=0),
+            _build_row(2, "Binge drinking", ["1485 (58.0%)", "791 (38.1%)", "549 (23.9%)", ""], indent_level=4),
+            _build_row(3, "Non-binge drinking", ["1076 (42.0%)", "1285 (61.9%)", "1748 (76.1%)", ""], indent_level=4),
+            _build_row(4, "LDL-cholesterol (mg/dL)", ["112.0 [90.0, 138.0]", "111.0 [91.0, 132.0]", "112.0 [90.0, 137.0]", "0.584"]),
+            _build_row(5, "HDL-cholesterol (mg/dL)", ["49.0 [40.0, 60.0]", "54.0 [44.0, 65.0]", "53.0 [44.0, 65.0]", "<0.001"]),
+            _build_row(6, "Triglycerides (mg/dL)", ["119.0[76.5, 186.0]", "110.0 [75.0, 171.0]", "108.0 [72.0, 168.0]", "<0.001"]),
+        ],
+        n_rows=7,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Low", "Middle", "High", "P-value"],
+                ["Alcohol consumption", "", "", "", "<0.001"],
+                ["Binge drinking", "1485 (58.0%)", "791 (38.1%)", "549 (23.9%)", ""],
+                ["Non-binge drinking", "1076 (42.0%)", "1285 (61.9%)", "1748 (76.1%)", ""],
+                ["LDL-cholesterol (mg/dL)", "112.0 [90.0, 138.0]", "111.0 [91.0, 132.0]", "112.0 [90.0, 137.0]", "0.584"],
+                ["HDL-cholesterol (mg/dL)", "49.0 [40.0, 60.0]", "54.0 [44.0, 65.0]", "53.0 [44.0, 65.0]", "<0.001"],
+                ["Triglycerides (mg/dL)", "119.0[76.5, 186.0]", "110.0 [75.0, 171.0]", "108.0 [72.0, 168.0]", "<0.001"],
+            ]
+        },
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "continuous_variable_row"
+    assert classifications[5] == "continuous_variable_row"
+    assert classifications[6] == "continuous_variable_row"
+    assert len(blocks) == 4
+    assert blocks[0].variable_label == "Alcohol consumption"
+    assert blocks[0].level_row_indices == [2, 3]
+    assert blocks[1].variable_label == "LDL-cholesterol (mg/dL)"
+    assert blocks[1].variable_kind == "continuous"
+    assert blocks[2].variable_label == "HDL-cholesterol (mg/dL)"
+    assert blocks[2].variable_kind == "continuous"
+    assert blocks[3].variable_label == "Triglycerides (mg/dL)"
+    assert blocks[3].variable_kind == "continuous"
+
+
 def test_clear_indent_differences_mark_indentation_informative() -> None:
     """Repeated meaningful indent shifts should count as informative table-level structure."""
     table = NormalizedTable(
