@@ -190,6 +190,35 @@ def test_variable_and_level_names_use_different_normalization_rules() -> None:
     assert variables[1].levels[0].level_name == ">High school"
 
 
+def test_one_row_binary_summary_builds_binary_defined_variable() -> None:
+    """Standalone count-percent summary rows should map to binary variables."""
+    table = NormalizedTable(
+        table_id="tbl-binary-row",
+        header_rows=[0],
+        body_rows=[1, 2],
+        row_views=[
+            _build_row(1, "Healthy diet", ["172 (6.7%)", "1597 (76.9%)", "1540 (67.0%)", "<0.001"]),
+            _build_row(2, "Age, years", ["36.0 (12.0)", "44.0 (13.0)", "45.0 (14.0)", "<0.001"]),
+        ],
+        n_rows=3,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Low", "Middle", "High", "P-value"],
+                ["Healthy diet", "172 (6.7%)", "1597 (76.9%)", "1540 (67.0%)", "<0.001"],
+                ["Age, years", "36.0 (12.0)", "44.0 (13.0)", "45.0 (14.0)", "<0.001"],
+            ]
+        },
+    )
+
+    variables = build_defined_variables(table)
+
+    assert variables[0].variable_label == "Healthy diet"
+    assert variables[0].variable_type == "binary"
+    assert variables[0].summary_style_hint == "count_pct"
+    assert variables[0].levels == []
+
+
 def test_validate_table_definition_rejects_invalid_level_row() -> None:
     """Validation should reject row references that do not exist in the normalized table."""
     table = NormalizedTable(

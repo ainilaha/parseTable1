@@ -42,6 +42,8 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
         ]
         if block.variable_kind == "continuous":
             variable_type = "continuous"
+        elif block.variable_kind == "binary":
+            variable_type = "binary"
         elif levels:
             level_names = {
                 normalize_label_text(level.level_name).lower()

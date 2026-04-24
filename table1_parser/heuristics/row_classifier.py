@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from table1_parser.heuristics.column_role_detector import detect_column_roles
 from table1_parser.heuristics.level_detector import is_common_level_label, is_likely_level_row
 from table1_parser.heuristics.models import RowClassification
+from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.schemas import NormalizedTable, RowView
 from table1_parser.text_cleaning import clean_text
 
@@ -106,6 +107,9 @@ def classify_row(
     row_view: RowView,
     previous_classification: str | None = None,
     previous_row_view: RowView | None = None,
+    active_parent_row_view: RowView | None = None,
+    active_parent_level_count: int = 0,
+    active_parent_requires_indented_levels: bool = False,
     next_row_view: RowView | None = None,
     following_row_views: Sequence[RowView] | None = None,
     indentation_informative: bool = True,
@@ -121,6 +125,11 @@ def classify_row(
         for col_idx in range(1, len(row_view.raw_cells))
         if clean_text(row_view.raw_cells[col_idx])
     }
+    non_statistic_trailing_cells = [
+        clean_text(row_view.raw_cells[col_idx])
+        for col_idx in range(1, len(row_view.raw_cells))
+        if clean_text(row_view.raw_cells[col_idx]) and col_idx not in (statistic_col_indices or set())
+    ]
     has_only_statistic_values = bool(populated_trailing_col_indices) and bool(statistic_col_indices) and populated_trailing_col_indices.issubset(statistic_col_indices)
     next_is_level_like = bool(next_row_view and is_likely_level_row(next_row_view))
     categorical_parent_cue = _has_categorical_parent_cue(row_view)
@@ -174,11 +183,37 @@ def classify_row(
             and _summary_like_trailing_count(trailing_cells) >= max(1, len(trailing_cells) // 2 + 1)
         )
     )
+    non_statistic_trailing_patterns = [
+        detect_value_pattern(cell).pattern for cell in non_statistic_trailing_cells
+    ]
+    count_pct_non_stat_count = sum(pattern == "count_pct" for pattern in non_statistic_trailing_patterns)
+    p_value_non_stat_count = sum(pattern == "p_value" for pattern in non_statistic_trailing_patterns)
+    looks_like_binary_variable_row = (
+        row_view.has_trailing_values
+        and len(non_statistic_trailing_cells) >= 2
+        and count_pct_non_stat_count >= 2
+        and count_pct_non_stat_count + p_value_non_stat_count == len(non_statistic_trailing_patterns)
+        and not categorical_parent_cue
+        and not strong_continuous_layout
+        and not has_continuous_cue
+        and not has_only_statistic_values
+        and not is_common_level_label(label)
+        and (
+            active_parent_row_view is None
+            or (
+                indentation_informative
+                and active_parent_level_count >= 1
+                and active_parent_requires_indented_levels
+                and not _is_more_indented(row_view, active_parent_row_view)
+            )
+        )
+    )
     looks_like_level_continuation = (
         row_view.has_trailing_values
         and not categorical_parent_cue
         and not strong_continuous_layout
         and not has_only_statistic_values
+        and not looks_like_binary_variable_row
         and not _looks_scalar_count_row(
             row_view,
             child_level_count=child_level_count,
@@ -187,9 +222,22 @@ def classify_row(
         and not (sparse_trailing and child_level_count >= 2 and trailing_numeric > 0)
     )
 
+    if looks_like_binary_variable_row:
+        return RowClassification(
+            row_idx=row_view.row_idx,
+            classification="binary_variable_row",
+            confidence=0.9,
+        )
+
     if (
         previous_classification in {"variable_header", "level_row"}
         and looks_like_level_continuation
+        and not (
+            indentation_informative
+            and active_parent_requires_indented_levels
+            and active_parent_row_view is not None
+            and not _is_more_indented(row_view, active_parent_row_view)
+        )
     ):
         return RowClassification(
             row_idx=row_view.row_idx,
@@ -315,19 +363,40 @@ def classify_rows(table: NormalizedTable) -> list[RowClassification]:
     statistic_col_indices = {
         guess.col_idx for guess in detect_column_roles(table) if guess.role in {"p_value", "smd"}
     }
+    active_parent_row_view: RowView | None = None
+    active_parent_level_count = 0
+    active_parent_requires_indented_levels = False
     for index, row_view in enumerate(table.row_views):
         previous = classifications[-1].classification if classifications else None
         previous_row = table.row_views[index - 1] if index > 0 else None
         next_row = table.row_views[index + 1] if index + 1 < len(table.row_views) else None
-        classifications.append(
-            classify_row(
-                row_view,
-                previous_classification=previous,
-                previous_row_view=previous_row,
-                next_row_view=next_row,
-                following_row_views=table.row_views[index + 1 :],
-                indentation_informative=indentation_informative,
-                statistic_col_indices=statistic_col_indices,
-            )
+        classification = classify_row(
+            row_view,
+            previous_classification=previous,
+            previous_row_view=previous_row,
+            active_parent_row_view=active_parent_row_view,
+            active_parent_level_count=active_parent_level_count,
+            active_parent_requires_indented_levels=active_parent_requires_indented_levels,
+            next_row_view=next_row,
+            following_row_views=table.row_views[index + 1 :],
+            indentation_informative=indentation_informative,
+            statistic_col_indices=statistic_col_indices,
         )
+        classifications.append(classification)
+        if classification.classification == "variable_header":
+            active_parent_row_view = row_view
+            active_parent_level_count = 0
+            active_parent_requires_indented_levels = False
+        elif classification.classification == "level_row":
+            active_parent_level_count += 1
+            if (
+                indentation_informative
+                and active_parent_row_view is not None
+                and _is_more_indented(row_view, active_parent_row_view)
+            ):
+                active_parent_requires_indented_levels = True
+        else:
+            active_parent_row_view = None
+            active_parent_level_count = 0
+            active_parent_requires_indented_levels = False
     return classifications

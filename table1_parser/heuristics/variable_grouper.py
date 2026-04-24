@@ -64,14 +64,14 @@ def group_variable_blocks(
 
         row_view = row_views_by_idx[row_idx]
         classification = classifications_by_row.get(row_idx, "unknown")
-        if classification == "continuous_variable_row":
+        if classification in {"continuous_variable_row", "binary_variable_row"}:
             blocks.append(
                 VariableBlock(
                     variable_row_idx=row_idx,
                     row_start=row_idx,
                     row_end=row_idx,
                     variable_label=row_view.first_cell_raw,
-                    variable_kind="continuous",
+                    variable_kind="binary" if classification == "binary_variable_row" else "continuous",
                     level_row_indices=[],
                 )
             )

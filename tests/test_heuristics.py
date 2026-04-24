@@ -325,8 +325,9 @@ def test_gender_female_percent_row_becomes_one_row_summary_block() -> None:
     classifications = classify_rows(table)
     blocks = group_variable_blocks(table, classifications=classifications)
 
-    assert classifications[0].classification == "continuous_variable_row"
+    assert classifications[0].classification == "binary_variable_row"
     assert blocks[0].variable_label == "Gender = Female (%)"
+    assert blocks[0].variable_kind == "binary"
     assert blocks[0].row_start == blocks[0].row_end == 1
 
 
@@ -347,8 +348,9 @@ def test_female_percent_row_becomes_one_row_summary_block() -> None:
     classifications = classify_rows(table)
     blocks = group_variable_blocks(table, classifications=classifications)
 
-    assert classifications[0].classification == "continuous_variable_row"
+    assert classifications[0].classification == "binary_variable_row"
     assert blocks[0].variable_label == "Female (%)"
+    assert blocks[0].variable_kind == "binary"
     assert blocks[0].row_start == blocks[0].row_end == 1
 
 
@@ -469,6 +471,115 @@ def test_more_indented_following_rows_strengthen_parent_as_variable_header() -> 
     assert classifications[1].confidence >= 0.88
     assert classifications[2].classification == "level_row"
     assert classifications[3].classification == "level_row"
+
+
+def test_flush_left_row_does_not_continue_indented_level_block() -> None:
+    """Once a block starts with indented levels, a flush-left row should not continue it."""
+    table = NormalizedTable(
+        table_id="tbl-indent-boundary",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Ethnicity", [], indent_level=0),
+            _build_row(2, "White", ["220 (55.0)", "110 (56.0)"], indent_level=4),
+            _build_row(3, "Other", ["20 (10.0)", "6 (4.0)"], indent_level=4),
+            _build_row(4, "PIR", ["2.4 [1.2, 4.5]", "3.5 [1.7, 5.0]"], indent_level=0),
+        ],
+        n_rows=5,
+        n_cols=3,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] != "level_row"
+    assert len(blocks) == 1
+    assert blocks[0].level_row_indices == [2, 3]
+    assert blocks[0].row_end == 3
+
+
+def test_binary_rows_break_indented_categorical_block_and_form_standalone_blocks() -> None:
+    """Indented categorical levels should stop before later top-level count-percent summary rows."""
+    table = NormalizedTable(
+        table_id="tbl-binary-break",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4, 5],
+        row_views=[
+            _build_row(1, "Alcohol consumption", ["", "", "", "<0.001"], indent_level=0),
+            _build_row(2, "Binge drinking", ["1485 (58.0%)", "791 (38.1%)", "549 (23.9%)", ""], indent_level=4),
+            _build_row(3, "Non-binge drinking", ["1076 (42.0%)", "1285 (61.9%)", "1748 (76.1%)", ""], indent_level=4),
+            _build_row(4, "Healthy diet", ["172 (6.7%)", "1597 (76.9%)", "1540 (67.0%)", "<0.001"], indent_level=0),
+            _build_row(5, "Regular physical activity", ["1589 (62.0%)", "1364 (65.7%)", "1864 (81.1%)", "<0.001"], indent_level=0),
+        ],
+        n_rows=6,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Low", "Middle", "High", "P-value"],
+                ["Alcohol consumption", "", "", "", "<0.001"],
+                ["Binge drinking", "1485 (58.0%)", "791 (38.1%)", "549 (23.9%)", ""],
+                ["Non-binge drinking", "1076 (42.0%)", "1285 (61.9%)", "1748 (76.1%)", ""],
+                ["Healthy diet", "172 (6.7%)", "1597 (76.9%)", "1540 (67.0%)", "<0.001"],
+                ["Regular physical activity", "1589 (62.0%)", "1364 (65.7%)", "1864 (81.1%)", "<0.001"],
+            ]
+        },
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "binary_variable_row"
+    assert classifications[5] == "binary_variable_row"
+    assert len(blocks) == 3
+    assert blocks[0].variable_label == "Alcohol consumption"
+    assert blocks[0].level_row_indices == [2, 3]
+    assert blocks[1].variable_label == "Healthy diet"
+    assert blocks[1].variable_kind == "binary"
+    assert blocks[2].variable_label == "Regular physical activity"
+    assert blocks[2].variable_kind == "binary"
+
+
+def test_smoking_levels_remain_categorical_not_binary_rows() -> None:
+    """Canonical flush-left smoking levels should stay attached to their parent block."""
+    table = NormalizedTable(
+        table_id="tbl-smoking",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Smoking", ["", "", "", "<0.001"]),
+            _build_row(2, "Never", ["1281 (50.0%)", "1489 (71.7%)", "1755 (76.4%)", ""]),
+            _build_row(3, "Former", ["407 (15.9%)", "519 (25.0%)", "542 (23.6%)", ""]),
+            _build_row(4, "Current", ["873 (34.1%)", "68 (3.3%)", "0 (0%)", ""]),
+        ],
+        n_rows=5,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Low", "Middle", "High", "P-value"],
+                ["Smoking", "", "", "", "<0.001"],
+                ["Never", "1281 (50.0%)", "1489 (71.7%)", "1755 (76.4%)", ""],
+                ["Former", "407 (15.9%)", "519 (25.0%)", "542 (23.6%)", ""],
+                ["Current", "873 (34.1%)", "68 (3.3%)", "0 (0%)", ""],
+            ]
+        },
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "level_row"
+    assert len(blocks) == 1
+    assert blocks[0].variable_kind == "categorical"
+    assert blocks[0].level_row_indices == [2, 3, 4]
 
 
 def test_clear_indent_differences_mark_indentation_informative() -> None:

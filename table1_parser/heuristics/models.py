@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 RowClass = Literal[
     "variable_header",
     "level_row",
+    "binary_variable_row",
     "continuous_variable_row",
     "section_header",
     "unknown",
@@ -30,7 +31,7 @@ ValuePatternType = Literal[
     "n_only",
     "unknown",
 ]
-VariableKind = Literal["continuous", "categorical", "unknown"]
+VariableKind = Literal["continuous", "categorical", "binary", "unknown"]
 
 
 class RowClassification(BaseModel):
