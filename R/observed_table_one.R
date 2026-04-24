@@ -152,6 +152,18 @@ print.ObservedTableOne <- function(x, ...) {
   if (!is.null(grouping_label) && nzchar(grouping_label)) {
     cat(sprintf("grouping: %s\n", grouping_label))
   }
+  processing_status <- pt1_character_or_null(x$provenance$processing_status)
+  if (!is.null(processing_status) && nzchar(processing_status)) {
+    cat(sprintf("processing status: %s\n", processing_status))
+    failure_stage <- pt1_character_or_null(x$provenance$failure_stage)
+    failure_reason <- pt1_character_or_null(x$provenance$failure_reason)
+    if (!is.null(failure_stage) && nzchar(failure_stage)) {
+      cat(sprintf("failure_stage: %s\n", failure_stage))
+    }
+    if (!is.null(failure_reason) && nzchar(failure_reason)) {
+      cat(sprintf("failure_reason: %s\n", failure_reason))
+    }
+  }
   invisible(x)
 }
 
@@ -401,11 +413,14 @@ build_observed_table_one_from_paper_dir <- function(paper_dir, table_index = 0L)
   table_definitions_path <- file.path(paper_dir, "table_definitions.json")
   parsed_tables_path <- file.path(paper_dir, "parsed_tables.json")
   normalized_tables_path <- file.path(paper_dir, "normalized_tables.json")
+  processing_status_path <- file.path(paper_dir, "table_processing_status.json")
 
   table_definitions <- pt1_load_json_array(table_definitions_path)
   parsed_tables <- pt1_load_json_array(parsed_tables_path)
   normalized_tables <- pt1_read_optional_json(normalized_tables_path)
+  processing_status_payload <- pt1_read_optional_json(processing_status_path)
   normalized_table_list <- if (is.null(normalized_tables)) list() else pt1_unwrap_table_array(normalized_tables)
+  processing_status_list <- if (is.null(processing_status_payload)) list() else pt1_unwrap_table_array(processing_status_payload)
 
   table_definition <- pt1_pick_table_by_index(table_definitions, table_index)
   parsed_table <- pt1_pick_table_by_index(parsed_tables, table_index)
@@ -413,6 +428,21 @@ build_observed_table_one_from_paper_dir <- function(paper_dir, table_index = 0L)
     pt1_pick_table_by_index(normalized_table_list, table_index)
   } else {
     NULL
+  }
+  processing_status <- NULL
+  if (length(processing_status_list) > 0) {
+    matching_statuses <- Filter(
+      function(x) identical(
+        pt1_character_or_null(x$table_id) %||% "",
+        pt1_character_or_null(table_definition$table_id) %||% pt1_character_or_null(parsed_table$table_id) %||% ""
+      ),
+      processing_status_list
+    )
+    if (length(matching_statuses) > 0) {
+      processing_status <- matching_statuses[[1]]
+    } else if (length(processing_status_list) > as.integer(table_index)) {
+      processing_status <- pt1_pick_table_by_index(processing_status_list, table_index)
+    }
   }
 
   build_observed_table_one(
@@ -425,6 +455,10 @@ build_observed_table_one_from_paper_dir <- function(paper_dir, table_index = 0L)
       table_definition_source = table_definitions_path,
       parsed_table_source = parsed_tables_path,
       normalized_table_source = if (file.exists(normalized_tables_path)) normalized_tables_path else NULL,
+      processing_status_source = if (file.exists(processing_status_path)) processing_status_path else NULL,
+      processing_status = pt1_character_or_null(processing_status$status),
+      failure_stage = pt1_character_or_null(processing_status$failure_stage),
+      failure_reason = pt1_character_or_null(processing_status$failure_reason),
       builder_version = "0.1.0"
     )
   )

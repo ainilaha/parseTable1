@@ -27,6 +27,8 @@ paper_output_paths <- function(paper_dir) {
     extracted = file.path(paper_dir, "extracted_tables.json"),
     normalized = file.path(paper_dir, "normalized_tables.json"),
     deterministic = file.path(paper_dir, "table_definitions.json"),
+    parsed = file.path(paper_dir, "parsed_tables.json"),
+    processing_status = file.path(paper_dir, "table_processing_status.json"),
     llm = file.path(paper_dir, "table_definitions_llm.json"),
     llm_debug_dir = file.path(paper_dir, "llm_semantic_debug"),
     paper_markdown = file.path(paper_dir, "paper_markdown.md"),
@@ -60,6 +62,8 @@ load_paper_outputs <- function(paper_dir) {
     extracted_tables = read_json_file(paths$extracted),
     normalized_tables = read_json_file(paths$normalized),
     table_definitions = read_json_file(paths$deterministic),
+    parsed_tables = read_optional_json(paths$parsed),
+    table_processing_status = read_optional_json(paths$processing_status),
     table_definitions_llm = read_optional_json(paths$llm),
     paper_markdown = read_text_file(paths$paper_markdown),
     paper_sections = read_json_file(paths$paper_sections),
@@ -224,6 +228,15 @@ normalized_table_by_index <- function(outputs, table_index = 0L) {
   table
 }
 
+parsed_table_by_index <- function(outputs, table_index = 0L) {
+  idx <- as.integer(table_index) + 1L
+  table <- (outputs$parsed_tables %||% list())[[idx]]
+  if (is.null(table)) {
+    stop(sprintf("No parsed table found for table_index=%s.", table_index), call. = FALSE)
+  }
+  table
+}
+
 list_llm_semantic_debug_runs <- function(paper_dir) {
   debug_root <- paper_output_paths(paper_dir)$llm_debug_dir
   if (!dir.exists(debug_root)) {
@@ -280,6 +293,43 @@ table_definitions_by_index <- function(outputs, table_index = 0L) {
   list(deterministic = deterministic, llm = llm)
 }
 
+table_processing_status_by_index <- function(outputs, table_index = 0L, table_id = NULL) {
+  statuses <- outputs$table_processing_status %||% list()
+  if (length(statuses) == 0) {
+    return(NULL)
+  }
+
+  resolved_table_id <- as.character(table_id %||% "")
+  if (!nzchar(resolved_table_id)) {
+    idx <- as.integer(table_index) + 1L
+    deterministic <- (outputs$table_definitions %||% list())[[idx]] %||% NULL
+    normalized <- (outputs$normalized_tables %||% list())[[idx]] %||% NULL
+    parsed <- (outputs$parsed_tables %||% list())[[idx]] %||% NULL
+    resolved_table_id <- as.character(
+      deterministic$table_id %||%
+      normalized$table_id %||%
+      parsed$table_id %||%
+      ""
+    )
+  }
+
+  if (nzchar(resolved_table_id)) {
+    matching_statuses <- Filter(
+      function(x) identical(as.character(x$table_id %||% ""), resolved_table_id),
+      statuses
+    )
+    if (length(matching_statuses) > 0) {
+      return(matching_statuses[[1]])
+    }
+  }
+
+  idx <- as.integer(table_index) + 1L
+  if (length(statuses) >= idx) {
+    return(statuses[[idx]] %||% NULL)
+  }
+  NULL
+}
+
 table_definition_variant_by_index <- function(outputs, table_index = 0L, variant = c("deterministic", "llm")) {
   variant <- match.arg(variant)
   definitions <- table_definitions_by_index(outputs, table_index)
@@ -291,6 +341,163 @@ table_definition_variant_by_index <- function(outputs, table_index = 0L, variant
     )
   }
   definition
+}
+
+summarize_table_processing <- function(paper_dir) {
+  outputs <- load_paper_outputs(paper_dir)
+  table_count <- max(
+    length(outputs$extracted_tables %||% list()),
+    length(outputs$normalized_tables %||% list()),
+    length(outputs$table_definitions %||% list()),
+    length(outputs$parsed_tables %||% list())
+  )
+
+  rows <- lapply(seq_len(table_count), function(index) {
+    table_index <- index - 1L
+    extracted <- outputs$extracted_tables[[index]] %||% NULL
+    normalized <- outputs$normalized_tables[[index]] %||% NULL
+    definition <- outputs$table_definitions[[index]] %||% NULL
+    parsed <- outputs$parsed_tables[[index]] %||% NULL
+    table_id <- as.character(
+      definition$table_id %||%
+      normalized$table_id %||%
+      parsed$table_id %||%
+      extracted$table_id %||%
+      ""
+    )
+    status_record <- table_processing_status_by_index(outputs, table_index = table_index, table_id = table_id)
+    columns <- definition$column_definition$columns %||% definition$columns %||% list()
+    attempts <- status_record$attempts %||% list()
+    data.frame(
+      table_index = as.integer(table_index),
+      table_id = table_id,
+      title = as.character(
+        definition$title %||%
+        normalized$title %||%
+        parsed$title %||%
+        extracted$title %||%
+        ""
+      ),
+      status = as.character(status_record$status %||% NA_character_),
+      failure_stage = as.character(status_record$failure_stage %||% NA_character_),
+      failure_reason = as.character(status_record$failure_reason %||% NA_character_),
+      attempt_count = as.integer(length(attempts)),
+      successful_attempt_count = as.integer(
+        sum(vapply(attempts, function(attempt) isTRUE(attempt$succeeded %||% FALSE), logical(1)))
+      ),
+      variable_count = as.integer(length(definition$variables %||% list())),
+      usable_column_count = as.integer(
+        sum(vapply(
+          columns,
+          function(column) !identical(as.character(column$inferred_role %||% "unknown"), "unknown"),
+          logical(1)
+        ))
+      ),
+      value_count = as.integer(length(parsed$values %||% list())),
+      table_family = as.character(NA_character_),
+      grid_refinement_source = as.character(extracted$metadata$grid_refinement_source %||% NA_character_),
+      stringsAsFactors = FALSE
+    )
+  })
+
+  summary_df <- if (length(rows) == 0) {
+    data.frame(
+      table_index = integer(),
+      table_id = character(),
+      title = character(),
+      status = character(),
+      failure_stage = character(),
+      failure_reason = character(),
+      attempt_count = integer(),
+      successful_attempt_count = integer(),
+      variable_count = integer(),
+      usable_column_count = integer(),
+      value_count = integer(),
+      table_family = character(),
+      grid_refinement_source = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    do.call(rbind, rows)
+  }
+
+  cat(sprintf("Table processing summary for %s\n\n", outputs$paper_dir))
+  if (nrow(summary_df) == 0) {
+    cat("[No rows]\n")
+    return(invisible(summary_df))
+  }
+  print(summary_df, row.names = FALSE, right = FALSE)
+  invisible(summary_df)
+}
+
+show_table_processing <- function(paper_dir, table_index = 0L) {
+  outputs <- load_paper_outputs(paper_dir)
+  normalized <- normalized_table_by_index(outputs, table_index)
+  definition <- table_definition_variant_by_index(outputs, table_index, variant = "deterministic")
+  parsed <- parsed_table_by_index(outputs, table_index)
+  status_record <- table_processing_status_by_index(
+    outputs,
+    table_index = table_index,
+    table_id = as.character(definition$table_id %||% normalized$table_id %||% parsed$table_id %||% "")
+  )
+
+  cat(sprintf("Table processing for table_index=%s\n", as.integer(table_index)))
+  cat(sprintf("table_id: %s\n", definition$table_id %||% normalized$table_id %||% parsed$table_id %||% ""))
+  if (!is.null(definition$title) && nzchar(definition$title)) {
+    cat(sprintf("title: %s\n", definition$title))
+  }
+  if (!is.null(definition$caption) && nzchar(definition$caption) && !identical(definition$caption, definition$title)) {
+    cat(sprintf("caption: %s\n", definition$caption))
+  }
+
+  if (is.null(status_record)) {
+    cat("\n[No table_processing_status record found]\n")
+    return(invisible(NULL))
+  }
+
+  columns <- definition$column_definition$columns %||% definition$columns %||% list()
+  usable_column_count <- sum(vapply(
+    columns,
+    function(column) !identical(as.character(column$inferred_role %||% "unknown"), "unknown"),
+    logical(1)
+  ))
+  cat(sprintf("status: %s\n", status_record$status %||% ""))
+  if (!is.null(status_record$failure_stage) && nzchar(status_record$failure_stage)) {
+    cat(sprintf("failure_stage: %s\n", status_record$failure_stage))
+  }
+  if (!is.null(status_record$failure_reason) && nzchar(status_record$failure_reason)) {
+    cat(sprintf("failure_reason: %s\n", status_record$failure_reason))
+  }
+  notes <- as.character(unlist(status_record$notes %||% list(), use.names = FALSE))
+  if (length(notes) > 0) {
+    cat(sprintf("notes: %s\n", paste(notes, collapse = " | ")))
+  }
+  cat(sprintf("variable_count: %d\n", length(definition$variables %||% list())))
+  cat(sprintf("usable_column_count: %d\n", usable_column_count))
+  cat(sprintf("value_count: %d\n\n", length(parsed$values %||% list())))
+
+  attempts <- status_record$attempts %||% list()
+  cat("Attempts\n")
+  if (length(attempts) == 0) {
+    cat("[No rows]\n")
+    return(invisible(status_record))
+  }
+  attempts_df <- do.call(
+    rbind,
+    lapply(attempts, function(attempt) {
+      data.frame(
+        stage = as.character(attempt$stage %||% ""),
+        name = as.character(attempt$name %||% ""),
+        considered = as.logical(attempt$considered %||% FALSE),
+        ran = as.logical(attempt$ran %||% FALSE),
+        succeeded = as.logical(attempt$succeeded %||% FALSE),
+        note = as.character(attempt$note %||% ""),
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+  print(attempts_df, row.names = FALSE, right = FALSE)
+  invisible(status_record)
 }
 
 normalize_variable_rows <- function(variables, source) {
@@ -395,6 +602,11 @@ show_table_structure <- function(
   outputs <- load_paper_outputs(paper_dir)
   normalized <- normalized_table_by_index(outputs, table_index)
   definition <- table_definition_variant_by_index(outputs, table_index, variant = variant)
+  status_record <- table_processing_status_by_index(
+    outputs,
+    table_index = table_index,
+    table_id = as.character(definition$table_id %||% normalized$table_id %||% "")
+  )
 
   cleaned_rows <- normalized$metadata$cleaned_rows %||% list()
   if (!is.null(max_rows)) {
@@ -411,6 +623,16 @@ show_table_structure <- function(
     cat(sprintf("caption: %s\n", definition$caption))
   }
   cat(sprintf("definition variant: %s\n\n", variant))
+  if (!is.null(status_record)) {
+    cat(sprintf("processing status: %s\n", status_record$status %||% ""))
+    if (!is.null(status_record$failure_stage) && nzchar(status_record$failure_stage)) {
+      cat(sprintf("failure_stage: %s\n", status_record$failure_stage))
+    }
+    if (!is.null(status_record$failure_reason) && nzchar(status_record$failure_reason)) {
+      cat(sprintf("failure_reason: %s\n", status_record$failure_reason))
+    }
+    cat("\n")
+  }
 
   cat("Rows\n")
   if (length(cleaned_rows) == 0) {

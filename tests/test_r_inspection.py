@@ -11,6 +11,142 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 R_SCRIPT = REPO_ROOT / "R" / "inspect_paper_outputs.R"
 R_COMPARE_SCRIPT = REPO_ROOT / "R" / "compare_normalized_rows_to_definition.R"
+R_JSON_IO_SCRIPT = REPO_ROOT / "R" / "pt1_json_io.R"
+R_OBSERVED_SCRIPT = REPO_ROOT / "R" / "observed_table_one.R"
+
+
+def _write_json(path: Path, payload: object) -> None:
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _make_variable(
+    variable_name: str,
+    variable_label: str,
+    variable_type: str,
+    row_start: int,
+    row_end: int,
+    *,
+    levels: list[dict[str, object]] | None = None,
+    confidence: float = 0.9,
+) -> dict[str, object]:
+    return {
+        "variable_name": variable_name,
+        "variable_label": variable_label,
+        "variable_type": variable_type,
+        "row_start": row_start,
+        "row_end": row_end,
+        "levels": levels or [],
+        "confidence": confidence,
+    }
+
+
+def _make_column(
+    col_idx: int,
+    column_name: str,
+    column_label: str,
+    inferred_role: str,
+    *,
+    confidence: float = 0.9,
+    grouping_variable_hint: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "col_idx": col_idx,
+        "column_name": column_name,
+        "column_label": column_label,
+        "inferred_role": inferred_role,
+        "confidence": confidence,
+    }
+    if grouping_variable_hint is not None:
+        payload["grouping_variable_hint"] = grouping_variable_hint
+    return payload
+
+
+def _make_value(
+    row_idx: int,
+    col_idx: int,
+    variable_name: str,
+    column_name: str,
+    raw_value: str,
+    value_type: str,
+    parsed_numeric: float,
+    *,
+    level_label: str | None = None,
+    parsed_secondary_numeric: float | None = None,
+    confidence: float = 0.9,
+) -> dict[str, object]:
+    return {
+        "row_idx": row_idx,
+        "col_idx": col_idx,
+        "variable_name": variable_name,
+        "level_label": level_label,
+        "column_name": column_name,
+        "raw_value": raw_value,
+        "value_type": value_type,
+        "parsed_numeric": parsed_numeric,
+        "parsed_secondary_numeric": parsed_secondary_numeric,
+        "confidence": confidence,
+    }
+
+
+def _make_parsed_table(
+    table_id: str,
+    title: str,
+    caption: str,
+    *,
+    variables: list[dict[str, object]] | None = None,
+    columns: list[dict[str, object]] | None = None,
+    values: list[dict[str, object]] | None = None,
+    notes: list[str] | None = None,
+    overall_confidence: float = 0.9,
+) -> dict[str, object]:
+    return {
+        "table_id": table_id,
+        "title": title,
+        "caption": caption,
+        "variables": variables or [],
+        "columns": columns or [],
+        "values": values or [],
+        "notes": notes or [],
+        "overall_confidence": overall_confidence,
+    }
+
+
+def _make_processing_attempt(
+    stage: str,
+    name: str,
+    *,
+    considered: bool,
+    ran: bool,
+    succeeded: bool,
+    note: str | None = None,
+) -> dict[str, object]:
+    return {
+        "stage": stage,
+        "name": name,
+        "considered": considered,
+        "ran": ran,
+        "succeeded": succeeded,
+        "note": note,
+    }
+
+
+def _make_processing_status(
+    table_id: str,
+    *,
+    status: str,
+    failure_stage: str | None = None,
+    failure_reason: str | None = None,
+    attempts: list[dict[str, object]] | None = None,
+    notes: list[str] | None = None,
+) -> dict[str, object]:
+    return {
+        "table_id": table_id,
+        "status": status,
+        "failure_stage": failure_stage,
+        "failure_reason": failure_reason,
+        "attempts": attempts or [],
+        "notes": notes or [],
+    }
 
 
 def _r_dependencies_available() -> bool:
@@ -26,7 +162,12 @@ def _r_dependencies_available() -> bool:
     return result.returncode == 0
 
 
-def _write_sample_paper_outputs(paper_dir: Path, *, include_llm: bool) -> None:
+def _write_sample_paper_outputs(
+    paper_dir: Path,
+    *,
+    include_llm: bool,
+    include_processing_status: bool = True,
+) -> None:
     context_dir = paper_dir / "table_contexts"
     context_dir.mkdir(parents=True)
 
@@ -43,6 +184,7 @@ def _write_sample_paper_outputs(paper_dir: Path, *, include_llm: bool) -> None:
                     "n_cols": 3,
                     "cells": [],
                     "extraction_backend": "pymupdf4llm",
+                    "metadata": {"grid_refinement_source": "collapsed_explicit_grid_word_positions"},
                 }
             ],
             indent=2,
@@ -116,6 +258,64 @@ def _write_sample_paper_outputs(paper_dir: Path, *, include_llm: bool) -> None:
         ),
         encoding="utf-8",
     )
+    _write_json(
+        paper_dir / "parsed_tables.json",
+        [
+            _make_parsed_table(
+                "tbl-1",
+                "Table 1",
+                "Baseline characteristics by DKD status",
+                variables=[
+                    _make_variable("Age years", "Age, years", "continuous", 1, 1),
+                ],
+                columns=[
+                    _make_column(1, "Overall", "Overall", "overall"),
+                    _make_column(2, "DKD", "DKD", "group"),
+                ],
+                values=[
+                    _make_value(1, 1, "Age years", "Overall", "52.1", "continuous_summary", 52.1),
+                    _make_value(1, 2, "Age years", "DKD", "49.9", "continuous_summary", 49.9),
+                ],
+            )
+        ],
+    )
+    if include_processing_status:
+        _write_json(
+            paper_dir / "table_processing_status.json",
+            [
+                _make_processing_status(
+                    "tbl-1",
+                    status="ok",
+                    attempts=[
+                        _make_processing_attempt(
+                            "extraction",
+                            "explicit_grid_refinement",
+                            considered=True,
+                            ran=True,
+                            succeeded=True,
+                            note="collapsed_explicit_grid_word_positions",
+                        ),
+                        _make_processing_attempt(
+                            "table_definition",
+                            "deterministic_definition",
+                            considered=True,
+                            ran=True,
+                            succeeded=True,
+                            note="variables=1, usable_columns=2",
+                        ),
+                        _make_processing_attempt(
+                            "parsed_table",
+                            "deterministic_value_parse",
+                            considered=True,
+                            ran=True,
+                            succeeded=True,
+                            note="values=2",
+                        ),
+                    ],
+                    notes=["descriptive_table_candidate", "table_1_candidate"],
+                )
+            ],
+        )
     if include_llm:
         (paper_dir / "table_definitions_llm.json").write_text(
             json.dumps(
@@ -377,6 +577,155 @@ def test_r_inspection_loads_and_shows_paper_variable_inventory(tmp_path) -> None
     assert "Paper variable candidates" in result.stdout
     assert "Age, years" in result.stdout
     assert "DKD status" in result.stdout
+
+
+def test_r_inspection_loads_processing_status_and_summarizes_tables(tmp_path) -> None:
+    """The R helper should load parsed/status artifacts and summarize one table's processing outcome."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "status" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_llm=False, include_processing_status=True)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'x <- load_paper_outputs("{paper_dir}"); '
+                'cat(length(x$parsed_tables), "\\n"); '
+                'cat(length(x$table_processing_status), "\\n"); '
+                f'summarize_table_processing("{paper_dir}")'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Table processing summary" in result.stdout
+    assert "successful_attempt_count" in result.stdout
+    assert "grid_refinement_source" in result.stdout
+    assert "collapsed_explicit_grid_word_positions" in result.stdout
+    assert "ok" in result.stdout
+
+
+def test_r_inspection_shows_failed_table_processing_and_structure_header(tmp_path) -> None:
+    """The R helper should surface failure status both in the detail view and the structure header."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "failed" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_llm=False, include_processing_status=True)
+    (paper_dir / "table_definitions.json").write_text(
+        json.dumps(
+            [
+                {
+                    "table_id": "tbl-1",
+                    "title": "Table 1",
+                    "caption": "Baseline characteristics by DKD status",
+                    "variables": [],
+                    "column_definition": {"columns": [], "confidence": 0.4},
+                    "notes": ["parse_failed:no_variables_for_descriptive_table"],
+                    "overall_confidence": 0.4,
+                }
+            ],
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    _write_json(
+        paper_dir / "parsed_tables.json",
+        [
+            _make_parsed_table(
+                "tbl-1",
+                "Table 1",
+                "Baseline characteristics by DKD status",
+                notes=["parse_failed:no_variables_for_descriptive_table"],
+                overall_confidence=0.2,
+            )
+        ],
+    )
+    _write_json(
+        paper_dir / "table_processing_status.json",
+        [
+            _make_processing_status(
+                "tbl-1",
+                status="failed",
+                failure_stage="table_definition",
+                failure_reason="no_variables_for_descriptive_table",
+                attempts=[
+                    _make_processing_attempt(
+                        "table_definition",
+                        "deterministic_definition",
+                        considered=True,
+                        ran=True,
+                        succeeded=False,
+                        note="variables=0, usable_columns=0",
+                    )
+                ],
+                notes=["descriptive_table_candidate", "parse_failed:no_variables_for_descriptive_table"],
+            )
+        ],
+    )
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'show_table_processing("{paper_dir}", table_index = 0L); '
+                f'show_table_structure("{paper_dir}", table_index = 0L)'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "status: failed" in result.stdout
+    assert "failure_stage: table_definition" in result.stdout
+    assert "failure_reason: no_variables_for_descriptive_table" in result.stdout
+    assert "processing status: failed" in result.stdout
+    assert "[No variables]" in result.stdout
+
+
+def test_r_inspection_loads_without_processing_status(tmp_path) -> None:
+    """Older paper dirs without table_processing_status.json should still load and inspect cleanly."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "legacy" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_llm=False, include_processing_status=False)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'x <- load_paper_outputs("{paper_dir}"); '
+                'cat(is.null(x$table_processing_status), "\\n"); '
+                f'show_table_processing("{paper_dir}", table_index = 0L); '
+                f'summarize_table_processing("{paper_dir}")'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "TRUE" in result.stdout
+    assert "[No table_processing_status record found]" in result.stdout
+    assert "Table processing summary" in result.stdout
 
 
 def test_r_inspection_helper_compares_two_runs_at_table_definition_stage(tmp_path) -> None:
@@ -850,3 +1199,49 @@ def test_r_inspection_summarizes_llm_semantic_debug_run(tmp_path) -> None:
     assert "gpt-4.1-mini" in result.stdout
     assert "success" in result.stdout
     assert "skipped_not_eligible" in result.stdout
+
+
+def test_r_observed_table_one_from_paper_dir_includes_processing_status_provenance(tmp_path) -> None:
+    """The observed-table helper should carry processing status into provenance and print failed status."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "observed" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_llm=False, include_processing_status=True)
+    _write_json(
+        paper_dir / "table_processing_status.json",
+        [
+            _make_processing_status(
+                "tbl-1",
+                status="failed",
+                failure_stage="parsed_table",
+                failure_reason="no_values_after_parse",
+                notes=["parse_failed:no_values_after_parse"],
+            )
+        ],
+    )
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_JSON_IO_SCRIPT}"); '
+                f'source("{R_OBSERVED_SCRIPT}"); '
+                f'x <- build_observed_table_one_from_paper_dir("{paper_dir}", table_index = 0L); '
+                'print(x); '
+                'cat(x$provenance$processing_status, "\\n"); '
+                'cat(x$provenance$failure_stage, "\\n"); '
+                'cat(x$provenance$failure_reason, "\\n")'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "processing status: failed" in result.stdout
+    assert "failure_stage: parsed_table" in result.stdout
+    assert "failure_reason: no_values_after_parse" in result.stdout

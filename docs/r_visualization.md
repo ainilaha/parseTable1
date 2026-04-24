@@ -45,6 +45,8 @@ The paper-output inspection helper is for comparing deterministic and row-focuse
 Public functions:
 
 - `load_paper_outputs(paper_dir)`
+- `summarize_table_processing(paper_dir)`
+- `show_table_processing(paper_dir, table_index = 0L)`
 - `show_paper_variable_mentions(paper_dir, role_hint = NULL, source_type = NULL, mention_role = NULL)`
 - `show_paper_variable_candidates(paper_dir, min_priority = NULL)`
 - `show_table_structure(paper_dir, table_index = 0L, variant = "deterministic", max_rows = NULL)`
@@ -65,6 +67,8 @@ From the repo root:
 source("R/inspect_paper_outputs.R")
 
 x <- load_paper_outputs("outputs/papers/cobaltpaper")
+summarize_table_processing("outputs/papers/cobaltpaper")
+show_table_processing("outputs/papers/cobaltpaper", table_index = 0L)
 show_paper_variable_candidates("outputs/papers/cobaltpaper")
 show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based", mention_role = "variable")
 show_table_structure("outputs/papers/cobaltpaper", table_index = 1L)
@@ -86,6 +90,10 @@ show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 
 What these are for:
 
+- `summarize_table_processing(...)`
+  print one compact row per table with status, failure stage, rescue-attempt counts, and core structure/value counts
+- `show_table_processing(...)`
+  print one table's overall processing status, failure reason, notes, and the per-attempt rescue table from `table_processing_status.json`
 - `show_paper_variable_mentions(...)`
   print the raw mention-level evidence records from `paper_variable_inventory.json`, including `mention_role` and `canonical_label`
 - `show_paper_variable_candidates(...)`
@@ -104,6 +112,11 @@ What these are for:
   inspect the retrieved passages for one table
 - `show_llm_evidence(...)`
   print a note that the current Part A row-semantic output does not yet include document-evidence passage IDs
+
+`load_paper_outputs(...)` now also includes:
+
+- `parsed_tables`
+- `table_processing_status`
 
 Current limitation:
 

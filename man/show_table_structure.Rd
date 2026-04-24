@@ -3,7 +3,9 @@
 \title{Show rows, columns, and semantic table definition for one table}
 \description{
 Prints the normalized rows, semantic columns, and variable definitions for one
-table in a saved paper output directory.
+table in a saved paper output directory. When available, the header also shows
+the processing status and terminal failure information from
+\code{table_processing_status.json}.
 }
 \usage{
 show_table_structure(
