@@ -74,6 +74,35 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
             dropped_trailing_cols = 0
         raw_rows = [row[:-dropped_trailing_cols] for row in rows_after_leading] if dropped_trailing_cols else rows_after_leading
     cleaned_rows = [[clean_text(cell) for cell in row] for row in raw_rows]
+    merged_split_label_columns: list[dict[str, int]] = []
+    if raw_rows and len(raw_rows[0]) >= 3:
+        candidate_split_label_rows = [
+            row_idx
+            for row_idx, row in enumerate(cleaned_rows)
+            if _looks_like_label_cell(row[0])
+            and (
+                _looks_like_label_cell(row[1])
+                or COUNT_PCT_STYLE_PATTERN.search(row[1]) is not None
+                or row[1] == "(%)"
+            )
+            and any(clean_text(cell) for cell in row[2:])
+        ]
+        second_column_value_like_count = sum(
+            detect_value_pattern(cleaned_rows[row_idx][1]).pattern != "unknown"
+            or any(char.isdigit() for char in cleaned_rows[row_idx][1])
+            for row_idx in candidate_split_label_rows
+        )
+        if len(candidate_split_label_rows) >= 3 and second_column_value_like_count <= max(1, len(candidate_split_label_rows) // 4):
+            merged_row_count = 0
+            for row_idx in candidate_split_label_rows:
+                raw_rows[row_idx][0] = f"{raw_rows[row_idx][0]} {raw_rows[row_idx][1]}".strip()
+                cleaned_rows[row_idx][0] = clean_text(f"{cleaned_rows[row_idx][0]} {cleaned_rows[row_idx][1]}")
+                raw_rows[row_idx][1] = ""
+                cleaned_rows[row_idx][1] = ""
+                merged_row_count += 1
+            merged_split_label_columns.append(
+                {"from_col_idx": 1, "to_col_idx": 0, "merged_row_count": merged_row_count}
+            )
     raw_bounds = table.metadata.get("row_bounds")
     if isinstance(raw_bounds, list) and len(raw_bounds) == table.n_rows:
         row_bounds: list[tuple[float, float]] | None = []
@@ -205,6 +234,7 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
         "dropped_trailing_cols": dropped_trailing_cols,
         "column_repairs": {
             "merged_columns": merged_columns,
+            "merged_split_label_columns": merged_split_label_columns,
             "dropped_empty_columns_after_repair": dropped_repaired_cols,
         },
         "header_detection": header_detection,

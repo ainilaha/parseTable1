@@ -309,6 +309,63 @@ def test_extracted_table_to_normalized_table_conversion() -> None:
     assert normalized.metadata["extraction_backend"] == "pymupdf4llm"
 
 
+def test_normalization_repairs_split_left_label_columns() -> None:
+    """Split left-side label fragments should be merged before RowView construction."""
+    extracted = ExtractedTable(
+        table_id="tbl-split-labels",
+        source_pdf="paper.pdf",
+        page_num=1,
+        n_rows=7,
+        n_cols=5,
+        cells=[
+            TableCell(row_idx=0, col_idx=0, text="Characteristic"),
+            TableCell(row_idx=0, col_idx=2, text="Overall"),
+            TableCell(row_idx=0, col_idx=3, text="PAD"),
+            TableCell(row_idx=0, col_idx=4, text="P-value"),
+            TableCell(row_idx=1, col_idx=2, text="(n = 8636)"),
+            TableCell(row_idx=1, col_idx=3, text="(n = 618)"),
+            TableCell(row_idx=2, col_idx=0, text="Race, n"),
+            TableCell(row_idx=2, col_idx=1, text="(%)"),
+            TableCell(row_idx=2, col_idx=4, text="<0.001"),
+            TableCell(row_idx=3, col_idx=0, text="Mexican"),
+            TableCell(row_idx=3, col_idx=1, text="American"),
+            TableCell(row_idx=3, col_idx=2, text="1852 (21.22%)"),
+            TableCell(row_idx=3, col_idx=3, text="98 (15.86%)"),
+            TableCell(row_idx=4, col_idx=0, text="Other"),
+            TableCell(row_idx=4, col_idx=1, text="Hispanic"),
+            TableCell(row_idx=4, col_idx=2, text="339 (3.88%)"),
+            TableCell(row_idx=4, col_idx=3, text="15 (2.43%)"),
+            TableCell(row_idx=5, col_idx=0, text="Non-Hispanic"),
+            TableCell(row_idx=5, col_idx=1, text="White"),
+            TableCell(row_idx=5, col_idx=2, text="4689 (53.74%)"),
+            TableCell(row_idx=5, col_idx=3, text="353 (57.12%)"),
+            TableCell(row_idx=6, col_idx=0, text="Non-Hispanic"),
+            TableCell(row_idx=6, col_idx=1, text="Black"),
+            TableCell(row_idx=6, col_idx=2, text="1578 (18.08%)"),
+            TableCell(row_idx=6, col_idx=3, text="138 (22.33%)"),
+        ],
+        extraction_backend="pymupdf4llm",
+    )
+
+    normalized = normalize_extracted_table(extracted)
+
+    assert normalized.metadata["cleaned_rows"][2][0] == "Race, n (%)"
+    assert normalized.metadata["cleaned_rows"][3][0] == "Mexican American"
+    assert normalized.metadata["cleaned_rows"][4][0] == "Other Hispanic"
+    assert normalized.metadata["cleaned_rows"][5][0] == "Non-Hispanic White"
+    assert normalized.metadata["cleaned_rows"][6][0] == "Non-Hispanic Black"
+    assert [row_view.first_cell_raw for row_view in normalized.row_views] == [
+        "Race, n (%)",
+        "Mexican American",
+        "Other Hispanic",
+        "Non-Hispanic White",
+        "Non-Hispanic Black",
+    ]
+    assert normalized.metadata["column_repairs"]["merged_split_label_columns"] == [
+        {"from_col_idx": 1, "to_col_idx": 0, "merged_row_count": 5}
+    ]
+
+
 def test_normalization_preserves_table_orientation_metadata() -> None:
     """Normalization should preserve extraction metadata about table orientation."""
     extracted = ExtractedTable(

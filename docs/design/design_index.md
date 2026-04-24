@@ -30,6 +30,9 @@ Then use the documents below as needed.
 - `docs/design/categorical_block_state_scope.md`
   Narrow scope for stateful categorical-block tracking and standalone one-row-binary detection in deterministic row classification.
 
+- `docs/design/split_label_column_repair_design_spec.md`
+  Normalization-stage design for merging left-side row-label fragments that were split into two adjacent columns.
+
 - `docs/design/value_parsing_spec.md`
   Planned symbol canonicalization and Table 1 `n (%)` parsing heuristics for the later value-parsing path.
 
@@ -64,6 +67,9 @@ Then use the documents below as needed.
 
 - `docs/implementation/categorical_block_state_implementation_spec.md`
   Focused implementation steps for categorical-block state and standalone one-row-binary detection in deterministic heuristics.
+
+- `docs/implementation/split_label_column_repair_implementation_spec.md`
+  Focused implementation steps for merging split left-side label columns during normalization.
 
 ## Supporting References
 
