@@ -10,6 +10,7 @@ Goal:
 Domain expectations:
 - these variables usually come from epidemiology or clinical descriptive tables, for example age, sex, race/ethnicity, smoking, BMI, comorbidity history, medication use, socioeconomic measures, lab values, disease status, enrollment strata, and exposure categories
 - a variable can still be plausible even if it is uncommon, study-specific, or clinically specialized
+- threshold-defined bins and cutpoints such as `20-60 years`, `>60 years`, `<1`, `1-1.99`, or `>=30` are common and semantically plausible in epidemiology tables
 - judge semantic fit, not whether the study design or prevalence seems typical
 
 Scoring rubric:
@@ -23,6 +24,7 @@ Type-specific guidance:
 - `continuous`: usually a measurement, quantity, score, duration, age, lab value, or index; it must be a single-row variable and must not have child levels
 - `categorical`: label denotes a grouping concept and the child levels are coherent members, bins, or strata of that concept; a categorical variable must have one or more child levels
 - `binary`: should be a one-row indicator variable with no child levels; it still implies two states semantically even when the opposite state is not printed as its own row
+- one-row labels like `Gender = Female`, `age.cat = >60 years`, `BMI_cat >=30`, or similar threshold-coded indicator names are often plausible binary variables rather than categorical parents
 - `unknown`: use only when the supplied label/type pairing is too ambiguous to evaluate confidently
 
 Secondary evidence:

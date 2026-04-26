@@ -19,6 +19,7 @@ CATEGORICAL_PARENT_CUE_PATTERN = re.compile(
 )
 COUNT_LABEL_PATTERN = re.compile(r"^(?:n|number|no\.?)$", re.IGNORECASE)
 INLINE_CATEGORY_SUMMARY_PATTERN = re.compile(r"\b(?:male|female)\b", re.IGNORECASE)
+INDICATOR_VARIABLE_LABEL_PATTERN = re.compile(r"(?:=|[._]cat\b|\bindicator\b)", re.IGNORECASE)
 CONTINUOUS_TEXT_CUE_PATTERN = re.compile(
     r"(?:\bmean\b|\bsd\b|\bmedian\b|\biqr\b|mean\s*[±+-]\s*sd|mean\s*\(\s*sd\s*\))",
     re.IGNORECASE,
@@ -142,6 +143,7 @@ def classify_row(
     all_non_statistic_columns_populated = bool(non_statistic_col_indices) and non_statistic_col_indices.issubset(populated_trailing_col_indices)
     next_is_level_like = bool(next_row_view and is_likely_level_row(next_row_view))
     categorical_parent_cue = _has_categorical_parent_cue(row_view)
+    explicit_indicator_label = INDICATOR_VARIABLE_LABEL_PATTERN.search(row_view.first_cell_raw) is not None
     child_level_count = 0
     for next_row in following_row_views or []:
         if is_likely_level_row(next_row):
@@ -214,13 +216,14 @@ def classify_row(
         and len(non_statistic_trailing_cells) >= 2
         and count_pct_non_stat_count >= 2
         and count_pct_non_stat_count + p_value_non_stat_count == len(non_statistic_trailing_patterns)
-        and not categorical_parent_cue
+        and (not categorical_parent_cue or explicit_indicator_label)
         and not strong_continuous_layout
         and not has_continuous_cue
         and not has_only_statistic_values
         and not is_common_level_label(label)
         and (
             active_parent_row_view is None
+            or explicit_indicator_label
             or (
                 indentation_informative
                 and active_parent_level_count >= 1

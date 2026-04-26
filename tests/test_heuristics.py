@@ -582,6 +582,53 @@ def test_smoking_levels_remain_categorical_not_binary_rows() -> None:
     assert blocks[0].level_row_indices == [2, 3, 4]
 
 
+def test_indicator_style_cat_row_breaks_flush_left_categorical_block() -> None:
+    """Explicit `.cat = ...` labels should start a one-row binary variable after flush-left levels."""
+    table = NormalizedTable(
+        table_id="tbl-age-cat-indicator",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4, 5, 6, 7, 8],
+        row_views=[
+            _build_row(1, "Smoking (%)", ["", "", "", "0.001"]),
+            _build_row(2, "Every day", ["858 (15.6)", "801 (15.5)", "57 (17.9)", ""]),
+            _build_row(3, "Not at all", ["1207 (22.0)", "1111 (21.5)", "96 (30.1)", ""]),
+            _build_row(4, "Some days", ["229 (4.2)", "216 (4.2)", "13 (4.1)", ""]),
+            _build_row(5, "Age.cat = greaterthan 60 years (%)", ["1670 (30.4)", "1489 (28.8)", "181 (56.7)", "<0.001"]),
+            _build_row(6, "Activity_level (%)", ["", "", "", "0.011"]),
+            _build_row(7, "Moderate Activity", ["565 (10.3)", "540 (10.4)", "25 (7.8)", ""]),
+            _build_row(8, "None", ["4641 (84.5)", "4354 (84.2)", "287 (90.0)", ""]),
+        ],
+        n_rows=9,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall", "Non-RA", "RA", "P-value"],
+                ["Smoking (%)", "", "", "", "0.001"],
+                ["Every day", "858 (15.6)", "801 (15.5)", "57 (17.9)", ""],
+                ["Not at all", "1207 (22.0)", "1111 (21.5)", "96 (30.1)", ""],
+                ["Some days", "229 (4.2)", "216 (4.2)", "13 (4.1)", ""],
+                ["Age.cat = greaterthan 60 years (%)", "1670 (30.4)", "1489 (28.8)", "181 (56.7)", "<0.001"],
+                ["Activity_level (%)", "", "", "", "0.011"],
+                ["Moderate Activity", "565 (10.3)", "540 (10.4)", "25 (7.8)", ""],
+                ["None", "4641 (84.5)", "4354 (84.2)", "287 (90.0)", ""],
+            ]
+        },
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "level_row"
+    assert classifications[5] == "binary_variable_row"
+    assert classifications[6] == "variable_header"
+    age_indicator_block = next(block for block in blocks if block.variable_row_idx == 5)
+    assert age_indicator_block.variable_kind == "binary"
+    assert age_indicator_block.row_start == age_indicator_block.row_end == 5
+
+
 def test_interval_rows_with_p_values_do_not_form_false_categorical_block() -> None:
     """Top-level interval-summary rows with p-values should stay standalone, not parent-plus-level blocks."""
     table = NormalizedTable(

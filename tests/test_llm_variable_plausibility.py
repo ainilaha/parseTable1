@@ -94,12 +94,14 @@ def test_variable_plausibility_prompt_includes_scoring_and_safety_requirements()
     assert "Table 1 describes the demographics, baseline characteristics, exposures, covariates" in prompt
     assert "pay special attention to categorical levels" in prompt
     assert "age, sex, race/ethnicity, smoking, BMI" in prompt
+    assert "20-60 years" in prompt
     assert "Scoring rubric:" in prompt
     assert "Type-specific guidance:" in prompt
     assert "judge whether each supplied variable looks semantically plausible for a Table 1-style epidemiology table" not in prompt
     assert "must be a single-row variable and must not have child levels" in prompt
     assert "a categorical variable must have one or more child levels" in prompt
     assert "should be a one-row indicator variable with no child levels" in prompt
+    assert "`age.cat = >60 years`" in prompt
     assert "Secondary evidence:" in prompt
     assert "return the same variables in the same order" in prompt
     assert "do not invent, remove, split, merge, or rename variables" in prompt
@@ -120,6 +122,7 @@ def test_variable_plausibility_prompt_template_is_repo_file() -> None:
     assert "Domain expectations:" in template
     assert "Scoring rubric:" in template
     assert "a categorical variable must have one or more child levels" in template
+    assert "`BMI_cat >=30`" in template
     assert "do not invent, remove, split, merge, or rename variables" in template
     assert "{{TABLE_PAYLOAD_JSON}}" in template
     assert "{{OUTPUT_SCHEMA_SECTION}}" in template
