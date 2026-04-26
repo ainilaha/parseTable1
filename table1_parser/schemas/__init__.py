@@ -2,7 +2,10 @@
 
 from table1_parser.schemas.document_context import PaperSection, RetrievedPassage, TableContext
 from table1_parser.schemas.extracted_table import ExtractedTable, TableCell
-from table1_parser.schemas.llm_semantic_monitoring import LLMSemanticCallRecord, LLMSemanticMonitoringReport
+from table1_parser.schemas.llm_variable_plausibility_monitoring import (
+    LLMVariablePlausibilityCallRecord,
+    LLMVariablePlausibilityMonitoringReport,
+)
 from table1_parser.schemas.normalized_table import NormalizedTable, RowView
 from table1_parser.schemas.paper_variable_inventory import (
     PaperVariableInventory,
@@ -29,8 +32,8 @@ from table1_parser.schemas.table_profile import TableProfile
 
 __all__ = [
     "ExtractedTable",
-    "LLMSemanticCallRecord",
-    "LLMSemanticMonitoringReport",
+    "LLMVariablePlausibilityCallRecord",
+    "LLMVariablePlausibilityMonitoringReport",
     "NormalizedTable",
     "PaperSection",
     "PaperVariableInventory",

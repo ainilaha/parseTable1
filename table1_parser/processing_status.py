@@ -6,7 +6,6 @@ from collections.abc import Sequence
 
 from table1_parser.schemas import (
     ExtractedTable,
-    LLMSemanticCallRecord,
     NormalizedTable,
     ParsedTable,
     TableDefinition,
@@ -22,13 +21,8 @@ def build_table_processing_statuses(
     table_profiles: Sequence[TableProfile],
     table_definitions: Sequence[TableDefinition],
     parsed_tables: Sequence[ParsedTable],
-    llm_monitoring_items: Sequence[LLMSemanticCallRecord] | None = None,
 ) -> list[TableProcessingStatus]:
     """Build per-table rescue and failure status records using current pipeline outputs."""
-    llm_monitoring_by_table_id: dict[str, list[LLMSemanticCallRecord]] = {}
-    for item in llm_monitoring_items or []:
-        llm_monitoring_by_table_id.setdefault(item.table_id, []).append(item)
-
     statuses: list[TableProcessingStatus] = []
     for extracted_table, normalized_table, table_profile, table_definition, parsed_table in zip(
         extracted_tables,
@@ -46,7 +40,6 @@ def build_table_processing_statuses(
         extracted_signals = extracted_metadata.get("signals", {})
         is_descriptive_candidate = (
             table_profile.table_family == "descriptive_characteristics"
-            or table_profile.should_run_llm_semantics
             or bool(isinstance(extracted_signals, dict) and extracted_signals.get("table_1_match"))
             or "title_or_caption_mentions_characteristics" in table_profile.evidence
         )
@@ -76,8 +69,6 @@ def build_table_processing_statuses(
         ]
         definition_inadequate = len(table_definition.variables) == 0 or len(usable_columns) == 0
         parsed_inadequate = bool(table_definition.variables) and bool(usable_columns) and len(parsed_table.values) == 0
-        llm_records = llm_monitoring_by_table_id.get(table_definition.table_id, [])
-        llm_attempt = next((item for item in llm_records if not item.status.startswith("skipped")), None)
         attempts = [
             TableProcessingAttempt(
                 stage="extraction",
@@ -154,14 +145,6 @@ def build_table_processing_statuses(
                 ran=True,
                 succeeded=not definition_inadequate,
                 note=f"variables={len(table_definition.variables)}, usable_columns={len(usable_columns)}",
-            ),
-            TableProcessingAttempt(
-                stage="table_definition",
-                name="semantic_definition_rescue",
-                considered=table_profile.should_run_llm_semantics or bool(llm_records),
-                ran=llm_attempt is not None,
-                succeeded=False,
-                note=llm_attempt.status if llm_attempt is not None else None,
             ),
             TableProcessingAttempt(
                 stage="parsed_table",

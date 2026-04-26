@@ -1,4 +1,4 @@
-"""Row-focused LLM semantic interpreter for TableDefinition artifacts."""
+"""LLM runner for TableDefinition variable-plausibility review."""
 
 from __future__ import annotations
 
@@ -12,25 +12,26 @@ from typing import Any
 from pydantic import ValidationError
 
 from table1_parser.llm.client import LLMClient, LLMProviderError
-from table1_parser.llm.semantic_prompts import build_llm_semantic_input_payload, build_llm_semantic_prompt
-from table1_parser.llm.semantic_schemas import LLMSemanticInputPayload, LLMSemanticTableDefinition
-from table1_parser.schemas import (
-    LLMSemanticCallRecord,
-    NormalizedTable,
-    TableContext,
-    TableDefinition,
+from table1_parser.llm.variable_plausibility_prompts import (
+    build_variable_plausibility_input_payload,
+    build_variable_plausibility_prompt,
 )
-from table1_parser.validation import validate_llm_semantic_table_definition
+from table1_parser.llm.variable_plausibility_schemas import (
+    LLMVariablePlausibilityInputPayload,
+    LLMVariablePlausibilityTableReview,
+)
+from table1_parser.schemas import LLMVariablePlausibilityCallRecord, TableDefinition
+from table1_parser.validation import validate_llm_variable_plausibility_review
 
 
-class LLMSemanticInterpretationError(Exception):
-    """Structured failure for invalid or unsafe LLM semantic interpretations."""
+class LLMVariablePlausibilityReviewError(Exception):
+    """Structured failure for invalid or unsafe variable-plausibility reviews."""
 
     def __init__(
         self,
         message: str,
         *,
-        payload: LLMSemanticInputPayload | None = None,
+        payload: LLMVariablePlausibilityInputPayload | None = None,
         raw_response: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
@@ -39,72 +40,71 @@ class LLMSemanticInterpretationError(Exception):
 
 
 @dataclass(slots=True)
-class LLMSemanticParseAttempt:
-    """One semantic-LLM attempt together with monitoring metadata."""
+class LLMVariablePlausibilityReviewAttempt:
+    """One variable-plausibility review attempt with monitoring metadata."""
 
-    result: LLMSemanticTableDefinition | None
-    monitoring: LLMSemanticCallRecord
+    result: LLMVariablePlausibilityTableReview | None
+    monitoring: LLMVariablePlausibilityCallRecord
     error: Exception | None = None
 
 
-class LLMSemanticTableDefinitionParser:
-    """Call an LLM for row-focused semantic interpretation and validate the result."""
+class LLMVariablePlausibilityTableReviewParser:
+    """Call an LLM for variable-plausibility review and validate the result."""
 
     def __init__(self, client: LLMClient) -> None:
         self.client = client
 
-    def parse(
+    def review(
         self,
-        table: NormalizedTable,
         deterministic_table_definition: TableDefinition,
-        retrieved_context: TableContext,
         *,
+        table_index: int,
+        table_family: str | None = None,
         trace_dir: str | Path | None = None,
-    ) -> LLMSemanticTableDefinition:
-        """Produce a validated row-focused LLM semantic interpretation for one normalized table."""
-        attempt = self.parse_with_monitoring(
-            table,
+    ) -> LLMVariablePlausibilityTableReview:
+        """Produce a validated variable-plausibility review for one deterministic table definition."""
+        attempt = self.review_with_monitoring(
             deterministic_table_definition,
-            retrieved_context,
+            table_index=table_index,
+            table_family=table_family,
             trace_dir=trace_dir,
         )
         if attempt.error is not None:
             raise attempt.error
         if attempt.result is None:
-            raise LLMSemanticInterpretationError("Semantic LLM attempt did not return a result.")
+            raise LLMVariablePlausibilityReviewError("Variable-plausibility review attempt did not return a result.")
         return attempt.result
 
-    def parse_with_monitoring(
+    def review_with_monitoring(
         self,
-        table: NormalizedTable,
         deterministic_table_definition: TableDefinition,
-        retrieved_context: TableContext,
         *,
+        table_index: int,
+        table_family: str | None = None,
         trace_dir: str | Path | None = None,
-    ) -> LLMSemanticParseAttempt:
-        """Produce a row-focused semantic interpretation together with timing and payload metrics."""
-        payload = build_llm_semantic_input_payload(table, deterministic_table_definition, retrieved_context)
-        schema = LLMSemanticTableDefinition.model_json_schema()
-        prompt = build_llm_semantic_prompt(
+    ) -> LLMVariablePlausibilityReviewAttempt:
+        """Produce one variable-plausibility review together with timing and payload metrics."""
+        payload = build_variable_plausibility_input_payload(deterministic_table_definition)
+        schema = LLMVariablePlausibilityTableReview.model_json_schema()
+        prompt = build_variable_plausibility_prompt(
             payload,
             schema if self.client.embeds_output_schema_in_prompt else {},
         )
         started_at = _utc_timestamp()
         started_perf = perf_counter()
-        base_monitoring = LLMSemanticCallRecord(
-            table_id=table.table_id,
-            table_index=retrieved_context.table_index,
-            should_run_llm_semantics=True,
+        variable_counts = _variable_type_counts(deterministic_table_definition)
+        base_monitoring = LLMVariablePlausibilityCallRecord(
+            table_id=deterministic_table_definition.table_id,
+            table_index=table_index,
+            table_family=table_family,
+            eligible_for_review=True,
             status="success",
             trace_dir=str(trace_dir) if trace_dir is not None else None,
-            header_row_count=len(table.header_rows),
-            body_row_count=len(table.body_rows),
-            header_cell_count=table.n_cols * len(table.header_rows),
-            body_cell_count=sum(len(row_view.raw_cells) for row_view in table.row_views),
             deterministic_variable_count=len(deterministic_table_definition.variables),
-            deterministic_column_count=len(deterministic_table_definition.column_definition.columns),
-            retrieved_passage_count=len(retrieved_context.passages),
-            retrieved_context_char_count=sum(len(passage.text) for passage in retrieved_context.passages),
+            continuous_variable_count=variable_counts["continuous"],
+            categorical_variable_count=variable_counts["categorical"],
+            binary_variable_count=variable_counts["binary"],
+            attached_level_count=sum(len(variable.levels) for variable in deterministic_table_definition.variables),
             prompt_char_count=len(prompt),
             prompt_line_count=prompt.count("\n") + 1 if prompt else 0,
         )
@@ -112,7 +112,7 @@ class LLMSemanticTableDefinitionParser:
             raw_response = self.client.structured_completion(
                 prompt,
                 schema,
-                response_model=LLMSemanticTableDefinition,
+                response_model=LLMVariablePlausibilityTableReview,
             )
         except LLMProviderError as exc:
             monitoring = _finalize_monitoring(
@@ -131,13 +131,13 @@ class LLMSemanticTableDefinitionParser:
                     result=None,
                     monitoring=monitoring,
                 )
-            return LLMSemanticParseAttempt(result=None, monitoring=monitoring, error=exc)
+            return LLMVariablePlausibilityReviewAttempt(result=None, monitoring=monitoring, error=exc)
         try:
-            result = LLMSemanticTableDefinition.model_validate(raw_response)
-            validated = validate_llm_semantic_table_definition(result, table, retrieved_context)
+            result = LLMVariablePlausibilityTableReview.model_validate(raw_response)
+            validated = validate_llm_variable_plausibility_review(result, payload)
         except (ValidationError, ValueError) as exc:
-            error = LLMSemanticInterpretationError(
-                "Invalid structured LLM semantic interpretation.",
+            error = LLMVariablePlausibilityReviewError(
+                "Invalid structured LLM variable-plausibility review.",
                 payload=payload,
                 raw_response=raw_response,
             )
@@ -158,7 +158,7 @@ class LLMSemanticTableDefinitionParser:
                     result=None,
                     monitoring=monitoring,
                 )
-            return LLMSemanticParseAttempt(result=None, monitoring=monitoring, error=error)
+            return LLMVariablePlausibilityReviewAttempt(result=None, monitoring=monitoring, error=error)
         monitoring = _finalize_monitoring(
             base_monitoring,
             status="success",
@@ -176,7 +176,16 @@ class LLMSemanticTableDefinitionParser:
                 result=validated,
                 monitoring=monitoring,
             )
-        return LLMSemanticParseAttempt(result=validated, monitoring=monitoring, error=None)
+        return LLMVariablePlausibilityReviewAttempt(result=validated, monitoring=monitoring, error=None)
+
+
+def _variable_type_counts(definition: TableDefinition) -> dict[str, int]:
+    """Count the main deterministic variable types for monitoring."""
+    counts = {"continuous": 0, "categorical": 0, "binary": 0}
+    for variable in definition.variables:
+        if variable.variable_type in counts:
+            counts[variable.variable_type] += 1
+    return counts
 
 
 def _utc_timestamp() -> str:
@@ -193,16 +202,16 @@ def _write_trace_artifacts(
     *,
     trace_dir: str | Path,
     deterministic_table_definition: TableDefinition,
-    payload: LLMSemanticInputPayload,
+    payload: LLMVariablePlausibilityInputPayload,
     raw_response: dict[str, Any] | None,
-    result: LLMSemanticTableDefinition | None,
-    monitoring: LLMSemanticCallRecord,
+    result: LLMVariablePlausibilityTableReview | None,
+    monitoring: LLMVariablePlausibilityCallRecord,
 ) -> None:
-    """Write compact trace artifacts for one row-focused semantic LLM interpretation."""
+    """Write compact trace artifacts for one variable-plausibility review."""
     trace_path = Path(trace_dir)
     trace_path.mkdir(parents=True, exist_ok=True)
     _write_json(
-        trace_path / "table_definition_llm_input.json",
+        trace_path / "variable_plausibility_llm_input.json",
         {
             "report_timestamp": monitoring.completed_at or monitoring.started_at or _utc_timestamp(),
             "table_id": deterministic_table_definition.table_id,
@@ -210,12 +219,12 @@ def _write_trace_artifacts(
         },
     )
     _write_json(
-        trace_path / "table_definition_llm_metrics.json",
+        trace_path / "variable_plausibility_llm_metrics.json",
         monitoring.model_dump(mode="json", exclude_none=True),
     )
     if raw_response is not None:
         _write_json(
-            trace_path / "table_definition_llm_output.json",
+            trace_path / "variable_plausibility_llm_output.json",
             {
                 "report_timestamp": monitoring.completed_at or monitoring.started_at or _utc_timestamp(),
                 "table_id": deterministic_table_definition.table_id,
@@ -224,25 +233,25 @@ def _write_trace_artifacts(
         )
     if result is not None:
         _write_json(
-            trace_path / "table_definition_llm_interpretation.json",
+            trace_path / "variable_plausibility_llm_review.json",
             {
                 "report_timestamp": monitoring.completed_at or monitoring.started_at or _utc_timestamp(),
                 "table_id": deterministic_table_definition.table_id,
-                "interpretation": result.model_dump(mode="json", exclude_none=True),
+                "review": result.model_dump(mode="json", exclude_none=True),
             },
         )
 
 
 def _finalize_monitoring(
-    monitoring: LLMSemanticCallRecord,
+    monitoring: LLMVariablePlausibilityCallRecord,
     *,
     status: str,
     started_at: str,
     started_perf: float,
     raw_response: dict[str, Any] | None = None,
-    result: LLMSemanticTableDefinition | None = None,
+    result: LLMVariablePlausibilityTableReview | None = None,
     error_message: str | None = None,
-) -> LLMSemanticCallRecord:
+) -> LLMVariablePlausibilityCallRecord:
     """Finish one monitoring record with elapsed time and output metrics."""
     return monitoring.model_copy(
         update={
@@ -254,7 +263,6 @@ def _finalize_monitoring(
                 len(json.dumps(raw_response, sort_keys=True)) if raw_response is not None else None
             ),
             "output_variable_count": len(result.variables) if result is not None else None,
-            "output_column_count": None,
             "error_message": error_message,
         }
     )

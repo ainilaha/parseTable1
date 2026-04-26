@@ -17,7 +17,6 @@ class TableProfile(BaseModel):
     title: str | None = None
     caption: str | None = None
     table_family: TableFamily = "unknown"
-    should_run_llm_semantics: bool
     family_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     evidence: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)

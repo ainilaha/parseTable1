@@ -25,19 +25,20 @@ def compact_qwen_prompt(prompt: str, response_model: type[BaseModel] | None) -> 
     if response_model is not None:
         compact_prompt += "\n\nOutput contract:\n"
         compact_prompt += _compact_contract_for_model(response_model)
-        if response_model.__name__ == "LLMSemanticTableDefinition":
+        if response_model.__name__ == "LLMVariablePlausibilityTableReview":
             compact_prompt += (
-                "\n\nSemantic constraints:\n"
-                '- Preserve every row_idx exactly as supplied.\n'
-                '- Keep variable_name, variable_label, level_name, and level_label as strings.\n'
-                '- Do not use alternate field names such as label, kind, rows, or row_indices.\n'
+                "\n\nReview constraints:\n"
+                '- Preserve variable_name, variable_label, variable_type, row_start, row_end, units_hint, and summary_style_hint exactly as supplied.\n'
+                '- Preserve every level_name, level_label, and row_idx exactly as supplied.\n'
+                '- Add plausibility_score as a number between 0 and 1 for every variable.\n'
+                '- Do not use alternate field names such as label, kind, rows, row_indices, score, or explanation.\n'
             )
     return json_only_prompt(compact_prompt)
 
 
 def _compact_contract_for_model(model: type[BaseModel]) -> str:
     """Return a compact, readable output contract derived from a Pydantic model."""
-    if model.__name__ == "LLMSemanticTableDefinition":
+    if model.__name__ == "LLMVariablePlausibilityTableReview":
         return (
             '{ "table_id": "string", '
             '"variables": [ { '
@@ -49,13 +50,13 @@ def _compact_contract_for_model(model: type[BaseModel]) -> str:
             '"levels": [ { '
             '"level_name": "string", '
             '"level_label": "string", '
-            '"row_idx": integer, '
-            '"confidence": number | null, '
-            '"disagrees_with_deterministic": true | false } ], '
-            '"confidence": number | null, '
-            '"disagrees_with_deterministic": true | false } ], '
+            '"row_idx": integer } ], '
+            '"units_hint": "string" | null, '
+            '"summary_style_hint": "string" | null, '
+            '"plausibility_score": number, '
+            '"plausibility_note": "string" | null } ], '
             '"notes": [ "string" ], '
-            '"overall_confidence": number | null }'
+            '"overall_plausibility": number | null }'
         )
 
     schema = model.model_json_schema()

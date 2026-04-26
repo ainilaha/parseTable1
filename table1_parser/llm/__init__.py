@@ -9,9 +9,10 @@ from table1_parser.llm.client import (
     StaticStructuredLLMClient,
     build_llm_client,
 )
-from table1_parser.llm.semantic_parser import (
-    LLMSemanticInterpretationError,
-    LLMSemanticTableDefinitionParser,
+from table1_parser.llm.variable_plausibility_parser import (
+    LLMVariablePlausibilityReviewError,
+    LLMVariablePlausibilityReviewAttempt,
+    LLMVariablePlausibilityTableReviewParser,
 )
 from table1_parser.llm.variable_plausibility_prompts import (
     build_variable_plausibility_input_payload,
@@ -25,10 +26,11 @@ from table1_parser.llm.variable_plausibility_schemas import (
 __all__ = [
     "LLMClient",
     "LLMConfigurationError",
-    "LLMSemanticInterpretationError",
-    "LLMSemanticTableDefinitionParser",
     "LLMVariablePlausibilityInputPayload",
+    "LLMVariablePlausibilityReviewAttempt",
+    "LLMVariablePlausibilityReviewError",
     "LLMVariablePlausibilityTableReview",
+    "LLMVariablePlausibilityTableReviewParser",
     "LLMProviderError",
     "OpenAIClient",
     "QwenClient",

@@ -118,7 +118,6 @@ def build_table_profile(table: NormalizedTable) -> TableProfile:
         title=table.title,
         caption=table.caption,
         table_family=family,
-        should_run_llm_semantics=(family == "descriptive_characteristics"),
         family_confidence=(
             min(0.98, round(0.55 + 0.08 * descriptive_score + 0.03 * max(0, descriptive_score - estimate_score), 4))
             if family == "descriptive_characteristics"
