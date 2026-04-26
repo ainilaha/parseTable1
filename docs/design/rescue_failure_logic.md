@@ -196,7 +196,6 @@ Use stable names for existing paths.
 ### TableDefinition
 
 - `deterministic_definition`
-- `semantic_definition_rescue`
 
 ### ParsedTable
 

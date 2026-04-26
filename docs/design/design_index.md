@@ -83,13 +83,13 @@ Then use the documents below as needed.
   Current LLM integration and trace-artifact behavior.
 
 - `docs/design/llm_semantic_inference_phase.md`
-  Design for the next LLM phase: markdown-based paper retrieval, semantic interpretation, and adjudication.
+  Future-phase design for markdown-based semantic interpretation and adjudication. This is not the current implemented LLM path.
 
 - `docs/implementation/llm_semantic_cli_changes.md`
-  Narrow CLI wiring plan for running semantic LLM table-definition inference during `parse`.
+  Historical implementation notes for the older parse-time semantic LLM plan.
 
 - `docs/implementation/llm_semantic_inference_steps.md`
-  Brief implementation checklist for the LLM semantic inference phase.
+  Historical checklist for the older semantic inference phase.
 
 - `docs/r_visualization.md`
   How current JSON outputs are inspected in R.

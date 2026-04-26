@@ -34,7 +34,7 @@ Those files define the main development criteria:
 There are two related but different concepts in this repository:
 
 1. Canonical typed models
-   These are the Pydantic models in `table1_parser/schemas/` and `table1_parser/llm/semantic_schemas.py`.
+   These are the Pydantic models in `table1_parser/schemas/` and `table1_parser/llm/variable_plausibility_schemas.py`.
 
 2. Persisted JSON files
    These are CLI outputs or trace/debug artifacts written to disk.
@@ -72,13 +72,13 @@ This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifa
 | --- | --- | --- | --- |
 | Extraction | `ExtractedTable` | Written now as `extracted_tables.json` by `extract` and `parse` | Preserve raw table grid and cell provenance |
 | Normalization | `NormalizedTable` | Written now as `normalized_tables.json` by `normalize` and `parse` | Clean rows, detect headers, derive row features |
-| Table routing | `TableProfile` | Written now as `table_profiles.json` by `parse` | Persist deterministic family routing and LLM-gating decisions |
+| Table routing | `TableProfile` | Written now as `table_profiles.json` by `parse` | Persist deterministic family routing decisions |
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
 | Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles, with only conservative glyph repair in the markdown text |
 | Paper variable inventory | `PaperVariableInventory`, `VariableMention`, `VariableCandidate` | Written now as `paper_variable_inventory.json` by `parse` | Persist the paper-level candidate variable reference list with explicit text/table provenance |
-| Semantic LLM table definition | `LLMSemanticTableDefinition` | Written now as `table_definitions_llm.json` by `parse` when LLM config is available | Persist row-focused value-free semantic interpretation grounded in table indices and deterministic row structure |
-| Semantic LLM debug monitoring | `LLMSemanticMonitoringReport`, `LLMSemanticCallRecord` | Written only when `LLM_DEBUG=true` as `llm_semantic_debug/<timestamp>/llm_semantic_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence |
-| Semantic LLM per-table trace files | wrapper JSON files | Written only when `LLM_DEBUG=true` as `table_definition_llm_input.json`, `table_definition_llm_metrics.json`, `table_definition_llm_output.json`, and `table_definition_llm_interpretation.json` | Preserve prompt payloads, metrics, raw provider responses, and validated semantic interpretations for inspection |
+| Variable-plausibility LLM review | `LLMVariablePlausibilityTableReview` | Written now as `table_variable_plausibility_llm.json` by `review-variable-plausibility` when LLM config is available | Persist table-local QA scores for variable label/type/level plausibility without rewriting the deterministic definition |
+| Variable-plausibility debug monitoring | `LLMVariablePlausibilityMonitoringReport`, `LLMVariablePlausibilityCallRecord` | Written only when `LLM_DEBUG=true` as `llm_variable_plausibility_debug/<timestamp>/llm_variable_plausibility_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence for the standalone review command |
+| Variable-plausibility per-table trace files | wrapper JSON files | Written only when `LLM_DEBUG=true` as `variable_plausibility_llm_input.json`, `variable_plausibility_llm_metrics.json`, `variable_plausibility_llm_output.json`, and `variable_plausibility_llm_review.json` | Preserve prompt payloads, metrics, raw provider responses, and validated plausibility reviews for inspection |
 | Final parsed output | `ParsedTable` | Written now as `parsed_tables.json` by `parse` | Validated downstream structured table data |
 | Table processing status | `TableProcessingStatus`, `TableProcessingAttempt` | Written now as `table_processing_status.json` by `parse` | Persist rescue attempts, terminal failure stage, and failure reason without overloading semantic artifacts |
 
@@ -420,30 +420,30 @@ Variation note:
 - that variation should be handled in section parsing and retrieval, not by redefining the meaning of `paper_markdown.md` beyond conservative glyph repair
 - `docs/design/paper_markdown_spec.md` is the design reference for this artifact
 
-## 5. `table_definitions_llm.json`
+## 5. `table_variable_plausibility_llm.json`
 
 Current status:
 
-- written by `parse` when semantic LLM configuration is available
-- skipped with a warning when semantic LLM is not disabled but configuration is missing
-- skipped when `--no-llm-semantic` is used
+- written by `review-variable-plausibility` when LLM configuration is available
+- deterministic `parse` never writes this file
+- written as an empty list when the review command runs but no tables are eligible or no review result is returned
 
 Current CLI path:
 
 ```text
-outputs/papers/<paper_stem>/table_definitions_llm.json
+outputs/papers/<paper_stem>/table_variable_plausibility_llm.json
 ```
 
 Canonical model:
 
-- `LLMSemanticTableDefinition`
+- `LLMVariablePlausibilityTableReview`
 
 Top-level shape:
 
 ```json
 [
   {
-    "...": "one LLMSemanticTableDefinition object"
+    "...": "one LLMVariablePlausibilityTableReview object"
   }
 ]
 ```
@@ -453,34 +453,34 @@ Design components:
 - `table_id`
 - `variables`
 - `notes`
-- `overall_confidence`
+- `overall_plausibility`
 
 Design intent:
 
-- let the LLM speak about row semantics using deterministic row structure only in the current Part A design
 - preserve `table_definitions.json` as the deterministic baseline artifact
-- keep row references tied to the normalized table index space
+- keep the LLM review narrow and table-local
+- preserve each supplied variable identity exactly and add `plausibility_score`
 - validate the LLM output before writing this file
-- keep per-variable `units_hint` and `summary_style_hint` out of the semantic LLM contract for now
+- keep this review separate from deterministic parse outputs so it cannot silently rewrite them
 
 Debug-only companion artifacts:
 
-- when `LLM_DEBUG=true`, `parse` also writes a timestamped debug run under:
+- when `LLM_DEBUG=true`, `review-variable-plausibility` also writes a timestamped debug run under:
 
 ```text
-outputs/papers/<paper_stem>/llm_semantic_debug/<timestamp>/
-  llm_semantic_monitoring.json
+outputs/papers/<paper_stem>/llm_variable_plausibility_debug/<timestamp>/
+  llm_variable_plausibility_monitoring.json
   table_0/
-    table_definition_llm_input.json
-    table_definition_llm_metrics.json
-    table_definition_llm_output.json
-    table_definition_llm_interpretation.json
+    variable_plausibility_llm_input.json
+    variable_plausibility_llm_metrics.json
+    variable_plausibility_llm_output.json
+    variable_plausibility_llm_review.json
 ```
 
-- `llm_semantic_monitoring.json` summarizes every table's semantic-LLM status, including skipped tables
-- per-table trace files are written only for tables that actually reached the semantic LLM call path
+- `llm_variable_plausibility_monitoring.json` summarizes every table's review status, including skipped-not-eligible tables
+- per-table trace files are written only for tables that actually reached the provider call path
 
-## 6. Semantic Debug Trace Files
+## 6. Variable-Plausibility Debug Trace Files
 
 Current status:
 
@@ -489,10 +489,10 @@ Current status:
 
 Current per-table file names:
 
-- `table_definition_llm_input.json`
-- `table_definition_llm_metrics.json`
-- `table_definition_llm_output.json`
-- `table_definition_llm_interpretation.json`
+- `variable_plausibility_llm_input.json`
+- `variable_plausibility_llm_metrics.json`
+- `variable_plausibility_llm_output.json`
+- `variable_plausibility_llm_review.json`
 
 Current top-level wrappers:
 
@@ -501,7 +501,7 @@ Current top-level wrappers:
   "report_timestamp": "...",
   "table_id": "...",
   "payload": {
-    "...": "semantic LLM prompt payload"
+    "...": "variable-plausibility LLM prompt payload"
   }
 }
 ```
@@ -528,18 +528,18 @@ Current top-level wrappers:
 {
   "report_timestamp": "...",
   "table_id": "...",
-  "interpretation": {
-    "...": "LLMSemanticTableDefinition"
+  "review": {
+    "...": "LLMVariablePlausibilityTableReview"
   }
 }
 ```
 
 Design intent:
 
-- preserve the exact semantic LLM payload, monitoring metrics, raw provider output, and validated interpretation for inspection
-- keep these files separate from canonical pipeline outputs such as `table_definitions.json`, `table_definitions_llm.json`, and `parsed_tables.json`
-- preserve stable row references so semantic disagreements can still be audited safely
-- keep the prompt payload compact; the saved input wrapper currently uses short payload keys such as `rows` and `vars`
+- preserve the exact review payload, monitoring metrics, raw provider output, and validated review for inspection
+- keep these files separate from canonical pipeline outputs such as `table_definitions.json`, `table_variable_plausibility_llm.json`, and `parsed_tables.json`
+- preserve stable variable identity fields so disagreements can be audited safely
+- keep the prompt payload compact; the saved input wrapper currently uses short payload keys such as `table` and `vars`
 
 ## 7. `ParsedTable` JSON
 
@@ -672,17 +672,17 @@ A simple rule:
 
 Wrapper files currently include:
 
-- `table_definition_llm_input.json`
-- `table_definition_llm_metrics.json`
-- `table_definition_llm_output.json`
-- `table_definition_llm_interpretation.json`
+- `variable_plausibility_llm_input.json`
+- `variable_plausibility_llm_metrics.json`
+- `variable_plausibility_llm_output.json`
+- `variable_plausibility_llm_review.json`
 
 Canonical payloads currently include:
 
 - `ExtractedTable`
 - `NormalizedTable`
 - `TableDefinition`
-- `LLMSemanticTableDefinition`
+- `LLMVariablePlausibilityTableReview`
 - `ParsedTable`
 
 The final parse/export path should prefer canonical model dumps, with wrapper files used only when explicit trace/debug output is wanted.

@@ -22,7 +22,7 @@ The R layer should treat these as first-class paper outputs:
 - `table_definitions.json`
 - `parsed_tables.json`
 - `table_processing_status.json`
-- `table_definitions_llm.json` when present
+- `table_variable_plausibility_llm.json` when present
 
 ## Design Goals
 
@@ -41,7 +41,7 @@ The R layer should treat these as first-class paper outputs:
 - `parsed_tables`
 - `table_processing_status`
 
-These should be available alongside the existing deterministic and LLM artifacts.
+These should be available alongside the existing deterministic artifacts and the optional variable-plausibility review artifact.
 
 ### 2. Add paper-level summary view
 

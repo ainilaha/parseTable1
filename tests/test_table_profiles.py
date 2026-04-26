@@ -25,7 +25,7 @@ def _build_row(row_idx: int, first_cell_raw: str, trailing: list[str]) -> RowVie
 
 
 def test_table_profile_marks_descriptive_characteristics_tables() -> None:
-    """Baseline characteristic tables should route to the descriptive family and keep LLM enabled."""
+    """Baseline characteristic tables should route to the descriptive family."""
     table = NormalizedTable(
         table_id="tbl-desc",
         title="Table 1. Baseline characteristics",
@@ -54,12 +54,11 @@ def test_table_profile_marks_descriptive_characteristics_tables() -> None:
     profile = build_table_profile(table)
 
     assert profile.table_family == "descriptive_characteristics"
-    assert profile.should_run_llm_semantics is True
     assert "title_or_caption_mentions_characteristics" in profile.evidence
 
 
-def test_table_profile_marks_estimate_result_tables_and_disables_llm() -> None:
-    """Adjusted hazard-ratio tables should route to estimate_results and skip semantic LLM."""
+def test_table_profile_marks_estimate_result_tables() -> None:
+    """Adjusted hazard-ratio tables should route to estimate_results."""
     table = NormalizedTable(
         table_id="tbl-est",
         title="Table 3. Adjusted hazard ratios for CKD progression",
@@ -84,7 +83,6 @@ def test_table_profile_marks_estimate_result_tables_and_disables_llm() -> None:
     profile = build_table_profile(table)
 
     assert profile.table_family == "estimate_results"
-    assert profile.should_run_llm_semantics is False
     assert "title_caption_or_header_mentions_estimate_metric" in profile.evidence
 
 
@@ -108,7 +106,6 @@ def test_table_profile_falls_back_to_unknown_when_evidence_is_weak() -> None:
     profile = build_table_profile(table)
 
     assert profile.table_family == "unknown"
-    assert profile.should_run_llm_semantics is False
 
 
 def test_table_profile_schema_and_payload_round_trip() -> None:
@@ -116,7 +113,6 @@ def test_table_profile_schema_and_payload_round_trip() -> None:
     profile = TableProfile(
         table_id="tbl-profile",
         table_family="descriptive_characteristics",
-        should_run_llm_semantics=True,
         family_confidence=0.91,
         evidence=["row_structure_contains_parent_level_blocks"],
     )

@@ -22,11 +22,8 @@ from table1_parser.context import (
 from table1_parser.extract import build_extractor
 from table1_parser.heuristics.table_definition_builder import build_table_definitions, table_definitions_to_payload
 from table1_parser.heuristics.table_profile import build_table_profiles, table_profiles_to_payload
-from table1_parser.llm import (
-    LLMConfigurationError,
-    LLMVariablePlausibilityTableReviewParser,
-    build_llm_client,
-)
+from table1_parser.llm import LLMConfigurationError, build_llm_client
+from table1_parser.llm.variable_plausibility_parser import LLMVariablePlausibilityTableReviewParser
 from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
 from table1_parser.parse import build_parsed_tables, parsed_tables_to_payload
 from table1_parser.processing_status import build_table_processing_statuses

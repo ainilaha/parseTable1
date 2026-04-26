@@ -35,8 +35,8 @@ Today that directory may contain:
 - `paper_sections.json`
 - `paper_variable_inventory.json`
 - `table_contexts/table_<n>_context.json`
-- `table_definitions_llm.json` when semantic LLM inference runs
-- `llm_semantic_debug/...` when semantic LLM debug tracing is enabled
+- `table_variable_plausibility_llm.json` when `review-variable-plausibility` is run
+- `llm_variable_plausibility_debug/...` when variable-plausibility debug tracing is enabled
 
 Some of these are per-table artifacts. Others are paper-level context artifacts.
 
@@ -71,15 +71,15 @@ PDF
   -> paper variable inventory
   -> per-table context bundles
 
-normalized table + table definition + table context
-  -> optional semantic LLM table definition
+TableDefinition.variables
+  -> optional standalone variable-plausibility LLM review
 ```
 
 Two points matter here.
 
 First, the table pipeline and the paper-context pipeline are related but separate.
 
-Second, the optional semantic LLM path currently produces an additional semantic artifact. It does not replace the deterministic parsed table path by default.
+Second, the optional LLM path is now separate from `parse`. `parse` stays deterministic, while `review-variable-plausibility` writes an additional QA-style artifact.
 
 The parse command also writes a table-level processing-status artifact so rescue attempts and terminal failures are explicit.
 
@@ -289,10 +289,9 @@ That separation matters because many downstream mistakes are really normalizatio
 
 Once a table has been normalized, the parser builds a `TableProfile`.
 
-This is a routing and eligibility stage. It asks questions like:
+This is a routing stage. It asks questions like:
 
 - does this table look descriptive or estimate-like?
-- should semantic LLM interpretation run for this table?
 
 The current repository is centered on Table 1 style descriptive tables, but mixed-table papers exist. `TableProfile` is the stage that prevents the system from pretending every table belongs to the same family.
 
@@ -436,35 +435,37 @@ For each table, the parser builds a focused context bundle using:
 - variable labels
 - grouping labels
 
-This produces per-table passages and term lists that can later support semantic interpretation.
+This produces per-table passages and term lists that can later support standalone review workflows or future semantic interpretation.
 
-## Step 8: Optional Semantic LLM Interpretation
+## Step 8: Optional Variable-Plausibility LLM Review
 
-If enabled and eligible, the parser can run semantic LLM inference using:
+The separate `review-variable-plausibility` command can run a narrow LLM review using:
 
-- compact body-row hints
-- compact deterministic variable spans
+- the deterministic `TableDefinition.variables`
+- merged table title/caption text
+- attached level labels, units hints, and summary-style hints
 
-This produces `table_definitions_llm.json`.
+This produces `table_variable_plausibility_llm.json`.
 
 Current implemented scope:
 
-- interpret row variables
-- interpret categorical levels under those variables
+- score whether a variable label and `variable_type` fit together
+- score whether categorical levels look sensible for the named variable
+- preserve the supplied variables exactly and add `plausibility_score`
 
-Columns remain deterministic in this phase.
+This command does not rewrite the deterministic table definition.
 
-This is not the same thing as raw extraction or generic OCR assistance. It is a later semantic interpretation phase grounded in already extracted table structure.
+When `LLM_DEBUG=true`, the review command also writes `llm_variable_plausibility_debug/...`.
 
 Why this stage is optional:
 
 - deterministic structure should do as much as possible first
 - LLM use should be focused on ambiguity, not raw PDF recovery
-- semantic calls should be inspectable and skippable
+- review calls should be inspectable and skippable
 
 ## Step 9: Write Table Processing Status
 
-After deterministic parsing and any optional semantic LLM attempt, the parser writes `table_processing_status.json`.
+After deterministic parsing, the parser writes `table_processing_status.json`.
 
 This artifact records:
 
@@ -484,7 +485,7 @@ When a parse looks wrong, inspect the outputs in this order.
    If the raw grid was usable but header rows, edge trimming, split-value repair, or cleaned text are wrong, the problem is normalization.
 
 3. `table_profiles.json`
-   If the table was routed to the wrong family or LLM eligibility looks wrong, the problem is in routing.
+   If the table was routed to the wrong family, the problem is in routing.
 
 4. `table_definitions.json`
    If row meanings or column meanings are wrong, the problem is in the semantic heuristics.
@@ -498,8 +499,8 @@ When a parse looks wrong, inspect the outputs in this order.
 7. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
    If semantic context retrieval is weak, inspect these next.
 
-8. `table_definitions_llm.json`
-   If deterministic semantics were reasonable but the semantic LLM output is poor, the issue is in context retrieval, prompting, provider behavior, or validation.
+8. `table_variable_plausibility_llm.json`
+   If deterministic variables were reasonable but the plausibility review looks wrong, the issue is in prompting, provider behavior, or validation for the standalone review command.
 
 ## Why This Pipeline Shape Is Worth Keeping
 
@@ -513,7 +514,7 @@ This separation gives the project:
 - parser-facing structural cleanup
 - explicit routing for mixed-table papers
 - value-free semantics before value parsing
-- optional document-grounded semantic interpretation
+- optional standalone variable plausibility review
 - easier debugging when a paper fails in only one part of the pipeline
 
 That is the main reason the project can support both engineering work and research iteration without collapsing all errors into one opaque final output.

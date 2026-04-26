@@ -11,8 +11,8 @@ from table1_parser.schemas import (
     DefinedLevel,
     DefinedVariable,
     ExtractedTable,
-    LLMSemanticCallRecord,
-    LLMSemanticMonitoringReport,
+    LLMVariablePlausibilityCallRecord,
+    LLMVariablePlausibilityMonitoringReport,
     NormalizedTable,
     PaperSection,
     PaperVariableInventory,
@@ -192,7 +192,6 @@ def test_table_profile_creation_and_serialization() -> None:
         title="Table 1",
         caption="Baseline characteristics",
         table_family="descriptive_characteristics",
-        should_run_llm_semantics=True,
         family_confidence=0.9,
         evidence=["title_or_caption_mentions_characteristics"],
         notes=["baseline_route"],
@@ -201,7 +200,6 @@ def test_table_profile_creation_and_serialization() -> None:
     dumped = profile.model_dump(mode="json")
 
     assert dumped["table_family"] == "descriptive_characteristics"
-    assert dumped["should_run_llm_semantics"] is True
 
 
 def test_table_processing_status_creation_and_serialization() -> None:
@@ -230,21 +228,22 @@ def test_table_processing_status_creation_and_serialization() -> None:
     assert dumped["attempts"][0]["name"] == "deterministic_definition"
 
 
-def test_llm_semantic_monitoring_creation_and_serialization() -> None:
-    """Semantic LLM monitoring schemas should serialize debug timing cleanly."""
-    report = LLMSemanticMonitoringReport(
+def test_llm_variable_plausibility_monitoring_creation_and_serialization() -> None:
+    """Variable-plausibility LLM monitoring schemas should serialize debug timing cleanly."""
+    report = LLMVariablePlausibilityMonitoringReport(
         report_timestamp="2026-03-24T10:15:00Z",
-        llm_disabled=False,
         provider="openai",
         model="gpt-4.1-mini",
         items=[
-            LLMSemanticCallRecord(
+            LLMVariablePlausibilityCallRecord(
                 table_id="tbl-1",
                 table_index=0,
                 table_family="descriptive_characteristics",
-                should_run_llm_semantics=True,
+                eligible_for_review=True,
                 status="success",
                 elapsed_seconds=12.4,
+                deterministic_variable_count=3,
+                attached_level_count=2,
                 prompt_char_count=1800,
                 response_char_count=900,
             )

@@ -103,7 +103,7 @@ pytest tests/test_normalization.py tests/test_table_definition.py -q
 Then re-parse:
 
 ```bash
-python3 -m table1_parser.cli parse ~/Downloads/pad.pdf --no-llm-semantic
+python3 -m table1_parser.cli parse ~/Downloads/pad.pdf
 ```
 
 Check:

@@ -21,7 +21,7 @@ from table1_parser.llm.variable_plausibility_schemas import (
     LLMVariablePlausibilityTableReview,
 )
 from table1_parser.schemas import LLMVariablePlausibilityCallRecord, TableDefinition
-from table1_parser.validation import validate_llm_variable_plausibility_review
+from table1_parser.validation.llm_variable_plausibility import validate_llm_variable_plausibility_review
 
 
 class LLMVariablePlausibilityReviewError(Exception):

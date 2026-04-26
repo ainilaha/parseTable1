@@ -86,7 +86,7 @@ pytest tests/test_heuristics.py -q
 Then re-parse:
 
 ```bash
-python3 -m table1_parser.cli parse /Users/robert/Projects/Epiconnector/metabolic.pdf --no-llm-semantic
+python3 -m table1_parser.cli parse /Users/robert/Projects/Epiconnector/metabolic.pdf
 ```
 
 Check:

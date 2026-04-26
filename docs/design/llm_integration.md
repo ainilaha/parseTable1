@@ -1,38 +1,67 @@
 # LLM Integration
 
-The repository's active LLM path is the row-focused semantic post-`TableDefinition` layer used by `table1-parser parse`.
+The repository no longer runs any LLM call during `table1-parser parse`.
 
-Current flow:
+Current implemented flow:
 
-`NormalizedTable -> TableDefinition -> LLMSemanticTableDefinition`
+`NormalizedTable -> TableDefinition -> ParsedTable`
 
-The LLM is used only for optional table-local row interpretation after deterministic table-definition assembly.
+The deterministic pipeline still writes the paper-context artifacts that a later LLM workflow may use:
 
-Current scope:
+- `paper_markdown.md`
+- `paper_sections.json`
+- `paper_variable_inventory.json`
+- `table_contexts/*.json`
 
-- row variables
-- categorical levels under those variables
+## Active LLM Path
 
-Current non-scope:
+The current active LLM feature is a separate review command:
 
-- column reinterpretation
+```bash
+table1-parser review-variable-plausibility path/to/paper.pdf
+```
+
+This command reruns the deterministic pipeline, writes the same deterministic artifacts as `parse`, and then optionally runs a narrow QA-style LLM review for descriptive-characteristics tables.
+
+Current LLM flow:
+
+`TableDefinition.variables -> LLMVariablePlausibilityTableReview`
+
+Scope:
+
+- judge whether `variable_type` fits the variable label
+- judge whether categorical levels are sensible for the named variable
+- score each variable with `plausibility_score` in `[0, 1]`
+
+Non-scope:
+
+- row rewriting
+- column rewriting
 - grouping-label reinterpretation
-- document grounding
 - cross-table prompting
+- parse-time automatic correction of `TableDefinition`
 
-Current prompt-shaping strategy:
+## Persisted LLM Artifacts
 
-- compact row hints rather than full cell arrays
-- compact deterministic variable spans rather than full `TableDefinition` dumps
+The standalone review command writes:
 
-Optional helper also available:
+- `table_variable_plausibility_llm.json`
 
-- a variable-plausibility review prompt that consumes one table's `TableDefinition.variables`
-- it returns the same variable list with a per-variable `plausibility_score` in `[0, 1]`
-- it is intended as a table-local QA or ranking aid, not as a replacement for deterministic parsing
-- it does not change the default `parse` flow or persisted artifacts unless a later caller explicitly saves its output
+When `LLM_DEBUG=true`, it also writes:
 
-## Current provider path
+```text
+outputs/papers/<paper_stem>/llm_variable_plausibility_debug/<timestamp>/
+  llm_variable_plausibility_monitoring.json
+  table_0/
+    variable_plausibility_llm_input.json
+    variable_plausibility_llm_metrics.json
+    variable_plausibility_llm_output.json
+    variable_plausibility_llm_review.json
+```
+
+These are inspection artifacts only and should not be committed. `outputs/` is ignored by Git.
+
+## Provider Support
 
 The repository currently supports:
 
@@ -43,21 +72,21 @@ The configured client uses:
 
 - environment variables for credentials and model selection
 - provider-specific request handling
-- structured output parsed into `LLMSemanticTableDefinition`
+- structured output parsed into `LLMVariablePlausibilityTableReview`
 
 OpenAI uses:
 
 - the official OpenAI Python SDK
-- native structured parsing into the semantic Pydantic response model
-- provider-aware prompt compaction, so the prompt does not duplicate the full output schema text
+- native structured parsing into the plausibility-review Pydantic response model
+- prompt compaction by omitting the explicit schema block from the prompt
 
 Qwen uses:
 
 - direct HTTP requests to DashScope
 - a compact JSON-only output contract
-- local JSON parsing plus the semantic Pydantic validation layer
+- local JSON parsing plus Pydantic validation
 
-## Environment variables
+## Environment Variables
 
 ```bash
 export LLM_PROVIDER=openai
@@ -86,34 +115,5 @@ Optional for Qwen:
 
 Debug note:
 
-- set `LLM_DEBUG=true` to write timestamped semantic-LLM debug artifacts during `table1-parser parse`
-- these artifacts include per-table timing, payload-size summaries, raw structured responses, and validated interpretations when available
+- set `LLM_DEBUG=true` to write timestamped variable-plausibility debug artifacts during `review-variable-plausibility`
 - set `LLM_SDK_DEBUG=true` only if you want verbose OpenAI SDK/provider logging in the terminal
-
-## CLI usage
-
-```bash
-table1-parser parse path/to/paper.pdf
-```
-
-To disable the semantic LLM stage explicitly:
-
-```bash
-table1-parser parse path/to/paper.pdf --no-llm-semantic
-```
-
-## Debug artifacts
-
-When `LLM_DEBUG=true`, semantic debug artifacts are written under:
-
-```text
-outputs/papers/<paper_stem>/llm_semantic_debug/<timestamp>/
-  llm_semantic_monitoring.json
-  table_0/
-    table_definition_llm_input.json
-    table_definition_llm_metrics.json
-    table_definition_llm_output.json
-    table_definition_llm_interpretation.json
-```
-
-These are inspection artifacts only and should not be committed. `outputs/` is ignored by Git.

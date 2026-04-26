@@ -12,7 +12,7 @@ import pytest
 
 from table1_parser.config import Settings
 from table1_parser.llm.client import LLMConfigurationError, LLMProviderError, build_llm_client
-from table1_parser.llm.semantic_schemas import LLMSemanticTableDefinition
+from table1_parser.llm.variable_plausibility_schemas import LLMVariablePlausibilityTableReview
 
 
 class _FakeResponsesAPI:
@@ -32,7 +32,7 @@ class _FakeOpenAI:
         self.max_retries = max_retries
         self.responses = _FakeResponsesAPI(
             SimpleNamespace(
-                output_parsed=LLMSemanticTableDefinition(
+                output_parsed=LLMVariablePlausibilityTableReview(
                     table_id="tbl-llm",
                     variables=[],
                     notes=["from fake openai"],
@@ -150,8 +150,8 @@ def test_build_llm_client_returns_openai_client_with_fake_sdk(monkeypatch) -> No
     client = build_llm_client(settings=settings)
     response = client.structured_completion(
         "prompt text",
-        LLMSemanticTableDefinition.model_json_schema(),
-        response_model=LLMSemanticTableDefinition,
+        LLMVariablePlausibilityTableReview.model_json_schema(),
+        response_model=LLMVariablePlausibilityTableReview,
     )
 
     assert response["table_id"] == "tbl-llm"
@@ -189,7 +189,8 @@ def test_build_llm_client_returns_qwen_client_and_parses_json_response() -> None
                                         "text": (
                                             "```json\n"
                                             '{"table_id":"tbl-llm","variables":[],'
-                                            '"notes":["from fake qwen"]}'
+                                            '"notes":["from fake qwen"],'
+                                            '"overall_plausibility":0.9}'
                                             "\n```"
                                         )
                                     }
@@ -205,8 +206,8 @@ def test_build_llm_client_returns_qwen_client_and_parses_json_response() -> None
 
     response = client.structured_completion(
         "prompt text\n\nOutput schema:\n{...}",
-        LLMSemanticTableDefinition.model_json_schema(),
-        response_model=LLMSemanticTableDefinition,
+        LLMVariablePlausibilityTableReview.model_json_schema(),
+        response_model=LLMVariablePlausibilityTableReview,
     )
 
     request = fake_opener.calls[0]["request"]
@@ -217,6 +218,7 @@ def test_build_llm_client_returns_qwen_client_and_parses_json_response() -> None
     assert '"model": "qwen-plus"' in body
     assert "Output contract:" in body
     assert "Output schema:" not in body
+    assert "plausibility_score" in body
     assert client.embeds_output_schema_in_prompt is True
 
 
@@ -269,8 +271,8 @@ def test_openai_client_raises_provider_error_when_no_parsed_payload(monkeypatch)
     with pytest.raises(LLMProviderError):
         client.structured_completion(
             "prompt text",
-            LLMSemanticTableDefinition.model_json_schema(),
-            response_model=LLMSemanticTableDefinition,
+            LLMVariablePlausibilityTableReview.model_json_schema(),
+            response_model=LLMVariablePlausibilityTableReview,
         )
 
 
@@ -290,8 +292,8 @@ def test_qwen_client_raises_provider_error_for_invalid_json_response() -> None:
     with pytest.raises(LLMProviderError):
         client.structured_completion(
             "prompt text",
-            LLMSemanticTableDefinition.model_json_schema(),
-            response_model=LLMSemanticTableDefinition,
+            LLMVariablePlausibilityTableReview.model_json_schema(),
+            response_model=LLMVariablePlausibilityTableReview,
         )
 
 
@@ -311,8 +313,8 @@ def test_qwen_client_raises_provider_error_for_http_failures() -> None:
     with pytest.raises(LLMProviderError) as exc_info:
         client.structured_completion(
             "prompt text",
-            LLMSemanticTableDefinition.model_json_schema(),
-            response_model=LLMSemanticTableDefinition,
+            LLMVariablePlausibilityTableReview.model_json_schema(),
+            response_model=LLMVariablePlausibilityTableReview,
         )
 
     assert "network down" in str(exc_info.value)

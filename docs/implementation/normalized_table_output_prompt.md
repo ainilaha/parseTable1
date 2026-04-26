@@ -144,7 +144,7 @@ Update docs to reflect that users can now find:
 
 Be explicit that:
 
-- later semantic LLM debug outputs live under `outputs/papers/<paper_stem>/llm_semantic_debug/`
+- later variable-plausibility LLM debug outputs live under `outputs/papers/<paper_stem>/llm_variable_plausibility_debug/`
 - `ParsedTable` export is still not implemented
 
 ## Deliverable

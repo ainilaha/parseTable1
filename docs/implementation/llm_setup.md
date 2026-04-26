@@ -1,8 +1,12 @@
 # LLM Setup
 
-This project supports the semantic post-`TableDefinition` LLM client through environment-variable-based configuration.
+This project supports one optional provider-backed LLM workflow:
 
-## Required variables
+- `table1-parser review-variable-plausibility`
+
+The deterministic `table1-parser parse` command does not call an LLM.
+
+## Required Variables
 
 When `LLM_PROVIDER=openai`, these must be set:
 
@@ -25,7 +29,7 @@ Optional:
 - `LLM_SDK_DEBUG`
 - `QWEN_BASE_URL`
 
-## Example setup on macOS/Linux
+## Example Setup On macOS/Linux
 
 OpenAI:
 
@@ -53,7 +57,7 @@ export LLM_MAX_RETRIES=2
 export LLM_DEBUG=false
 ```
 
-## Example setup on Windows PowerShell
+## Example Setup On Windows PowerShell
 
 OpenAI:
 
@@ -84,11 +88,11 @@ $env:LLM_DEBUG = "false"
 Meaning of the two debug flags:
 
 - `LLM_DEBUG=true`
-  write timestamped semantic-debug JSON artifacts to disk during `parse`
+  write timestamped variable-plausibility debug JSON artifacts to disk during `review-variable-plausibility`
 - `LLM_SDK_DEBUG=true`
   enable verbose provider/SDK logging in the terminal
 
-## Install requirement
+## Install Requirement
 
 The configured OpenAI client requires the OpenAI Python SDK:
 
@@ -98,34 +102,26 @@ python3 -m pip install -e '.[dev]'
 
 The configured Qwen client uses the Python standard library HTTP stack.
 
-If provider setup is missing, the semantic LLM path in `table1-parser parse` will skip provider calls with a clear setup warning.
+If provider setup is missing, `review-variable-plausibility` skips provider calls with a clear setup warning and writes an empty review artifact.
 
-## Running the configured semantic LLM path
-
-```bash
-table1-parser parse testpapers/cobaltpaper.pdf
-```
-
-## Disabling the semantic LLM path
-
-If you do not want `parse` to attempt any semantic LLM calls:
+## Running The Configured LLM Path
 
 ```bash
-table1-parser parse testpapers/cobaltpaper.pdf --no-llm-semantic
+table1-parser review-variable-plausibility testpapers/cobaltpaper.pdf
 ```
 
-## Debug artifacts
+## Debug Artifacts
 
-If you want per-table semantic debug artifacts, enable:
+If you want per-table review debug artifacts, enable:
 
 ```bash
 export LLM_DEBUG=true
 ```
 
-Then run `table1-parser parse ...`. The parser will write a timestamped debug directory under:
+Then run `table1-parser review-variable-plausibility ...`. The parser writes a timestamped debug directory under:
 
 ```text
-outputs/papers/<paper_stem>/llm_semantic_debug/
+outputs/papers/<paper_stem>/llm_variable_plausibility_debug/
 ```
 
 ## Security

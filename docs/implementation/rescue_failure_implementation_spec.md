@@ -88,7 +88,6 @@ Add a stable per-table status record with:
 - `drop_empty_columns_after_repair`
 - `glyph_repair`
 - `deterministic_definition`
-- `semantic_definition_rescue`
 - `deterministic_value_parse`
 
 ## Stable Failure Reasons
