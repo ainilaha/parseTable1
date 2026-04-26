@@ -354,6 +354,29 @@ def test_female_percent_row_becomes_one_row_summary_block() -> None:
     assert blocks[0].row_start == blocks[0].row_end == 1
 
 
+def test_binary_row_with_integer_counts_only_becomes_one_row_summary_block() -> None:
+    """Standalone indicator rows with integer counts only should still be binary variables."""
+    table = NormalizedTable(
+        table_id="tbl-female-counts-only",
+        header_rows=[0],
+        body_rows=[1, 2],
+        row_views=[
+            _build_row(1, "Female", ["2793", "2603", "190", "0.002"]),
+            _build_row(2, "BMI, mean ± SD", ["28.4 (6.1)", "27.0 (5.8)", "29.9 (7.1)", "0.040"]),
+        ],
+        n_rows=3,
+        n_cols=5,
+    )
+
+    classifications = classify_rows(table)
+    blocks = group_variable_blocks(table, classifications=classifications)
+
+    assert classifications[0].classification == "binary_variable_row"
+    assert blocks[0].variable_label == "Female"
+    assert blocks[0].variable_kind == "binary"
+    assert blocks[0].row_start == blocks[0].row_end == 1
+
+
 def test_true_categorical_parent_with_child_levels_is_not_collapsed_to_one_row_summary() -> None:
     """A real parent-plus-level block should stay categorical, even when one child mentions Female."""
     table = NormalizedTable(
@@ -810,7 +833,10 @@ def test_level_detector_required_examples() -> None:
 
     assert is_likely_level_row(_build_row(1, "Current", ["50 (20.1)"])) is True
     assert is_likely_level_row(_build_row(2, "Hispanic/Mexican", ["30 (15.0)"])) is True
-    assert is_likely_level_row(_build_row(3, "Age, years", ["52.3 (14.1)"])) is False
+    assert is_likely_level_row(_build_row(3, "Q1", ["50"])) is True
+    assert is_likely_level_row(_build_row(4, "Age, years", ["52.3 (14.1)"])) is False
+    assert is_likely_level_row(_build_row(5, "Current", ["52.3 (14.1)"])) is False
+    assert is_likely_level_row(_build_row(6, "Q1", ["0.45"])) is False
 
 
 def test_variable_grouper_builds_continuous_and_categorical_blocks() -> None:

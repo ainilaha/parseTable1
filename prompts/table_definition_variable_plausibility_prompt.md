@@ -25,11 +25,12 @@ Type-specific guidance:
 - `categorical`: label denotes a grouping concept and the child levels are coherent members, bins, or strata of that concept; a categorical variable must have one or more child levels
 - `binary`: should be a one-row indicator variable with no child levels; it still implies two states semantically even when the opposite state is not printed as its own row
 - one-row labels like `Gender = Female`, `age.cat = >60 years`, `BMI_cat >=30`, or similar threshold-coded indicator names are often plausible binary variables rather than categorical parents
+- generic group labels like `Education`, `Smoking`, `Race/ethnicity`, or `Activity level` are usually implausible as standalone no-child variables unless the label itself names one specific indicator state
 - `unknown`: use only when the supplied label/type pairing is too ambiguous to evaluate confidently
 
 Secondary evidence:
 - `units_hint` and `summary_style_hint` are helpful but not ground truth
-- for example, `mean_sd` often supports `continuous`, while `count_pct` often supports `categorical` or `binary`
+- for example, `mean_sd` often supports `continuous`, while `count_pct` or `n_only` often support `categorical` or `binary` count rows
 
 Inputs:
 - one compact JSON payload for one table only

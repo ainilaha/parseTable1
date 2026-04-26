@@ -102,7 +102,9 @@ def test_variable_plausibility_prompt_includes_scoring_and_safety_requirements()
     assert "a categorical variable must have one or more child levels" in prompt
     assert "should be a one-row indicator variable with no child levels" in prompt
     assert "`age.cat = >60 years`" in prompt
+    assert "generic group labels like `Education`, `Smoking`, `Race/ethnicity`, or `Activity level`" in prompt
     assert "Secondary evidence:" in prompt
+    assert "`count_pct` or `n_only` often support `categorical` or `binary` count rows" in prompt
     assert "return the same variables in the same order" in prompt
     assert "do not invent, remove, split, merge, or rename variables" in prompt
     assert "do not invent, remove, reorder, or rename levels" in prompt
@@ -123,6 +125,8 @@ def test_variable_plausibility_prompt_template_is_repo_file() -> None:
     assert "Scoring rubric:" in template
     assert "a categorical variable must have one or more child levels" in template
     assert "`BMI_cat >=30`" in template
+    assert "generic group labels like `Education`, `Smoking`, `Race/ethnicity`, or `Activity level`" in template
+    assert "`count_pct` or `n_only` often support `categorical` or `binary` count rows" in template
     assert "do not invent, remove, split, merge, or rename variables" in template
     assert "{{TABLE_PAYLOAD_JSON}}" in template
     assert "{{OUTPUT_SCHEMA_SECTION}}" in template

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 
+from table1_parser.heuristics.value_pattern_detector import detect_value_pattern
 from table1_parser.schemas import RowView
+from table1_parser.text_cleaning import clean_text
 
 
 COMMON_LEVEL_LABELS = {
@@ -28,6 +30,8 @@ SUMMARY_LABEL_PATTERN = re.compile(
     r"\b(mean|sd|median|iqr|range|min|max)\b",
     re.IGNORECASE,
 )
+COUNT_LIKE_VALUE_PATTERNS = {"count_pct", "n_only"}
+PERCENT_FRAGMENT_PATTERN = re.compile(r"^\(\s*\d+(?:\.\d+)?%\s*\)$")
 
 
 def is_common_level_label(label: str) -> bool:
@@ -42,14 +46,40 @@ def is_common_level_label(label: str) -> bool:
     )
 
 
-def is_likely_level_row(row_view: RowView) -> bool:
+def is_likely_level_row(
+    row_view: RowView,
+    statistic_col_indices: set[int] | None = None,
+) -> bool:
     """Detect whether a body row label looks like a categorical level."""
     label = row_view.first_cell_normalized
     word_count = len(label.split())
+    trailing_cells = [
+        clean_text(row_view.raw_cells[col_idx])
+        for col_idx in range(1, len(row_view.raw_cells))
+        if col_idx not in (statistic_col_indices or set()) and clean_text(row_view.raw_cells[col_idx])
+    ]
+    trailing_values_are_count_like = False
+    trailing_idx = 0
+    while trailing_idx < len(trailing_cells):
+        pattern = detect_value_pattern(trailing_cells[trailing_idx]).pattern
+        if pattern in COUNT_LIKE_VALUE_PATTERNS:
+            trailing_values_are_count_like = True
+            if (
+                pattern == "n_only"
+                and trailing_idx + 1 < len(trailing_cells)
+                and PERCENT_FRAGMENT_PATTERN.fullmatch(trailing_cells[trailing_idx + 1])
+            ):
+                trailing_idx += 2
+                continue
+            trailing_idx += 1
+            continue
+        trailing_values_are_count_like = False
+        break
     return (
         bool(label)
         and row_view.has_trailing_values
         and not bool(SUMMARY_LABEL_PATTERN.search(row_view.first_cell_raw))
+        and trailing_values_are_count_like
         and (
             is_common_level_label(label)
             or (

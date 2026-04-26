@@ -68,18 +68,26 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
                 candidate = clean_text(match.group(1))
                 if candidate and candidate.lower() not in {"sd", "iqr", "%"} and len(candidate) <= 20:
                     units_hint = candidate
-        label = clean_text(parent_row.raw_cells[0]).lower() if parent_row.raw_cells else ""
-        if "n (%)" in label or "no. (%)" in label:
-            summary_style_hint = "count_pct"
+        if levels:
+            level_data_patterns: list[str] = []
+            for level in levels:
+                for cell in row_views_by_idx[level.row_idx].raw_cells[1:]:
+                    if not clean_text(cell):
+                        continue
+                    pattern = detect_value_pattern(cell).pattern
+                    if pattern != "p_value":
+                        level_data_patterns.append(pattern)
+            if level_data_patterns and all(pattern in {"count_pct", "n_only"} for pattern in level_data_patterns):
+                summary_style_hint = "count_pct" if "count_pct" in level_data_patterns else "n_only"
+            else:
+                summary_style_hint = None
         else:
             summary_style_hint = None
             for cell in [cell for cell in parent_row.raw_cells[1:] if clean_text(cell)]:
                 pattern = detect_value_pattern(cell).pattern
-                if pattern != "unknown":
+                if pattern not in {"unknown", "p_value"}:
                     summary_style_hint = pattern
                     break
-            if summary_style_hint is None and levels:
-                summary_style_hint = "count_pct"
         confidence = 0.55
         if variable_type == "continuous":
             confidence = 0.9

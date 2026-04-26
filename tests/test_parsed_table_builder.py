@@ -166,3 +166,28 @@ def test_build_parsed_table_adds_soft_note_when_group_share_does_not_match() -> 
     )
     assert mismatched.confidence == 0.85
     assert any(note.startswith("count_pct_group_share_mismatch: variable=Sex column=cases") for note in parsed.notes)
+
+
+def test_build_parsed_table_parses_n_only_categorical_values_without_count_percent_notes() -> None:
+    """Categorical variables with n_only summaries should parse as counts without count-percent notes."""
+    table = _build_table()
+    table.row_views[2].raw_cells[1:] = ["40", "10", "30", "0.02"]
+    table.row_views[3].raw_cells[1:] = ["60", "30", "30", ""]
+    definition = _build_definition()
+    definition.variables[0].summary_style_hint = "n_only"
+
+    parsed = build_parsed_table(table, definition)
+
+    male_overall = next(
+        value for value in parsed.values if value.variable_name == "Sex" and value.level_label == "Male" and value.col_idx == 1
+    )
+    female_cases = next(
+        value for value in parsed.values if value.variable_name == "Sex" and value.level_label == "Female" and value.col_idx == 2
+    )
+
+    assert male_overall.value_type == "count"
+    assert male_overall.parsed_numeric == 40.0
+    assert male_overall.parsed_secondary_numeric is None
+    assert female_cases.value_type == "count"
+    assert female_cases.parsed_numeric == 30.0
+    assert parsed.notes == []

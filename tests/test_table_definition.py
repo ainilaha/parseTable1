@@ -220,6 +220,64 @@ def test_one_row_binary_summary_builds_binary_defined_variable() -> None:
     assert variables[0].levels == []
 
 
+def test_categorical_levels_with_integer_counts_only_build_n_only_summary_hint() -> None:
+    """Categorical variables with integer-only child rows should carry an n_only summary hint."""
+    table = NormalizedTable(
+        table_id="tbl-education-counts-only",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Education", []),
+            _build_row(2, "High school", ["25", "13", "12"]),
+            _build_row(3, "College", ["75", "27", "48"]),
+        ],
+        n_rows=4,
+        n_cols=4,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall", "Cases", "Controls"],
+                ["Education", "", "", ""],
+                ["High school", "25", "13", "12"],
+                ["College", "75", "27", "48"],
+            ]
+        },
+    )
+
+    variables = build_defined_variables(table)
+
+    assert variables[0].variable_type == "categorical"
+    assert variables[0].summary_style_hint == "n_only"
+
+
+def test_categorical_levels_with_non_count_values_do_not_silently_get_count_pct_hint() -> None:
+    """Malformed categorical child values should not force a count_pct summary hint."""
+    table = NormalizedTable(
+        table_id="tbl-education-malformed",
+        header_rows=[0],
+        body_rows=[1, 2, 3],
+        row_views=[
+            _build_row(1, "Education, n (%)", []),
+            _build_row(2, "High school", ["0.45", "0.32"]),
+            _build_row(3, "College", ["0.55", "0.68"]),
+        ],
+        n_rows=4,
+        n_cols=3,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Cases", "Controls"],
+                ["Education, n (%)", "", ""],
+                ["High school", "0.45", "0.32"],
+                ["College", "0.55", "0.68"],
+            ]
+        },
+    )
+
+    variables = build_defined_variables(table)
+
+    assert variables[0].variable_type == "unknown"
+    assert variables[0].summary_style_hint is None
+
+
 def test_indicator_style_cat_row_builds_binary_defined_variable() -> None:
     """Explicit `.cat = ...` indicator rows should map to binary variables."""
     table = NormalizedTable(

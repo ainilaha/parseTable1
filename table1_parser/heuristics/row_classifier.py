@@ -141,12 +141,14 @@ def classify_row(
     has_statistic_values = bool(populated_trailing_col_indices.intersection(statistic_col_indices or set()))
     has_data_and_statistic_values = bool(non_statistic_trailing_cells) and has_statistic_values
     all_non_statistic_columns_populated = bool(non_statistic_col_indices) and non_statistic_col_indices.issubset(populated_trailing_col_indices)
-    next_is_level_like = bool(next_row_view and is_likely_level_row(next_row_view))
+    next_is_level_like = bool(
+        next_row_view and is_likely_level_row(next_row_view, statistic_col_indices=statistic_col_indices)
+    )
     categorical_parent_cue = _has_categorical_parent_cue(row_view)
     explicit_indicator_label = INDICATOR_VARIABLE_LABEL_PATTERN.search(row_view.first_cell_raw) is not None
     child_level_count = 0
     for next_row in following_row_views or []:
-        if is_likely_level_row(next_row):
+        if is_likely_level_row(next_row, statistic_col_indices=statistic_col_indices):
             child_level_count += 1
             continue
         if (
@@ -160,7 +162,8 @@ def classify_row(
         sum(
             1
             for next_row in following_row_views or []
-            if is_likely_level_row(next_row) and _is_more_indented(next_row, row_view)
+            if is_likely_level_row(next_row, statistic_col_indices=statistic_col_indices)
+            and _is_more_indented(next_row, row_view)
         )
         if indentation_informative
         else 0
@@ -197,10 +200,19 @@ def classify_row(
     non_statistic_trailing_patterns = [
         detect_value_pattern(cell).pattern for cell in non_statistic_trailing_cells
     ]
-    count_pct_non_stat_count = sum(pattern == "count_pct" for pattern in non_statistic_trailing_patterns)
+    count_like_non_stat_count = sum(
+        pattern in {"count_pct", "n_only"} for pattern in non_statistic_trailing_patterns
+    )
     p_value_non_stat_count = sum(pattern == "p_value" for pattern in non_statistic_trailing_patterns)
     interval_non_stat_count = sum(
         bool(INTERVAL_SUMMARY_PATTERN.fullmatch(cell)) for cell in non_statistic_trailing_cells
+    )
+    count_like_level_row = is_likely_level_row(row_view, statistic_col_indices=statistic_col_indices)
+    top_level_common_level_indicator = (
+        is_common_level_label(label)
+        and previous_classification not in {"variable_header", "level_row"}
+        and active_parent_row_view is None
+        and child_level_count == 0
     )
     looks_like_interval_summary_row = (
         row_view.has_trailing_values
@@ -214,13 +226,14 @@ def classify_row(
     looks_like_binary_variable_row = (
         row_view.has_trailing_values
         and len(non_statistic_trailing_cells) >= 2
-        and count_pct_non_stat_count >= 2
-        and count_pct_non_stat_count + p_value_non_stat_count == len(non_statistic_trailing_patterns)
+        and count_like_non_stat_count >= 2
+        and count_like_non_stat_count + p_value_non_stat_count == len(non_statistic_trailing_patterns)
         and (not categorical_parent_cue or explicit_indicator_label)
         and not strong_continuous_layout
         and not has_continuous_cue
         and not has_only_statistic_values
-        and not is_common_level_label(label)
+        and (not is_common_level_label(label) or top_level_common_level_indicator)
+        and COUNT_LABEL_PATTERN.fullmatch(label.strip()) is None
         and (
             active_parent_row_view is None
             or explicit_indicator_label
@@ -238,6 +251,7 @@ def classify_row(
         and not strong_continuous_layout
         and not has_data_and_statistic_values
         and not has_only_statistic_values
+        and count_like_level_row
         and not looks_like_binary_variable_row
         and not _looks_scalar_count_row(
             row_view,
@@ -300,7 +314,7 @@ def classify_row(
 
     if (
         is_common_level_label(label)
-        and row_view.has_trailing_values
+        and count_like_level_row
         and not has_only_statistic_values
         and not has_data_and_statistic_values
     ):
