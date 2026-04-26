@@ -13,15 +13,27 @@ from table1_parser.llm.semantic_parser import (
     LLMSemanticInterpretationError,
     LLMSemanticTableDefinitionParser,
 )
+from table1_parser.llm.variable_plausibility_prompts import (
+    build_variable_plausibility_input_payload,
+    build_variable_plausibility_prompt,
+)
+from table1_parser.llm.variable_plausibility_schemas import (
+    LLMVariablePlausibilityInputPayload,
+    LLMVariablePlausibilityTableReview,
+)
 
 __all__ = [
     "LLMClient",
     "LLMConfigurationError",
     "LLMSemanticInterpretationError",
     "LLMSemanticTableDefinitionParser",
+    "LLMVariablePlausibilityInputPayload",
+    "LLMVariablePlausibilityTableReview",
     "LLMProviderError",
     "OpenAIClient",
     "QwenClient",
     "StaticStructuredLLMClient",
+    "build_variable_plausibility_input_payload",
+    "build_variable_plausibility_prompt",
     "build_llm_client",
 ]

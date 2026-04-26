@@ -25,6 +25,13 @@ Current prompt-shaping strategy:
 - compact row hints rather than full cell arrays
 - compact deterministic variable spans rather than full `TableDefinition` dumps
 
+Optional helper also available:
+
+- a variable-plausibility review prompt that consumes one table's `TableDefinition.variables`
+- it returns the same variable list with a per-variable `plausibility_score` in `[0, 1]`
+- it is intended as a table-local QA or ranking aid, not as a replacement for deterministic parsing
+- it does not change the default `parse` flow or persisted artifacts unless a later caller explicitly saves its output
+
 ## Current provider path
 
 The repository currently supports:

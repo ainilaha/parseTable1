@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from table1_parser.llm.prompts import load_prompt_template, render_prompt_template
+from table1_parser.llm.prompts import load_prompt_template, merge_prompt_table_text, render_prompt_template
 from table1_parser.llm.semantic_schemas import (
     LLMDeterministicVariablePayload,
     LLMIndexedLevelPayload,
@@ -31,7 +31,7 @@ def build_llm_semantic_input_payload(
     row_view_by_idx = {row_view.row_idx: row_view for row_view in table.row_views}
     return LLMSemanticInputPayload(
         table_id=table.table_id,
-        table_text=_merge_table_text(table.title, table.caption),
+        table_text=merge_prompt_table_text(table.title, table.caption),
         body_rows=_indexed_rows(table, row_view_by_idx),
         deterministic_variables=[
             LLMDeterministicVariablePayload(
@@ -100,24 +100,3 @@ def _row_label(cleaned_rows: list[object], row_idx: int, row_view_by_idx: dict[i
     if row_view is None:
         return ""
     return clean_text(getattr(row_view, "first_cell_normalized", "") or getattr(row_view, "first_cell_raw", ""))
-
-
-def _merge_table_text(title: str | None, caption: str | None) -> str | None:
-    """Merge title and caption into one compact table description string."""
-    cleaned_title = clean_text(title or "")
-    cleaned_caption = clean_text(caption or "")
-    if cleaned_title and cleaned_caption:
-        lowered_title = cleaned_title.lower()
-        lowered_caption = cleaned_caption.lower()
-        if lowered_title.startswith("table ") and not lowered_caption.startswith("table "):
-            return cleaned_caption
-        if lowered_title in lowered_caption:
-            return cleaned_caption
-        if lowered_caption in lowered_title:
-            return cleaned_title
-        return f"{cleaned_title} | {cleaned_caption}"
-    if cleaned_title:
-        return cleaned_title
-    if cleaned_caption:
-        return cleaned_caption
-    return None
