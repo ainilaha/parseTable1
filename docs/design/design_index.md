@@ -94,6 +94,11 @@ Then use the documents below as needed.
 - `docs/r_visualization.md`
   How current JSON outputs are inspected in R.
 
+## RFCs
+
+- `docs/rfcs/0001-nhanes-extension.md`
+  Draft proposal for an optional NHANES-specific extension layer that consumes core parser outputs without embedding NHANES assumptions in the generic Table 1 pipeline.
+
 ## When To Read These
 
 - If you are changing extraction, normalization, heuristics, LLM parsing, validation, or final exports:

@@ -1,6 +1,6 @@
 # parseTable1
 
-Research-oriented tooling for extracting, normalizing, heuristically interpreting, and LLM-refining Table 1-style epidemiology tables from PDFs.
+Research-oriented tooling for extracting, normalizing, heuristically interpreting, and optionally reviewing Table 1-style epidemiology tables from PDFs.
 
 ## Current Status
 
@@ -8,7 +8,7 @@ Research-oriented tooling for extracting, normalizing, heuristically interpretin
 - The `extract` and `normalize` commands are still available for stage-specific inspection and debugging.
 - `TableDefinition` is now implemented as a deterministic, value-free semantic representation of the table structure.
 - `ParsedTable` is now emitted as the final structured value layer, with conservative numeric parsing and soft Table 1 `n (%)` heuristics.
-- The repository also contains heuristic interpretation, diagnostics, and LLM-oriented developer tooling.
+- The repository also contains heuristic interpretation, diagnostics, paper-context artifacts, R inspection helpers, and a standalone LLM variable-plausibility review command.
 
 ## Basic Idea
 
@@ -40,13 +40,17 @@ At the moment, the repository can persist:
 
 - `ExtractedTable`
 - `NormalizedTable`
+- `TableProfile`
 - `TableDefinition`
 - `ParsedTable`
+- `TableProcessingStatus`
 - paper-level markdown context
 - paper-level variable inventory
+- per-table paper-context bundles
+- optional LLM variable-plausibility reviews
 
 Today, a single call to `table1-parser parse` writes those artifacts from one extraction pass.
-When LLM configuration is available, the same `parse` call also writes row-focused semantic LLM table definitions.
+The `parse` command is deterministic and does not call an LLM. Optional LLM review is run separately with `table1-parser review-variable-plausibility`.
 
 ## Install
 
@@ -77,16 +81,11 @@ outputs/papers/<paper_stem>/normalized_tables.json
 outputs/papers/<paper_stem>/table_profiles.json
 outputs/papers/<paper_stem>/table_definitions.json
 outputs/papers/<paper_stem>/parsed_tables.json
+outputs/papers/<paper_stem>/table_processing_status.json
 outputs/papers/<paper_stem>/paper_markdown.md
 outputs/papers/<paper_stem>/paper_sections.json
 outputs/papers/<paper_stem>/paper_variable_inventory.json
 outputs/papers/<paper_stem>/table_contexts/table_0_context.json
-```
-
-If semantic LLM configuration is available, it also writes:
-
-```text
-outputs/papers/<paper_stem>/table_definitions_llm.json
 ```
 
 For example:
@@ -95,12 +94,26 @@ For example:
 table1-parser parse testpapers/cobaltpaper.pdf
 ```
 
-This writes the extraction, normalization, table-definition, final parsed-table, and paper-context outputs in one run. When configured, it also writes row-focused semantic LLM table-definition output.
+This writes the extraction, normalization, table-profile, table-definition, final parsed-table, processing-status, and paper-context outputs in one run.
 
-To suppress semantic LLM inference explicitly:
+To run the optional LLM variable-plausibility review:
 
 ```bash
-table1-parser parse path/to/paper.pdf --no-llm-semantic
+table1-parser review-variable-plausibility path/to/paper.pdf
+```
+
+When LLM provider configuration is available, this reruns the deterministic pipeline and writes:
+
+```text
+outputs/papers/<paper_stem>/table_variable_plausibility_llm.json
+```
+
+The review is intentionally narrow. It scores whether each deterministic variable label, type, and categorical level structure looks plausible for an epidemiology Table 1. It does not rewrite `table_definitions.json`.
+
+To write debug payloads and monitoring records for the review:
+
+```bash
+LLM_DEBUG=true table1-parser review-variable-plausibility path/to/paper.pdf
 ```
 
 If you want just the raw extraction stage:
@@ -136,14 +149,16 @@ table1-parser extract path/to/paper.pdf --stdout
 If you want a different root output directory:
 
 ```bash
-table1-parser extract path/to/paper.pdf --outdir results
+table1-parser parse path/to/paper.pdf --outdir results
 ```
 
 This writes to:
 
 ```text
-results/papers/<paper_stem>/extracted_tables.json
+results/papers/<paper_stem>/
 ```
+
+The `extract`, `normalize`, `parse`, and `review-variable-plausibility` commands all accept `--outdir`.
 
 If you want just the normalization stage:
 
@@ -155,6 +170,12 @@ By default this writes JSON to:
 
 ```bash
 outputs/papers/<paper_stem>/normalized_tables.json
+```
+
+The normalization JSON can also be printed to stdout:
+
+```bash
+table1-parser normalize path/to/paper.pdf --stdout
 ```
 
 ## R Visualization
@@ -183,14 +204,26 @@ For paper-level inspection there is also:
 
 ```r
 source("R/inspect_paper_outputs.R")
-compare_table_definitions("outputs/papers/cobaltpaper", table_index = 0L)
+summarize_table_processing("outputs/papers/cobaltpaper")
+show_table_processing("outputs/papers/cobaltpaper", table_index = 0L)
+show_table_structure("outputs/papers/cobaltpaper", table_index = 0L)
 show_paper_variable_candidates("outputs/papers/cobaltpaper")
 show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based", mention_role = "variable")
 show_table_context("outputs/papers/cobaltpaper", table_index = 0L)
-show_llm_evidence("outputs/papers/cobaltpaper", table_index = 0L)
 ```
 
-These helpers are meant to make it easier to inspect the paper-level candidate variable inventory, distinguish broad mentions from promoted candidates, compare deterministic syntax-first row semantics with LLM semantics, and inspect the separate table-context retrieval artifacts.
+If `review-variable-plausibility` has been run:
+
+```r
+source("R/inspect_paper_outputs.R")
+outputs <- load_paper_outputs("outputs/papers/cobaltpaper")
+llm_variable_plausibility_df(outputs, table_index = 0L)
+show_llm_variable_plausibility("outputs/papers/cobaltpaper", table_index = 0L)
+list_llm_variable_plausibility_debug_runs("outputs/papers/cobaltpaper")
+summarize_llm_variable_plausibility_monitoring("outputs/papers/cobaltpaper")
+```
+
+These helpers are meant to make it easier to inspect the paper-level candidate variable inventory, processing status, deterministic table structure, optional LLM variable-plausibility review, and table-context retrieval artifacts.
 
 ## Output Layout
 
@@ -211,29 +244,34 @@ outputs/
       table_profiles.json
       table_definitions.json
       parsed_tables.json
-      table_definitions_llm.json
+      table_processing_status.json
       paper_markdown.md
       paper_sections.json
       paper_variable_inventory.json
       table_contexts/
         table_0_context.json
+      table_variable_plausibility_llm.json        # when review-variable-plausibility is run
+      llm_variable_plausibility_debug/            # when LLM_DEBUG=true
 ```
 
 This keeps outputs for each paper in a separate directory and leaves room for trace and interpretation-stage outputs.
-The `parse` command is intended to populate this directory with every available stage output from a single pipeline run.
-When `LLM_DEBUG=true`, semantic LLM debug artifacts are written under `outputs/papers/<paper_stem>/llm_semantic_debug/<timestamp>/`.
+The `parse` command is intended to populate this directory with every deterministic stage output from a single pipeline run.
+The `review-variable-plausibility` command adds the optional review artifact and any review debug files.
+When `LLM_DEBUG=true`, variable-plausibility review debug artifacts are written under `outputs/papers/<paper_stem>/llm_variable_plausibility_debug/<timestamp>/`.
 
 ## How To Read The Outputs
 
 The easiest way to inspect one paper is:
 
-1. start with `normalized_tables.json` to see the cleaned table structure
-2. read `table_profiles.json` to see how each table was routed
-3. read `table_definitions.json` to see the deterministic row and column interpretation
-4. read `paper_variable_inventory.json` to see the paper-level candidate variable reference list
-5. read `parsed_tables.json` to see the final structured values
-6. read `table_definitions_llm.json` when present to see the row-only semantic interpretation
-7. use `paper_sections.json` and `table_contexts/*.json` separately when you want to inspect the paper-context artifacts that may support later grounding work
+1. start with `extracted_tables.json` if the recovered table grid looks wrong
+2. read `normalized_tables.json` to see the cleaned table structure
+3. read `table_profiles.json` to see how each table was routed
+4. read `table_definitions.json` to see the deterministic row and column interpretation
+5. read `paper_variable_inventory.json` to see the paper-level candidate variable reference list
+6. read `parsed_tables.json` to see the final structured values
+7. read `table_processing_status.json` to see whether each table parsed cleanly, was rescued, or failed
+8. use `paper_sections.json` and `table_contexts/*.json` separately when you want to inspect the paper-context artifacts that may support later grounding work
+9. read `table_variable_plausibility_llm.json` when present to see the optional LLM variable-plausibility review
 
 In practice:
 
@@ -249,8 +287,10 @@ In practice:
   best for understanding whether a table was treated as descriptive, estimate-like, or unknown
 - `parsed_tables.json`
   best for the final structured row, column, and value output
-- `table_definitions_llm.json`
-  best for the row-only semantic view
+- `table_processing_status.json`
+  best for understanding parse outcome, rescue attempts, and failure reasons
+- `table_variable_plausibility_llm.json`
+  best for reviewing LLM plausibility scores for deterministic variables, types, and levels
 
 ## Syntax vs Semantics
 
@@ -261,9 +301,9 @@ The repository keeps syntax and semantics separate.
   main files: `extracted_tables.json`, `normalized_tables.json`
 - semantics
   what the rows mean and which levels belong under them
-  main files: `table_definitions.json`, `table_definitions_llm.json`
+  main files: `table_definitions.json`, `parsed_tables.json`
 
-The deterministic and LLM semantic files both refer back to the same `table_id` and row-index space. Columns remain deterministic in the current LLM design.
+The deterministic semantic files refer back to the same `table_id` and row-index space. The optional LLM review also preserves those variable identities, but it is a QA artifact rather than a replacement semantic definition.
 
 The paper-level variable inventory is complementary rather than competitive with those table-level artifacts. It is the paper-scoped candidate reference list that later semantic work can consult while still keeping one table at a time in the LLM prompt.
 
@@ -300,30 +340,28 @@ Current limitation:
 - the context files currently provide section IDs, headings, and passage text
 - they do not yet provide page anchors or line numbers inside the paper markdown
 
-## How To Judge The LLM Output
+## How To Judge The LLM Review
 
-The LLM output should be treated as an additional semantic interpreter, not hidden ground truth.
+The LLM variable-plausibility review should be treated as an inspection artifact, not hidden ground truth.
 
 To evaluate it:
 
-1. compare `table_definitions.json` with `table_definitions_llm.json`
-2. check whether they point to the same rows
-3. inspect whether the LLM made small plausible row/level refinements
-4. inspect `table_contexts/table_<n>_context.json` separately if you want to review the paper-context artifact for future grounding work
-
-Helpful signals already present in the LLM output:
-
-- `disagrees_with_deterministic`
-  whether the LLM is explicitly challenging the deterministic interpretation
+1. inspect `table_definitions.json` first to understand the deterministic variables and levels
+2. inspect `table_variable_plausibility_llm.json` or use `show_llm_variable_plausibility(...)` in R
+3. review low-scoring variables and their notes
+4. check whether categorical variables have sensible child levels and whether binary variables look like one-row indicators
+5. inspect `normalized_tables.json` if the LLM is reacting to a row that was misclassified before the review
 
 Current limitation:
 
-- there is not yet an adjudicated merged output
-- for now, users compare `table_definitions.json` and `table_definitions_llm.json` directly
+- the review does not change `table_definitions.json`
+- for now, users inspect the deterministic parse and the plausibility review side by side
 
 ## LLM Configuration
 
-The semantic LLM parse path uses environment-variable-based configuration. If the variables are present, `parse` runs semantic LLM table-definition inference by default. If they are missing, `parse` warns and continues with deterministic outputs only. Use `--no-llm-semantic` to turn that path off explicitly.
+The deterministic `parse` command does not call an LLM.
+
+The optional `review-variable-plausibility` command uses environment-variable-based configuration. If provider setup is missing, it skips provider calls with a setup warning and writes an empty review artifact.
 
 Minimum OpenAI setup:
 
@@ -372,7 +410,7 @@ Diagnostics:
 python3 scripts/debug_quality_report.py testpapers/cobaltpaper.pdf
 ```
 
-Semantic LLM debug artifacts are written by `table1-parser parse` when `LLM_DEBUG=true`. The per-run directory contains `llm_semantic_monitoring.json` plus per-table files such as `table_definition_llm_input.json`, `table_definition_llm_metrics.json`, `table_definition_llm_output.json`, and `table_definition_llm_interpretation.json`.
+Variable-plausibility LLM debug artifacts are written by `table1-parser review-variable-plausibility` when `LLM_DEBUG=true`. The per-run directory contains `llm_variable_plausibility_monitoring.json` plus per-table files such as `variable_plausibility_llm_input.json`, `variable_plausibility_llm_metrics.json`, `variable_plausibility_llm_output.json`, and `variable_plausibility_llm_review.json`.
 
 ## JSON Contracts
 
@@ -380,4 +418,4 @@ The repository keeps the table pipeline JSON-first. The current output and inter
 
 - [`docs/design/parsing_output_design.md`](docs/design/parsing_output_design.md)
 
-For the current semantic LLM path, the main contract model is `table1_parser.llm.semantic_schemas.LLMSemanticTableDefinition`.
+For the current LLM review path, the main contract models are in `table1_parser.llm.variable_plausibility_schemas`.
