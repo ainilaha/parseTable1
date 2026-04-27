@@ -127,6 +127,8 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
             for page in payload.get("pages", [])
             if isinstance(page, dict)
         }
+        if not pages:
+            return []
         candidates: list[DetectedTableCandidate] = []
         explicit_page_nums: set[int] = set()
         try:

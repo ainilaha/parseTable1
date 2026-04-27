@@ -6,6 +6,8 @@ import json
 import sys
 from types import ModuleType
 
+import pytest
+
 from table1_parser import cli
 from table1_parser.extract import build_extractor
 from table1_parser.extract import pymupdf4llm_extractor as pymupdf4llm_extractor_module
@@ -136,6 +138,12 @@ class FakePyMuDoc:
 
     def close(self) -> None:
         return None
+
+
+@pytest.fixture(autouse=True)
+def _install_default_fake_pymupdf_document(monkeypatch) -> None:
+    """Keep extraction unit tests from importing the real PyMuPDF bindings by default."""
+    _install_fake_pymupdf_document(monkeypatch, [])
 
 
 def _install_fake_pymupdf4llm(monkeypatch, payload: dict[str, object], *, fail: bool = False) -> None:
