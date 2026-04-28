@@ -72,6 +72,7 @@ This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifa
 | --- | --- | --- | --- |
 | Extraction | `ExtractedTable` | Written now as `extracted_tables.json` by `extract` and `parse` | Preserve raw table grid and cell provenance |
 | Normalization | `NormalizedTable` | Written now as `normalized_tables.json` by `normalize` and `parse` | Clean rows, detect headers, derive row features |
+| Table 1 continuation inspection | `Table1ContinuationGroup`, `NormalizedTable` | Written now as `table1_continuation_groups.json` and `merged_table1_tables.json` by `parse` | Persist artifact-only grouping and merged normalized rows for explicit Table 1 continuations without altering the main parse |
 | Table routing | `TableProfile` | Written now as `table_profiles.json` by `parse` | Persist deterministic family routing decisions |
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
 | Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles, with only conservative glyph repair in the markdown text |
@@ -266,7 +267,46 @@ Conservative repair rule:
 - when that repair reveals a strongly header-like first body row, normalization may promote that row into `header_rows`
 - repair diagnostics should live in `metadata` rather than replacing the canonical `NormalizedTable` fields
 
-## 3. `table_definitions.json`
+## 3. Table 1 Continuation Inspection Artifacts
+
+Current status:
+
+- canonical inspection schemas exist now
+- written by the `parse` CLI command
+- not consumed by the default `TableDefinition` or `ParsedTable` builders
+
+Current CLI paths:
+
+```text
+outputs/papers/<paper_stem>/table1_continuation_groups.json
+outputs/papers/<paper_stem>/merged_table1_tables.json
+```
+
+Canonical models:
+
+- `Table1ContinuationGroup`
+- child model: `Table1ContinuationMember`
+- merged table artifact: `NormalizedTable`
+
+Design components:
+
+- `table1_continuation_groups.json`
+  records explicit Table 1 continuation candidates, their source table indices, source table IDs, column signatures, decision reasons, and merge/skip diagnostics
+- `merged_table1_tables.json`
+  records one merged `NormalizedTable` per accepted group, preserving normalized cleaned rows and source-row provenance in `metadata.table1_continuation_merge`
+
+Design intent:
+
+- handle only explicit Table 1 continuation evidence, such as `Table 1 (continued)` or extractor continuation metadata for table number 1
+- require compatible normalized column signatures before writing a merged table artifact
+- ignore non-Table 1 continuations, including later result tables that happen to span pages
+- preserve source table IDs and row indices so the merged view is auditable from the original `normalized_tables.json`
+- keep the merge artifact inspection-only until a later change deliberately wires it into semantic parsing
+- avoid changing existing `table_definitions.json`, `parsed_tables.json`, or `table_processing_status.json` behavior as a side effect
+
+The merged normalized table keeps the base table rows and appends continuation body rows after dropping continuation-only header/title rows. Its row indices are local to the merged artifact, while provenance records map each merged row back to the original table ID and original row index.
+
+## 4. `table_definitions.json`
 
 Current status:
 
@@ -352,7 +392,7 @@ Design intent:
 - model grouped columns explicitly enough to distinguish the overall population column, grouped data columns, and trailing statistic columns
 - preserve grouped-column level labels and left-to-right order so downstream matching can reconstruct the table's column grouping structure
 
-## 4. Paper Context Artifacts
+## 5. Paper Context Artifacts
 
 Current status:
 
@@ -423,7 +463,7 @@ Variation note:
 - that variation should be handled in section parsing and retrieval, not by redefining the meaning of `paper_markdown.md` beyond conservative glyph repair
 - `docs/design/paper_markdown_spec.md` is the design reference for this artifact
 
-## 5. `table_variable_plausibility_llm.json`
+## 6. `table_variable_plausibility_llm.json`
 
 Current status:
 
@@ -483,7 +523,7 @@ outputs/papers/<paper_stem>/llm_variable_plausibility_debug/<timestamp>/
 - `llm_variable_plausibility_monitoring.json` summarizes every table's review status, including skipped-not-eligible tables
 - per-table trace files are written only for tables that actually reached the provider call path
 
-## 6. Variable-Plausibility Debug Trace Files
+## 7. Variable-Plausibility Debug Trace Files
 
 Current status:
 
@@ -544,7 +584,7 @@ Design intent:
 - preserve stable variable identity fields so disagreements can be audited safely
 - keep the prompt payload compact; the saved input wrapper currently uses short payload keys such as `table` and `vars`
 
-## 7. `ParsedTable` JSON
+## 8. `ParsedTable` JSON
 
 Current status:
 
@@ -624,7 +664,7 @@ Design note for future value parsing:
 
 This is the richest JSON design in the repo because it joins variable semantics, column semantics, and cell-level values into one validated representation.
 
-## 8. `table_processing_status.json`
+## 9. `table_processing_status.json`
 
 Current status:
 
@@ -684,6 +724,7 @@ Canonical payloads currently include:
 
 - `ExtractedTable`
 - `NormalizedTable`
+- `Table1ContinuationGroup`
 - `TableDefinition`
 - `LLMVariablePlausibilityTableReview`
 - `ParsedTable`

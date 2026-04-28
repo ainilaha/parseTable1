@@ -37,7 +37,12 @@ from table1_parser.schemas import (
     ParsedTable,
     TableContext,
     TableDefinition,
+    Table1ContinuationGroup,
     TableProfile,
+)
+from table1_parser.table1_continuations import (
+    build_table1_continuation_artifacts,
+    table1_continuation_groups_to_payload,
 )
 
 DEFAULT_OUTPUT_DIR = Path("outputs")
@@ -50,6 +55,8 @@ class PaperParseArtifacts:
     paper_stem: str
     extracted_tables: list[ExtractedTable]
     normalized_tables: list[NormalizedTable]
+    table1_continuation_groups: list[Table1ContinuationGroup]
+    merged_table1_tables: list[NormalizedTable]
     table_profiles: list[TableProfile]
     table_definitions: list[TableDefinition]
     parsed_tables: list[ParsedTable]
@@ -348,6 +355,7 @@ def _build_paper_parse_artifacts(pdf_path: str) -> PaperParseArtifacts:
     extractor = _build_default_extractor()
     extracted_tables = extractor.extract(pdf_path)
     normalized_tables = normalize_extracted_tables(extracted_tables)
+    table1_continuation_groups, merged_table1_tables = build_table1_continuation_artifacts(normalized_tables)
     table_profiles = build_table_profiles(normalized_tables)
     table_definitions = build_table_definitions(normalized_tables)
     parsed_tables = build_parsed_tables(normalized_tables, table_definitions)
@@ -360,6 +368,8 @@ def _build_paper_parse_artifacts(pdf_path: str) -> PaperParseArtifacts:
         paper_stem=paper_stem,
         extracted_tables=extracted_tables,
         normalized_tables=normalized_tables,
+        table1_continuation_groups=table1_continuation_groups,
+        merged_table1_tables=merged_table1_tables,
         table_profiles=table_profiles,
         table_definitions=table_definitions,
         parsed_tables=parsed_tables,
@@ -419,6 +429,8 @@ def _write_parse_outputs(
     paper_dir = _paper_output_dir(pdf_path, outdir)
     extract_output_path = paper_dir / "extracted_tables.json"
     normalize_output_path = paper_dir / "normalized_tables.json"
+    table1_continuation_groups_output_path = paper_dir / "table1_continuation_groups.json"
+    merged_table1_output_path = paper_dir / "merged_table1_tables.json"
     table_profile_output_path = paper_dir / "table_profiles.json"
     table_definition_output_path = paper_dir / "table_definitions.json"
     parsed_output_path = paper_dir / "parsed_tables.json"
@@ -436,6 +448,11 @@ def _write_parse_outputs(
         encoding="utf-8",
     )
     write_normalized_tables(normalize_output_path, artifacts.normalized_tables)
+    table1_continuation_groups_output_path.write_text(
+        json.dumps(table1_continuation_groups_to_payload(artifacts.table1_continuation_groups), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    write_normalized_tables(merged_table1_output_path, artifacts.merged_table1_tables)
     table_profile_output_path.write_text(
         json.dumps(table_profiles_to_payload(artifacts.table_profiles), indent=2) + "\n",
         encoding="utf-8",

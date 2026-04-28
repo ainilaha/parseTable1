@@ -27,6 +27,8 @@ Today that directory may contain:
 
 - `extracted_tables.json`
 - `normalized_tables.json`
+- `table1_continuation_groups.json`
+- `merged_table1_tables.json`
 - `table_profiles.json`
 - `table_definitions.json`
 - `parsed_tables.json`
@@ -60,6 +62,7 @@ The current implemented flow for `parse` is:
 PDF
   -> extracted tables
   -> normalized tables
+  -> Table 1 continuation inspection artifacts
   -> table profiles
   -> table definitions
   -> parsed tables
@@ -291,7 +294,33 @@ This artifact is where the table becomes parser-friendly without yet becoming fu
 
 That separation matters because many downstream mistakes are really normalization mistakes, not semantic mistakes.
 
-## Step 4: Table Routing With `TableProfile`
+## Step 4: Build Table 1 Continuation Inspection Artifacts
+
+After normalization, the parser checks whether the paper appears to have an explicit Table 1 continuation.
+
+This stage is intentionally narrow. It only considers Table 1, and it only accepts a merge when the continuation evidence is explicit and the normalized column signatures are compatible.
+
+Current examples of continuation evidence include:
+
+- extractor metadata indicating a continuation of table number 1
+- title or caption text such as `Table 1 (continued)`
+- a continuation marker in the first normalized rows
+
+When the evidence is compatible, the parser writes two inspection artifacts:
+
+- `table1_continuation_groups.json`
+  records the source table IDs, table indices, column-signature comparison, merge decision, and diagnostics
+- `merged_table1_tables.json`
+  records an artifact-only `NormalizedTable` that appends continuation body rows to the base Table 1 rows
+
+The merged artifact preserves source-row provenance in `metadata.table1_continuation_merge`.
+That lets a human inspect a single logical Table 1 view while still tracing every merged row back to the original normalized table and row index.
+
+This stage does not currently feed the merged rows into `TableDefinition` or `ParsedTable`.
+The default parser still defines and parses the original normalized tables separately.
+That constraint keeps this change useful for inspection without silently changing downstream table semantics.
+
+## Step 5: Table Routing With `TableProfile`
 
 Once a table has been normalized, the parser builds a `TableProfile`.
 
@@ -306,7 +335,7 @@ Why this stage exists:
 - it keeps mixed-table handling explicit
 - it lets the deterministic parser decide whether an LLM step is even relevant
 
-## Step 5: Build `TableDefinition`
+## Step 6: Build `TableDefinition`
 
 `TableDefinition` is the value-free semantic interpretation of the normalized table.
 
@@ -356,7 +385,7 @@ This makes it easier to:
 - support downstream matching and R-side table objects
 - compare deterministic semantics with future LLM semantics
 
-## Step 6: Build `ParsedTable`
+## Step 7: Build `ParsedTable`
 
 `ParsedTable` is the final deterministic structured table output.
 
@@ -386,7 +415,7 @@ Because row and column semantics can be right even when value parsing is wrong, 
 
 Keeping these apart makes debugging much more honest.
 
-## Step 7: Build Paper-Level Document Context
+## Step 8: Build Paper-Level Document Context
 
 The parser also builds a paper-level context representation from the whole document.
 
@@ -443,7 +472,7 @@ For each table, the parser builds a focused context bundle using:
 
 This produces per-table passages and term lists that can later support standalone review workflows or future semantic interpretation.
 
-## Step 8: Optional Variable-Plausibility LLM Review
+## Step 9: Optional Variable-Plausibility LLM Review
 
 The separate `review-variable-plausibility` command can run a narrow LLM review using:
 
@@ -469,7 +498,7 @@ Why this stage is optional:
 - LLM use should be focused on ambiguity, not raw PDF recovery
 - review calls should be inspectable and skippable
 
-## Step 9: Write Table Processing Status
+## Step 10: Write Table Processing Status
 
 After deterministic parsing, the parser writes `table_processing_status.json`.
 
@@ -490,22 +519,25 @@ When a parse looks wrong, inspect the outputs in this order.
 2. `normalized_tables.json`
    If the raw grid was usable but header rows, edge trimming, split-value repair, or cleaned text are wrong, the problem is normalization.
 
-3. `table_profiles.json`
+3. `table1_continuation_groups.json` and `merged_table1_tables.json`
+   If one logical Table 1 spans pages, inspect these to see whether the continuation was detected, whether the column signatures matched, and how merged rows map back to source rows.
+
+4. `table_profiles.json`
    If the table was routed to the wrong family, the problem is in routing.
 
-4. `table_definitions.json`
+5. `table_definitions.json`
    If row meanings or column meanings are wrong, the problem is in the semantic heuristics.
 
-5. `parsed_tables.json`
+6. `parsed_tables.json`
    If row and column meanings are right but the final values are wrong, the problem is in value parsing.
 
-6. `table_processing_status.json`
+7. `table_processing_status.json`
    If a table is empty or incomplete, inspect this next to see which rescue paths were attempted and where failure was recorded.
 
-7. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
+8. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
    If semantic context retrieval is weak, inspect these next.
 
-8. `table_variable_plausibility_llm.json`
+9. `table_variable_plausibility_llm.json`
    If deterministic variables were reasonable but the plausibility review looks wrong, the issue is in prompting, provider behavior, or validation for the standalone review command.
 
 ## Why This Pipeline Shape Is Worth Keeping
@@ -518,6 +550,7 @@ This separation gives the project:
 
 - raw extraction provenance
 - parser-facing structural cleanup
+- artifact-only Table 1 continuation inspection
 - explicit routing for mixed-table papers
 - value-free semantics before value parsing
 - optional standalone variable plausibility review

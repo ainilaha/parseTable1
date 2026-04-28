@@ -26,6 +26,8 @@ paper_output_paths <- function(paper_dir) {
   list(
     extracted = file.path(paper_dir, "extracted_tables.json"),
     normalized = file.path(paper_dir, "normalized_tables.json"),
+    table1_continuation_groups = file.path(paper_dir, "table1_continuation_groups.json"),
+    merged_table1 = file.path(paper_dir, "merged_table1_tables.json"),
     deterministic = file.path(paper_dir, "table_definitions.json"),
     parsed = file.path(paper_dir, "parsed_tables.json"),
     processing_status = file.path(paper_dir, "table_processing_status.json"),
@@ -62,6 +64,8 @@ load_paper_outputs <- function(paper_dir) {
     paper_dir = normalizePath(paper_dir, winslash = "/", mustWork = TRUE),
     extracted_tables = read_json_file(paths$extracted),
     normalized_tables = read_json_file(paths$normalized),
+    table1_continuation_groups = read_optional_json(paths$table1_continuation_groups),
+    merged_table1_tables = read_optional_json(paths$merged_table1),
     table_definitions = read_json_file(paths$deterministic),
     parsed_tables = read_optional_json(paths$parsed),
     table_processing_status = read_optional_json(paths$processing_status),
@@ -343,6 +347,108 @@ table_profile_by_index <- function(outputs, table_index = 0L, table_id = NULL) {
     return(profiles[[idx]] %||% NULL)
   }
   NULL
+}
+
+summarize_table1_continuations <- function(paper_dir) {
+  outputs <- load_paper_outputs(paper_dir)
+  groups <- outputs$table1_continuation_groups %||% list()
+  rows <- lapply(groups, function(group) {
+    data.frame(
+      group_id = as.character(group$group_id %||% ""),
+      merge_decision = as.character(group$merge_decision %||% ""),
+      decision_reason = as.character(group$decision_reason %||% ""),
+      confidence = as.numeric(group$confidence %||% NA_real_),
+      column_signature_match = as.logical(group$column_signature_match %||% FALSE),
+      source_table_indices = paste(as.character(unlist(group$source_table_indices %||% list())), collapse = ","),
+      source_table_ids = paste(as.character(unlist(group$source_table_ids %||% list())), collapse = " | "),
+      diagnostics = paste(as.character(unlist(group$diagnostics %||% list())), collapse = " | "),
+      stringsAsFactors = FALSE
+    )
+  })
+  summary_df <- if (length(rows) == 0) {
+    data.frame(
+      group_id = character(),
+      merge_decision = character(),
+      decision_reason = character(),
+      confidence = numeric(),
+      column_signature_match = logical(),
+      source_table_indices = character(),
+      source_table_ids = character(),
+      diagnostics = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    do.call(rbind, rows)
+  }
+
+  cat(sprintf("Table 1 continuation summary for %s\n\n", outputs$paper_dir))
+  if (nrow(summary_df) == 0) {
+    cat("[No Table 1 continuation groups]\n")
+    return(invisible(summary_df))
+  }
+  print(summary_df, row.names = FALSE, right = FALSE)
+  invisible(summary_df)
+}
+
+show_merged_table1 <- function(paper_dir, group_index = 0L, max_rows = 30L) {
+  outputs <- load_paper_outputs(paper_dir)
+  merged_tables <- outputs$merged_table1_tables %||% list()
+  idx <- as.integer(group_index) + 1L
+  if (idx < 1L || length(merged_tables) < idx) {
+    stop(sprintf("No merged Table 1 artifact found for group_index=%s.", as.integer(group_index)), call. = FALSE)
+  }
+  merged_table <- merged_tables[[idx]]
+  rows <- merged_table$metadata$cleaned_rows %||% list()
+  provenance <- merged_table$metadata$table1_continuation_merge$row_provenance %||% list()
+  source_for_row <- vapply(
+    seq_along(rows),
+    function(row_position) {
+      row_idx <- row_position - 1L
+      matching <- Filter(
+        function(x) identical(as.integer(x$merged_row_idx %||% -1L), as.integer(row_idx)),
+        provenance
+      )
+      if (length(matching) == 0) {
+        return("")
+      }
+      sprintf(
+        "%s:%s",
+        as.character(matching[[1]]$source_table_id %||% ""),
+        as.character(matching[[1]]$source_row_idx %||% "")
+      )
+    },
+    character(1)
+  )
+  max_cols <- max(vapply(rows, length, integer(1)), 0L)
+  display_count <- min(length(rows), as.integer(max_rows))
+  display_rows <- lapply(seq_len(display_count), function(row_position) {
+    cells <- as.character(unlist(rows[[row_position]]))
+    if (length(cells) < max_cols) {
+      cells <- c(cells, rep("", max_cols - length(cells)))
+    }
+    data.frame(
+      merged_row_idx = as.integer(row_position - 1L),
+      source = source_for_row[[row_position]],
+      as.list(stats::setNames(cells, paste0("col_", seq_len(max_cols) - 1L))),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+  display_df <- if (length(display_rows) == 0) {
+    data.frame()
+  } else {
+    do.call(rbind, display_rows)
+  }
+
+  cat(sprintf("Merged Table 1 for group_index=%s\n", as.integer(group_index)))
+  cat(sprintf("table_id: %s\n", as.character(merged_table$table_id %||% "")))
+  cat(sprintf("n_rows: %s, n_cols: %s\n\n", as.integer(merged_table$n_rows %||% 0L), as.integer(merged_table$n_cols %||% 0L)))
+  if (nrow(display_df) == 0) {
+    cat("[No rows]\n")
+    return(invisible(display_df))
+  }
+  print(display_df, row.names = FALSE, right = FALSE)
+  invisible(display_df)
 }
 
 summarize_table_processing <- function(paper_dir) {

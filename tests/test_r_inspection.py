@@ -255,6 +255,54 @@ def _write_sample_paper_outputs(
             ],
         )
     ]
+    table1_continuation_groups = [
+        {
+            "group_id": "table1_continuation_0",
+            "table_number": 1,
+            "source_table_indices": [0, 1],
+            "source_table_ids": ["tbl-1", "tbl-1-cont"],
+            "merge_decision": "merge",
+            "decision_reason": "explicit_table1_continuation_and_matching_columns",
+            "confidence": 0.98,
+            "column_signature_match": True,
+            "column_signature": ["variable", "overall", "dkd"],
+            "diagnostics": [],
+            "members": [],
+        }
+    ]
+    merged_table1_tables = [
+        {
+            **normalized_tables[0],
+            "table_id": "tbl-1-merged-table1",
+            "n_rows": 6,
+            "metadata": {
+                **normalized_tables[0]["metadata"],
+                "cleaned_rows": [
+                    ["Characteristic", "Overall", "DKD"],
+                    ["Age, years", "52.1", "49.9"],
+                    ["Sex", "", ""],
+                    ["Male", "34 (45%)", "20 (40%)"],
+                    ["Female", "41 (55%)", "30 (60%)"],
+                    ["HbA1c, %", "5.6", "6.2"],
+                ],
+                "table1_continuation_merge": {
+                    "group_id": "table1_continuation_0",
+                    "source_table_indices": [0, 1],
+                    "source_table_ids": ["tbl-1", "tbl-1-cont"],
+                    "column_signature": ["variable", "overall", "dkd"],
+                    "artifact_only": True,
+                    "row_provenance": [
+                        {"merged_row_idx": 0, "source_table_id": "tbl-1", "source_row_idx": 0},
+                        {"merged_row_idx": 1, "source_table_id": "tbl-1", "source_row_idx": 1},
+                        {"merged_row_idx": 2, "source_table_id": "tbl-1", "source_row_idx": 2},
+                        {"merged_row_idx": 3, "source_table_id": "tbl-1", "source_row_idx": 3},
+                        {"merged_row_idx": 4, "source_table_id": "tbl-1", "source_row_idx": 4},
+                        {"merged_row_idx": 5, "source_table_id": "tbl-1-cont", "source_row_idx": 2},
+                    ],
+                },
+            },
+        }
+    ]
     table_profiles = [
         {
             "table_id": "tbl-1",
@@ -342,6 +390,8 @@ def _write_sample_paper_outputs(
 
     _write_json(paper_dir / "extracted_tables.json", extracted_tables)
     _write_json(paper_dir / "normalized_tables.json", normalized_tables)
+    _write_json(paper_dir / "table1_continuation_groups.json", table1_continuation_groups)
+    _write_json(paper_dir / "merged_table1_tables.json", merged_table1_tables)
     _write_json(paper_dir / "table_definitions.json", table_definitions)
     _write_json(paper_dir / "parsed_tables.json", parsed_tables)
     _write_json(paper_dir / "table_profiles.json", table_profiles)
@@ -514,6 +564,38 @@ def test_r_inspection_loads_processing_status_and_summarizes_tables(tmp_path) ->
     assert "tbl-1" in result.stdout
     assert "ok" in result.stdout
     assert "descriptive_characteristics" in result.stdout
+
+
+def test_r_inspection_summarizes_and_shows_merged_table1_artifacts(tmp_path) -> None:
+    """The R helper should summarize and print artifact-only merged Table 1 rows."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "merged_table1" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_variable_review=False, include_processing_status=True)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'summarize_table1_continuations("{paper_dir}"); '
+                f'show_merged_table1("{paper_dir}", max_rows = 10L)'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Table 1 continuation summary" in result.stdout
+    assert "explicit_table1_continuation_and_matching_columns" in result.stdout
+    assert "Merged Table 1" in result.stdout
+    assert "tbl-1-cont:2" in result.stdout
+    assert "HbA1c" in result.stdout
 
 
 def test_r_inspection_shows_failed_table_processing_and_structure_header(tmp_path) -> None:

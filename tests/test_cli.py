@@ -135,6 +135,8 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     captured = capsys.readouterr()
     extracted_path = tmp_path / "outputs" / "papers" / "paper" / "extracted_tables.json"
     normalized_path = tmp_path / "outputs" / "papers" / "paper" / "normalized_tables.json"
+    table1_continuation_groups_path = tmp_path / "outputs" / "papers" / "paper" / "table1_continuation_groups.json"
+    merged_table1_path = tmp_path / "outputs" / "papers" / "paper" / "merged_table1_tables.json"
     table_profile_path = tmp_path / "outputs" / "papers" / "paper" / "table_profiles.json"
     table_definition_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions.json"
     parsed_path = tmp_path / "outputs" / "papers" / "paper" / "parsed_tables.json"
@@ -148,6 +150,8 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert calls["extract"] == 1
     assert extracted_path.exists()
     assert normalized_path.exists()
+    assert table1_continuation_groups_path.exists()
+    assert merged_table1_path.exists()
     assert table_profile_path.exists()
     assert table_definition_path.exists()
     assert parsed_path.exists()
@@ -158,6 +162,8 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert table_context_path.exists()
     assert json.loads(extracted_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(normalized_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    assert json.loads(table1_continuation_groups_path.read_text(encoding="utf-8")) == []
+    assert json.loads(merged_table1_path.read_text(encoding="utf-8")) == []
     assert json.loads(table_profile_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(table_definition_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(parsed_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"

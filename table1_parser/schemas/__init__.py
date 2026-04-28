@@ -27,6 +27,7 @@ from table1_parser.schemas.table_definition import (
     DefinedVariable,
     TableDefinition,
 )
+from table1_parser.schemas.table1_continuation import Table1ContinuationGroup, Table1ContinuationMember
 from table1_parser.schemas.table_processing_status import TableProcessingAttempt, TableProcessingStatus
 from table1_parser.schemas.table_profile import TableProfile
 
@@ -49,6 +50,8 @@ __all__ = [
     "RowView",
     "TableContext",
     "TableDefinition",
+    "Table1ContinuationGroup",
+    "Table1ContinuationMember",
     "TableCell",
     "TableProcessingAttempt",
     "TableProcessingStatus",
