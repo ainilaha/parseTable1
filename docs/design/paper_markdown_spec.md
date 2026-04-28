@@ -60,6 +60,7 @@ The pipeline should therefore:
 - tolerate section-name variation
 - avoid hardcoding exact heading names as the only way to find methods-like or results-like content
 - avoid using the references or bibliography as a primary source for paper-level variable inventory
+- treat references/bibliography as a separate document section, not as table content; if reference extraction is added later, each citation should remain an atomic reference record rather than being tokenized into table rows or variable mentions
 
 ## Relationship To Section Parsing
 

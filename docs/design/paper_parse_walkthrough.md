@@ -116,6 +116,8 @@ The extractor still scores candidates, but the score is now diagnostic rather th
 - preserve explicit extracted table candidates in stable page/index order
 - record confidence and caption signals in metadata instead of silently dropping low-scoring tables
 - allow explicit-table grid refinement when rule and word geometry clearly support a better internal column structure
+- suppress backend table-like boxes once the document has entered a `References` or bibliography section, because reference lists are document metadata rather than epidemiology tables; any future reference parser should consume them as atomic citation records, not tokenized table cells
+- require page-text-layout fallback candidates to have a real table-number/caption signal unless their reconstructed grid has strong table geometry: at least three columns, at least four rows, a header-like top row, stable multi-column alignment, and multiple rows with data-like trailing cells
 
 This matters for papers with table continuations, odd numbering, or weak captions. A bad score should be inspectable, not silently destructive.
 

@@ -8,6 +8,7 @@ from table1_parser.extract.table_detector import (
     DetectedTableCandidate,
     _is_rectangular,
     _normalize_rows,
+    _table_caption_metadata,
     score_candidate,
 )
 
@@ -153,6 +154,47 @@ def normalize_positioned_geometry_for_rotation(
 def _is_numeric_like(text: str) -> bool:
     """Return whether a token looks numeric enough to be a table value."""
     return bool(NUMERIC_TOKEN_PATTERN.search(text))
+
+
+def _nonempty_cell_count(row: list[str]) -> int:
+    """Count populated cells in one fallback row."""
+    return sum(bool(cell.strip()) for cell in row)
+
+
+def _has_header_like_top_row(rows: list[list[str]]) -> bool:
+    """Return whether the first fallback row looks like a table header."""
+    if not rows:
+        return False
+    top_row = [cell.strip() for cell in rows[0]]
+    if _nonempty_cell_count(top_row) < 3:
+        return False
+    first_cell = top_row[0]
+    if not first_cell or NUMERIC_TOKEN_PATTERN.search(first_cell):
+        return False
+    header_text = " ".join(cell.lower() for cell in top_row if cell)
+    return bool(
+        re.search(
+            r"\b(?:variable|variables|characteristic|characteristics|overall|total|case|cases|control|controls|model|or|ci|p|q\d+)\b",
+            header_text,
+        )
+    )
+
+
+def _has_strong_uncaptioned_table_geometry(rows: list[list[str]]) -> bool:
+    """Return whether an uncaptioned fallback grid is table-like enough to preserve."""
+    n_cols = max((len(row) for row in rows), default=0)
+    if n_cols < 3 or len(rows) < 4:
+        return False
+    if not _has_header_like_top_row(rows):
+        return False
+    multi_column_rows = sum(_nonempty_cell_count(row) >= 3 for row in rows)
+    if multi_column_rows < max(3, len(rows) // 2):
+        return False
+    data_like_rows = sum(
+        sum(bool(NUMERIC_TOKEN_PATTERN.search(cell)) for cell in row[1:] if cell.strip()) >= 2
+        for row in rows[1:]
+    )
+    return data_like_rows >= 2
 
 
 def build_word_lines(words: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -321,11 +363,18 @@ def build_text_layout_candidates(
         rows = _build_rows_from_line_segment(content_lines)
         if not rows:
             continue
+        caption = "\n".join(caption_parts)
+        caption_signal = _table_caption_metadata(caption_parts[0]) is not None
+        strong_geometry = _has_strong_uncaptioned_table_geometry(rows)
+        if not caption_signal and not strong_geometry:
+            continue
         left = min(float(word["x0"]) for line in content_lines for word in line["words"])
         right = max(float(word["x1"]) for line in content_lines for word in line["words"])
         segments.append(
             {
-                "caption": "\n".join(caption_parts),
+                "caption": caption if caption_signal else None,
+                "caption_signal": caption_signal,
+                "strong_uncaptioned_table_geometry": strong_geometry,
                 "content_lines": content_lines,
                 "row_bounds": [(float(line["top"]), float(line["bottom"])) for line in content_lines],
                 "bbox": (left, float(segment_lines[0]["top"]), right, max(float(line["bottom"]) for line in content_lines)),
@@ -348,6 +397,8 @@ def build_text_layout_candidates(
                         "layout_source": layout_source,
                         "row_bounds": segment["row_bounds"],
                         "horizontal_rules": detect_horizontal_rules(rule_segments, bbox),
+                        "caption_signal": segment["caption_signal"],
+                        "strong_uncaptioned_table_geometry": segment["strong_uncaptioned_table_geometry"],
                     },
                 )
             )

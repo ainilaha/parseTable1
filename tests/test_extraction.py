@@ -323,6 +323,81 @@ def test_pymupdf4llm_extractor_returns_structured_tables(tmp_path, monkeypatch) 
     assert tables[0].cells[0].bbox == (120.0, 124.0, 250.0, 135.0)
 
 
+def test_pymupdf4llm_extractor_skips_tables_after_references_heading(tmp_path, monkeypatch) -> None:
+    """Reference-list boxes should not enter the table pipeline once References begins."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [100, 80, 300, 96],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 1. Baseline characteristics"}]}],
+                        },
+                        {
+                            "bbox": [100, 120, 360, 180],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [100, 120, 360, 180],
+                                "extract": [["Variable", "Overall"], ["Age", "52.1"]],
+                                "cells": [
+                                    [[100, 120, 200, 140], [200, 120, 360, 140]],
+                                    [[100, 140, 200, 160], [200, 140, 360, 160]],
+                                ],
+                            },
+                        },
+                    ],
+                },
+                {
+                    "page_number": 2,
+                    "boxes": [
+                        {
+                            "bbox": [100, 70, 220, 90],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "References"}]}],
+                        },
+                        {
+                            "bbox": [200, 120, 580, 220],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [200, 120, 580, 220],
+                                "extract": [
+                                    ["1.", "First Author. Article title. Journal. 2020; 1:1-2. PMID: 1."],
+                                    ["2.", "Second Author. Article title. Journal. 2021; 2:3-4. PMID: 2."],
+                                ],
+                                "cells": [
+                                    [[200, 120, 220, 140], [220, 120, 580, 140]],
+                                    [[200, 140, 220, 160], [220, 140, 580, 160]],
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        pymupdf4llm_extractor_module,
+        "extract_clipped_line_directions",
+        lambda page, clip_bbox: [(1.0, 0.0), (1.0, 0.0)],
+    )
+    _install_fake_pymupdf_document(
+        monkeypatch,
+        [FakePyMuPage(text="", words=[]), FakePyMuPage(text="", words=[])],
+    )
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
+
+    assert len(tables) == 1
+    assert tables[0].page_num == 1
+    assert tables[0].title == "Table 1. Baseline characteristics"
+
+
 def test_pymupdf4llm_extractor_returns_empty_on_primary_failure(tmp_path, monkeypatch) -> None:
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")
@@ -1135,6 +1210,70 @@ def test_text_layout_fallback_ignores_prose_table_references() -> None:
     )
 
     assert candidates == []
+
+
+def test_text_layout_fallback_rejects_prose_table_caption_without_strong_geometry() -> None:
+    """Fallback segments that only start with prose table mentions should be rejected."""
+    words = [
+        {"text": "Table", "x0": 50.0, "x1": 72.0, "top": 60.0, "bottom": 68.0},
+        {"text": "2", "x0": 76.0, "x1": 82.0, "top": 60.0, "bottom": 68.0},
+        {"text": "presents", "x0": 86.0, "x1": 124.0, "top": 60.0, "bottom": 68.0},
+        {"text": "results", "x0": 128.0, "x1": 160.0, "top": 60.0, "bottom": 68.0},
+        {"text": "CKD", "x0": 50.0, "x1": 72.0, "top": 84.0, "bottom": 92.0},
+        {"text": "and", "x0": 76.0, "x1": 92.0, "top": 84.0, "bottom": 92.0},
+        {"text": "sex-specific", "x0": 96.0, "x1": 150.0, "top": 84.0, "bottom": 92.0},
+        {"text": "z-scores", "x0": 154.0, "x1": 194.0, "top": 84.0, "bottom": 92.0},
+        {"text": "0.91", "x0": 220.0, "x1": 240.0, "top": 98.0, "bottom": 106.0},
+        {"text": "95%", "x0": 280.0, "x1": 296.0, "top": 98.0, "bottom": 106.0},
+        {"text": "CI", "x0": 320.0, "x1": 330.0, "top": 98.0, "bottom": 106.0},
+    ]
+
+    candidates = build_text_layout_candidates(
+        page_num=6,
+        page_text="Table 2 presents results",
+        words=words,
+        layout_source="text_positions",
+    )
+
+    assert candidates == []
+
+
+def test_text_layout_fallback_keeps_uncaptioned_candidate_with_strong_geometry() -> None:
+    """A candidate without valid caption metadata can survive when the grid itself is strong."""
+    words = [
+        {"text": "Table", "x0": 50.0, "x1": 72.0, "top": 60.0, "bottom": 68.0},
+        {"text": "2", "x0": 76.0, "x1": 82.0, "top": 60.0, "bottom": 68.0},
+        {"text": "presents", "x0": 86.0, "x1": 124.0, "top": 60.0, "bottom": 68.0},
+        {"text": "results", "x0": 128.0, "x1": 160.0, "top": 60.0, "bottom": 68.0},
+        {"text": "Variable", "x0": 50.0, "x1": 88.0, "top": 84.0, "bottom": 92.0},
+        {"text": "Overall", "x0": 180.0, "x1": 212.0, "top": 84.0, "bottom": 92.0},
+        {"text": "Cases", "x0": 240.0, "x1": 268.0, "top": 84.0, "bottom": 92.0},
+        {"text": "Controls", "x0": 300.0, "x1": 342.0, "top": 84.0, "bottom": 92.0},
+        {"text": "Age", "x0": 50.0, "x1": 68.0, "top": 98.0, "bottom": 106.0},
+        {"text": "52.1", "x0": 180.0, "x1": 202.0, "top": 98.0, "bottom": 106.0},
+        {"text": "53.0", "x0": 240.0, "x1": 262.0, "top": 98.0, "bottom": 106.0},
+        {"text": "51.8", "x0": 300.0, "x1": 322.0, "top": 98.0, "bottom": 106.0},
+        {"text": "BMI", "x0": 50.0, "x1": 70.0, "top": 112.0, "bottom": 120.0},
+        {"text": "27.4", "x0": 180.0, "x1": 202.0, "top": 112.0, "bottom": 120.0},
+        {"text": "28.1", "x0": 240.0, "x1": 262.0, "top": 112.0, "bottom": 120.0},
+        {"text": "26.9", "x0": 300.0, "x1": 322.0, "top": 112.0, "bottom": 120.0},
+        {"text": "Male", "x0": 50.0, "x1": 74.0, "top": 126.0, "bottom": 134.0},
+        {"text": "40", "x0": 180.0, "x1": 192.0, "top": 126.0, "bottom": 134.0},
+        {"text": "22", "x0": 240.0, "x1": 252.0, "top": 126.0, "bottom": 134.0},
+        {"text": "18", "x0": 300.0, "x1": 312.0, "top": 126.0, "bottom": 134.0},
+    ]
+
+    candidates = build_text_layout_candidates(
+        page_num=6,
+        page_text="Table 2 presents results",
+        words=words,
+        layout_source="text_positions",
+    )
+
+    assert len(candidates) == 1
+    assert candidates[0].caption is None
+    assert candidates[0].metadata["caption_signal"] is False
+    assert candidates[0].metadata["strong_uncaptioned_table_geometry"] is True
 
 
 def test_text_layout_fallback_detects_unruled_table(tmp_path, monkeypatch) -> None:

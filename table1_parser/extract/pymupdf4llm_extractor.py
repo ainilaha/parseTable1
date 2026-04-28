@@ -39,6 +39,10 @@ from table1_parser.schemas import ExtractedTable, TableCell
 
 MODEL_HEADER_PATTERN = re.compile(r"\bmodel[_\s]*\d+\b", re.IGNORECASE)
 ESTIMATE_HEADER_PATTERN = re.compile(r"\b(?:or\b|95%\s*ci|p(?:-value)?\b)\b", re.IGNORECASE)
+REFERENCES_HEADING_PATTERN = re.compile(
+    r"(?m)^\s*(?:#{1,6}\s*)?(?:[*_`]+)?references(?:[*_`]+)?\s*$",
+    re.IGNORECASE,
+)
 
 
 class PyMuPDF4LLMExtractor(BaseExtractor):
@@ -136,12 +140,17 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
         except Exception:
             document = None
         try:
+            in_references_section = False
             for page_num, payload_page in sorted(pages.items()):
                 page = None
                 if document is not None and 0 <= page_num - 1 < getattr(document, "page_count", 0):
                     page = document.load_page(page_num - 1)
                 page_boxes = payload_page.get("boxes", []) or []
                 page_text = _collect_page_text(page_boxes)
+                if REFERENCES_HEADING_PATTERN.search(page_text):
+                    in_references_section = True
+                if in_references_section:
+                    continue
                 if page is None:
                     page_words = []
                     page_chars = []
