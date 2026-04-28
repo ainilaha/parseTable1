@@ -220,6 +220,45 @@ def test_one_row_binary_summary_builds_binary_defined_variable() -> None:
     assert variables[0].levels == []
 
 
+def test_threshold_pair_rows_build_one_binary_defined_variable() -> None:
+    """Adjacent complementary threshold rows should become one binary variable with levels."""
+    table = NormalizedTable(
+        table_id="tbl-threshold-pair",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Age, years, mean(SD)", ["50.77 ± 17.30", "47.11 ± 18.46", "53.21 ± 16.03", "< 0.001"]),
+            _build_row(2, "< 60years", ["2,512 (63.42%)", "1,105 (69.76%)", "1,407 (59.19%)", "< 0.001"]),
+            _build_row(3, ">= 60years", ["1,449 (36.58%)", "479 (30.24%)", "970 (40.81%)", ""]),
+            _build_row(4, "Weight, kg, mean(SD)", ["84.05 ± 22.53", "72.03 ± 16.04", "92.07 ± 22.68", "< 0.001"]),
+        ],
+        n_rows=5,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall", "Without FLD", "With FLD", "P-value"],
+                ["Age, years, mean(SD)", "50.77 ± 17.30", "47.11 ± 18.46", "53.21 ± 16.03", "< 0.001"],
+                ["< 60years", "2,512 (63.42%)", "1,105 (69.76%)", "1,407 (59.19%)", "< 0.001"],
+                [">= 60years", "1,449 (36.58%)", "479 (30.24%)", "970 (40.81%)", ""],
+                ["Weight, kg, mean(SD)", "84.05 ± 22.53", "72.03 ± 16.04", "92.07 ± 22.68", "< 0.001"],
+            ]
+        },
+    )
+
+    variables = build_defined_variables(table)
+
+    assert [variable.variable_label for variable in variables] == [
+        "Age, years, mean(SD)",
+        "Age category",
+        "Weight, kg, mean(SD)",
+    ]
+    assert variables[1].variable_type == "binary"
+    assert variables[1].row_start == 2
+    assert variables[1].row_end == 3
+    assert [level.level_label for level in variables[1].levels] == ["< 60years", ">= 60years"]
+    assert variables[1].summary_style_hint == "count_pct"
+
+
 def test_categorical_levels_with_integer_counts_only_build_n_only_summary_hint() -> None:
     """Categorical variables with integer-only child rows should carry an n_only summary hint."""
     table = NormalizedTable(

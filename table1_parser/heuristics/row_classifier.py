@@ -41,7 +41,8 @@ def _trailing_cells(row_view: RowView) -> list[str]:
 
 def _has_categorical_parent_cue(row_view: RowView) -> bool:
     """Return whether the row text explicitly signals a categorical parent."""
-    return bool(CATEGORICAL_PARENT_CUE_PATTERN.search(row_view.first_cell_raw))
+    label_text = " ".join(clean_text(cell) for cell in row_view.raw_cells[:3] if clean_text(cell))
+    return bool(CATEGORICAL_PARENT_CUE_PATTERN.search(label_text))
 
 
 def _summary_like_trailing_count(trailing_cells: Sequence[str]) -> int:
@@ -223,6 +224,13 @@ def classify_row(
         and not categorical_parent_cue
         and not is_common_level_label(label)
     )
+    non_data_parent_trailing = (
+        bool(trailing_cells)
+        and trailing_numeric == 0
+        and count_like_non_stat_count == 0
+        and not strong_continuous_layout
+        and not any(any(char.isalpha() for char in cell) for cell in trailing_cells)
+    )
     looks_like_binary_variable_row = (
         row_view.has_trailing_values
         and len(non_statistic_trailing_cells) >= 2
@@ -342,10 +350,10 @@ def classify_row(
     if categorical_parent_cue or (
         sparse_trailing
         and child_level_count >= 1
-        and (not row_view.has_trailing_values or trailing_numeric > 0)
+        and (not row_view.has_trailing_values or trailing_numeric > 0 or non_data_parent_trailing)
     ) or (
         not strong_continuous_layout and child_level_count >= 2
-        and (not row_view.has_trailing_values or trailing_numeric > 0)
+        and (not row_view.has_trailing_values or trailing_numeric > 0 or non_data_parent_trailing)
     ) or (
         sparse_trailing
         and indented_child_level_count >= 2

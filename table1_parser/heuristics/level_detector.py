@@ -9,23 +9,6 @@ from table1_parser.schemas import RowView
 from table1_parser.text_cleaning import clean_text
 
 
-COMMON_LEVEL_LABELS = {
-    "male",
-    "female",
-    "other",
-    "yes",
-    "no",
-    "never",
-    "former",
-    "current",
-    "current smoker",
-    "ex smoker",
-    "non smoker",
-    "high school",
-    "more than high school",
-    "less than high school",
-    "hs",
-}
 SUMMARY_LABEL_PATTERN = re.compile(
     r"\b(mean|sd|median|iqr|range|min|max)\b",
     re.IGNORECASE,
@@ -35,14 +18,12 @@ PERCENT_FRAGMENT_PATTERN = re.compile(r"^\(\s*\d+(?:\.\d+)?%\s*\)$")
 
 
 def is_common_level_label(label: str) -> bool:
-    """Return whether normalized text strongly resembles a categorical level."""
+    """Return whether normalized text has a structural level cue."""
     normalized = " ".join(label.lower().split())
     compact = normalized.replace(" ", "")
     return (
-        normalized in COMMON_LEVEL_LABELS
-        or compact in {"<hs", ">hs", "highschool", "morethanhighschool"}
-        or normalized.startswith("<")
-        or normalized.startswith(">")
+        compact in {"<hs", ">hs", "<=hs", ">=hs", "≤hs", "≥hs"}
+        or normalized.startswith(("<", ">", "≤", "≥"))
     )
 
 
@@ -59,11 +40,13 @@ def is_likely_level_row(
         if col_idx not in (statistic_col_indices or set()) and clean_text(row_view.raw_cells[col_idx])
     ]
     trailing_values_are_count_like = False
+    count_like_value_count = 0
     trailing_idx = 0
     while trailing_idx < len(trailing_cells):
         pattern = detect_value_pattern(trailing_cells[trailing_idx]).pattern
         if pattern in COUNT_LIKE_VALUE_PATTERNS:
             trailing_values_are_count_like = True
+            count_like_value_count += 1
             if (
                 pattern == "n_only"
                 and trailing_idx + 1 < len(trailing_cells)
@@ -73,6 +56,17 @@ def is_likely_level_row(
                 continue
             trailing_idx += 1
             continue
+        if pattern == "p_value" and count_like_value_count >= 1:
+            trailing_idx += 1
+            continue
+        if trailing_idx == 0 and len(trailing_cells) >= 3:
+            remaining_patterns = [
+                detect_value_pattern(cell).pattern
+                for cell in trailing_cells[1:]
+            ]
+            if sum(candidate in COUNT_LIKE_VALUE_PATTERNS for candidate in remaining_patterns) >= 2:
+                trailing_idx += 1
+                continue
         trailing_values_are_count_like = False
         break
     return (

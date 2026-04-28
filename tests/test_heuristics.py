@@ -152,6 +152,81 @@ def test_stats_only_parent_rows_do_not_chain_as_levels() -> None:
     assert blocks[1].level_row_indices == [5, 6]
 
 
+def test_symbol_only_parent_row_starts_new_categorical_block() -> None:
+    """A parent row with only significance markers should own the following count-like levels."""
+    table = NormalizedTable(
+        table_id="tbl-symbol-parent",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4, 5, 6],
+        row_views=[
+            _build_row(1, "Education level", ["", "", "†", ""], indent_level=0),
+            _build_row(2, "Less Than 9th Grade", ["1287(16.25%)", "929(15.46%)", "358(18.73%)", "106(18.12%)"], indent_level=8),
+            _build_row(3, "College Graduate or above", ["1526(19.27%)", "1256(20.90%)", "270(14.13%)", "77(13.16%)"], indent_level=8),
+            _build_row(4, "Ethnicity", ["", "", "‡", "‡"], indent_level=0),
+            _build_row(5, "Mexican American", ["1256(15.86%)", "1095(18.22%)", "161(8.42%)", "34(5.81%)"], indent_level=8),
+            _build_row(6, "Non-Hispanic White", ["3961(50.01%)", "2786(46.36%)", "1175(61.49%)", "372(63.59%)"], indent_level=8),
+        ],
+        n_rows=7,
+        n_cols=5,
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[4] == "variable_header"
+    assert classifications[5] == "level_row"
+    assert classifications[6] == "level_row"
+    ethnicity = next(block for block in blocks if block.variable_label == "Ethnicity")
+    assert ethnicity.level_row_indices == [5, 6]
+
+
+def test_split_parent_and_level_descriptor_cells_still_group_levels() -> None:
+    """A split parent label and one split level descriptor cell should not fragment a block."""
+    table = NormalizedTable(
+        table_id="tbl-split-parent-and-level",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4, 5, 6, 7],
+        row_views=[
+            _build_row(1, "Family income-to-poverty ratio,", ["", "n (%)", "", "", "", ""], indent_level=0),
+            _build_row(2, "Low income", ["(<=1.85)", "1998 (35.61)", "821 (45.23)", "1054 (32.60)", "123 (21.85)", "<0.01"], indent_level=0),
+            _build_row(3, "High income (>1.85)", ["", "3613 (64.39)", "994 (54.77)", "2179 (67.40)", "440 (78.15)", ""], indent_level=0),
+            _build_row(4, "Smoking", ["status, n (%)", "", "", "", "", ""], indent_level=0),
+            _build_row(5, "No smoking", ["", "2881 (51.35)", "396 (21.82)", "1991 (61.58)", "494 (87.74)", "<0.01"], indent_level=0),
+            _build_row(6, "Former smoking", ["", "1583 (28.21)", "772 (42.53)", "770 (23.82)", "41 (7.28)", ""], indent_level=0),
+            _build_row(7, "Current smoking", ["", "1147 (20.44)", "647 (35.65)", "472 (14.60)", "28 (4.97)", ""], indent_level=0),
+        ],
+        n_rows=8,
+        n_cols=7,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "", "Overall", "Low", "Medium", "High", "P-value"],
+                ["Family income-to-poverty ratio,", "", "n (%)", "", "", "", ""],
+                ["Low income", "(<=1.85)", "1998 (35.61)", "821 (45.23)", "1054 (32.60)", "123 (21.85)", "<0.01"],
+                ["High income (>1.85)", "", "3613 (64.39)", "994 (54.77)", "2179 (67.40)", "440 (78.15)", ""],
+                ["Smoking", "status, n (%)", "", "", "", "", ""],
+                ["No smoking", "", "2881 (51.35)", "396 (21.82)", "1991 (61.58)", "494 (87.74)", "<0.01"],
+                ["Former smoking", "", "1583 (28.21)", "772 (42.53)", "770 (23.82)", "41 (7.28)", ""],
+                ["Current smoking", "", "1147 (20.44)", "647 (35.65)", "472 (14.60)", "28 (4.97)", ""],
+            ]
+        },
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "variable_header"
+    assert classifications[5] == "level_row"
+    assert classifications[6] == "level_row"
+    assert classifications[7] == "level_row"
+    income = next(block for block in blocks if block.variable_label == "Family income-to-poverty ratio,")
+    smoking = next(block for block in blocks if block.variable_label == "Smoking")
+    assert income.level_row_indices == [2, 3]
+    assert smoking.level_row_indices == [5, 6, 7]
+
+
 def test_mean_sd_row_without_children_stays_continuous() -> None:
     """Rows with continuous cues and no child levels should remain one-line continuous variables."""
     table = NormalizedTable(
@@ -170,6 +245,40 @@ def test_mean_sd_row_without_children_stays_continuous() -> None:
     assert len(blocks) == 1
     assert blocks[0].variable_kind == "continuous"
     assert blocks[0].level_row_indices == []
+
+
+def test_adjacent_threshold_binary_rows_form_one_level_block() -> None:
+    """Complementary threshold rows should group structurally without a special label list."""
+    table = NormalizedTable(
+        table_id="tbl-threshold-binary-pair",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Age, years, mean(SD)", ["50.77 ± 17.30", "47.11 ± 18.46", "53.21 ± 16.03", "< 0.001"]),
+            _build_row(2, "< 60years", ["2,512 (63.42%)", "1,105 (69.76%)", "1,407 (59.19%)", "< 0.001"]),
+            _build_row(3, ">= 60years", ["1,449 (36.58%)", "479 (30.24%)", "970 (40.81%)", ""]),
+            _build_row(4, "Weight, kg, mean(SD)", ["84.05 ± 22.53", "72.03 ± 16.04", "92.07 ± 22.68", "< 0.001"]),
+        ],
+        n_rows=5,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristic", "Overall", "Without FLD", "With FLD", "P-value"],
+                ["Age, years, mean(SD)", "50.77 ± 17.30", "47.11 ± 18.46", "53.21 ± 16.03", "< 0.001"],
+                ["< 60years", "2,512 (63.42%)", "1,105 (69.76%)", "1,407 (59.19%)", "< 0.001"],
+                [">= 60years", "1,449 (36.58%)", "479 (30.24%)", "970 (40.81%)", ""],
+                ["Weight, kg, mean(SD)", "84.05 ± 22.53", "72.03 ± 16.04", "92.07 ± 22.68", "< 0.001"],
+            ]
+        },
+    )
+
+    blocks = group_variable_blocks(table)
+
+    assert [(block.variable_label, block.variable_kind, block.level_row_indices) for block in blocks] == [
+        ("Age, years, mean(SD)", "continuous", []),
+        ("Age category", "binary", [2, 3]),
+        ("Weight, kg, mean(SD)", "continuous", []),
+    ]
 
 
 def test_parent_with_multiple_plausible_levels_is_upgraded_to_variable_header() -> None:
@@ -194,8 +303,8 @@ def test_parent_with_multiple_plausible_levels_is_upgraded_to_variable_header() 
     assert classifications[3] == "level_row"
 
 
-def test_level_rows_do_not_attach_to_continuous_variables() -> None:
-    """Grouping must keep explicit continuous rows as one-row blocks."""
+def test_orphan_count_rows_do_not_attach_to_continuous_variables() -> None:
+    """Grouping must keep explicit continuous rows separate from later count rows."""
     table = NormalizedTable(
         table_id="tbl-group-upgrade",
         header_rows=[0],
@@ -212,13 +321,17 @@ def test_level_rows_do_not_attach_to_continuous_variables() -> None:
     classifications = {item.row_idx: item.classification for item in classify_rows(table)}
     blocks = group_variable_blocks(table)
 
-    assert len(blocks) == 1
     assert classifications[1] == "continuous_variable_row"
-    assert classifications[2] == "level_row"
-    assert classifications[3] == "level_row"
+    assert classifications[2] == "binary_variable_row"
+    assert classifications[3] == "binary_variable_row"
+    assert len(blocks) == 3
     assert blocks[0].variable_label == "BMI, mean ± SD"
     assert blocks[0].variable_kind == "continuous"
     assert blocks[0].level_row_indices == []
+    assert blocks[1].variable_label == "Male"
+    assert blocks[1].variable_kind == "binary"
+    assert blocks[2].variable_label == "Female"
+    assert blocks[2].variable_kind == "binary"
 
 
 def test_unknown_rows_do_not_force_impossible_grouping() -> None:
@@ -242,9 +355,13 @@ def test_unknown_rows_do_not_force_impossible_grouping() -> None:
 
     assert classifications[1] == "continuous_variable_row"
     assert classifications[2] == "unknown"
-    assert len(blocks) == 1
+    assert len(blocks) == 3
     assert blocks[0].variable_label == "Age, years"
     assert blocks[0].level_row_indices == []
+    assert blocks[1].variable_label == "Male"
+    assert blocks[1].variable_kind == "binary"
+    assert blocks[2].variable_label == "Female"
+    assert blocks[2].variable_kind == "binary"
 
 
 def test_number_with_integer_values_forms_one_row_variable_block() -> None:
@@ -843,16 +960,18 @@ def test_other_is_plausible_level_row_after_categorical_parent() -> None:
 
 
 def test_level_detector_required_examples() -> None:
-    """Common categorical levels should be detected conservatively."""
-    assert is_common_level_label("Male") is True
-    assert is_common_level_label("Female") is True
-    assert is_common_level_label("Other") is True
+    """Structural comparator-style level cues should be detected conservatively."""
+    assert is_common_level_label("Male") is False
+    assert is_common_level_label("Female") is False
+    assert is_common_level_label("Other") is False
     assert is_common_level_label("<HS") is True
-    assert is_common_level_label("High school") is True
+    assert is_common_level_label("High school") is False
     assert is_common_level_label(">High school") is True
-    assert is_common_level_label("Never") is True
-    assert is_common_level_label("Former") is True
-    assert is_common_level_label("Current") is True
+    assert is_common_level_label("<= 60 years") is True
+    assert is_common_level_label("≥ 60 years") is True
+    assert is_common_level_label("Never") is False
+    assert is_common_level_label("Former") is False
+    assert is_common_level_label("Current") is False
     assert is_common_level_label("Age, years") is False
     assert is_common_level_label("BMI, kg/m2") is False
 

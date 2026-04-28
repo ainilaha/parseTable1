@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import re
+
 from table1_parser.heuristics.level_detector import detect_level_row_indices
 from table1_parser.heuristics.models import RowClassification, VariableBlock
 from table1_parser.heuristics.row_classifier import classify_rows, indentation_is_informative
 from table1_parser.schemas import NormalizedTable, RowView
 from table1_parser.text_cleaning import clean_text
+
+
+THRESHOLD_LEVEL_PATTERN = re.compile(r"^\s*(?P<operator><=|>=|<|>|≤|≥)\s*(?P<threshold>.+?)\s*$")
 
 
 def _nonempty_trailing_cell_count(row_view: RowView) -> int:
@@ -64,6 +69,46 @@ def group_variable_blocks(
 
         row_view = row_views_by_idx[row_idx]
         classification = classifications_by_row.get(row_idx, "unknown")
+        if classification in {"binary_variable_row", "level_row", "unknown"}:
+            threshold_match = THRESHOLD_LEVEL_PATTERN.match(row_view.first_cell_raw)
+            if threshold_match is not None:
+                threshold_key = clean_text(threshold_match.group("threshold")).lower().replace(" ", "")
+                threshold_level_rows: list[int] = []
+                threshold_directions: set[str] = set()
+                for candidate_row_idx in row_order[row_order.index(row_idx) :]:
+                    if candidate_row_idx in consumed_rows:
+                        break
+                    if classifications_by_row.get(candidate_row_idx) not in {"binary_variable_row", "level_row", "unknown"}:
+                        break
+                    candidate_row = row_views_by_idx[candidate_row_idx]
+                    candidate_match = THRESHOLD_LEVEL_PATTERN.match(candidate_row.first_cell_raw)
+                    if candidate_match is None:
+                        break
+                    candidate_key = clean_text(candidate_match.group("threshold")).lower().replace(" ", "")
+                    if candidate_key != threshold_key:
+                        break
+                    operator = candidate_match.group("operator")
+                    threshold_directions.add("lower" if operator in {"<", "<=", "≤"} else "upper")
+                    threshold_level_rows.append(candidate_row_idx)
+                if len(threshold_level_rows) >= 2 and threshold_directions == {"lower", "upper"}:
+                    variable_label = "Threshold category"
+                    if blocks and blocks[-1].row_end < row_idx and blocks[-1].variable_kind == "continuous":
+                        base_label = clean_text(blocks[-1].variable_label.split(",", maxsplit=1)[0])
+                        if base_label:
+                            variable_label = f"{base_label} category"
+                    blocks.append(
+                        VariableBlock(
+                            variable_row_idx=row_idx,
+                            row_start=row_idx,
+                            row_end=threshold_level_rows[-1],
+                            variable_label=variable_label,
+                            variable_kind="binary",
+                            level_row_indices=threshold_level_rows,
+                        )
+                    )
+                    consumed_rows.update(threshold_level_rows)
+                    continue
+
         if classification in {"continuous_variable_row", "binary_variable_row"}:
             blocks.append(
                 VariableBlock(

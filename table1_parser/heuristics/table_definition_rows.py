@@ -31,6 +31,7 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
     variables: list[DefinedVariable] = []
     for block in group_variable_blocks(table):
         parent_row = row_views_by_idx[block.variable_row_idx]
+        variable_label = block.variable_label
         levels = [
             DefinedLevel(
                 level_name=clean_text(row_views_by_idx[row_idx].first_cell_raw),
@@ -53,7 +54,7 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
             variable_type = "binary" if frozenset(level_names) in KNOWN_BINARY_LEVELS else "categorical"
         else:
             variable_type = "unknown"
-        cleaned = clean_text(parent_row.first_cell_raw)
+        cleaned = clean_text(variable_label)
         without_suffix = SUMMARY_SUFFIX_PATTERN.sub("", cleaned).strip(" ,")
         without_paren_units = PAREN_UNITS_PATTERN.sub("", without_suffix).strip(" ,")
         variable_name = normalize_label_text(without_paren_units) or normalize_label_text(cleaned)
@@ -98,7 +99,7 @@ def build_defined_variables(table: NormalizedTable) -> list[DefinedVariable]:
         variables.append(
             DefinedVariable(
                 variable_name=variable_name,
-                variable_label=parent_row.first_cell_raw,
+                variable_label=variable_label,
                 variable_type=variable_type,
                 row_start=block.row_start,
                 row_end=block.row_end,
