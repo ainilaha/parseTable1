@@ -221,22 +221,66 @@ def build_row_grid_from_lines(
     page_chars: list[dict[str, object]] | None = None,
 ) -> tuple[list[list[str]], list[list[tuple[float, float, float, float] | None]]]:
     """Convert text lines into a row-major grid and cell bounding boxes."""
-    numeric_positions = sorted(
+    broad_numeric_positions = sorted(
         float(word["x0"])
         for line in lines
         for word in line["words"]
         if _is_numeric_like(str(word["text"]))
     )
-    if not numeric_positions:
+    numeric_position_items: list[tuple[float, int]] = []
+    for line_index, line in enumerate(lines):
+        for word in line["words"]:
+            text = str(word["text"]).strip()
+            compact_text = re.sub(r"[\s,\u00a0\u2009\u202f]+", "", text)
+            if not NUMERIC_TOKEN_PATTERN.search(compact_text):
+                continue
+            if ALPHA_TOKEN_PATTERN.search(compact_text):
+                continue
+            numeric_position_items.append((float(word["x0"]), line_index))
+    numeric_position_items = sorted(numeric_position_items)
+    has_left_label_anchor = False
+    if not numeric_position_items:
         numeric_anchors = []
     else:
-        clusters: list[list[float]] = [[numeric_positions[0]]]
-        for position in numeric_positions[1:]:
-            if abs(position - clusters[-1][-1]) <= COLUMN_CLUSTER_TOLERANCE:
-                clusters[-1].append(position)
+        clusters: list[list[tuple[float, int]]] = [[numeric_position_items[0]]]
+        for position_item in numeric_position_items[1:]:
+            if abs(position_item[0] - clusters[-1][-1][0]) <= COLUMN_CLUSTER_TOLERANCE:
+                clusters[-1].append(position_item)
             else:
-                clusters.append([position])
-        numeric_anchors = [sum(cluster) / len(cluster) for cluster in clusters]
+                clusters.append([position_item])
+        line_count = len(lines)
+        if line_count <= 4:
+            minimum_anchor_lines = 1
+        elif line_count <= 12:
+            minimum_anchor_lines = 2
+        else:
+            minimum_anchor_lines = max(3, min(5, line_count // 8))
+        value_anchors = [
+            sum(position for position, _line_index in cluster) / len(cluster)
+            for cluster in clusters
+            if len({_line_index for _position, _line_index in cluster}) >= minimum_anchor_lines
+        ]
+        if len(value_anchors) < 3 and broad_numeric_positions:
+            broad_clusters: list[list[float]] = [[broad_numeric_positions[0]]]
+            for position in broad_numeric_positions[1:]:
+                if abs(position - broad_clusters[-1][-1]) <= COLUMN_CLUSTER_TOLERANCE:
+                    broad_clusters[-1].append(position)
+                else:
+                    broad_clusters.append([position])
+            numeric_anchors = [sum(cluster) / len(cluster) for cluster in broad_clusters]
+        elif value_anchors:
+            leftmost_word_x0 = min(
+                float(word["x0"])
+                for line in lines
+                for word in line["words"]
+            )
+            if value_anchors[0] - leftmost_word_x0 > COLUMN_CLUSTER_TOLERANCE:
+                numeric_anchors = [leftmost_word_x0, *value_anchors]
+                has_left_label_anchor = True
+            else:
+                numeric_anchors = value_anchors
+        else:
+            numeric_anchors = []
     if not numeric_anchors:
         return ([], [])
 
@@ -246,14 +290,16 @@ def build_row_grid_from_lines(
     ]
     rows: list[list[str]] = []
     bbox_rows: list[list[tuple[float, float, float, float] | None]] = []
+    row_width = len(numeric_anchors) if has_left_label_anchor else len(numeric_anchors) + 1
     for line in lines:
-        row_cells = [""] * (len(numeric_anchors) + 1)
-        row_bboxes: list[tuple[float, float, float, float] | None] = [None] * (len(numeric_anchors) + 1)
+        row_cells = [""] * row_width
+        row_bboxes: list[tuple[float, float, float, float] | None] = [None] * row_width
         for word in line["words"]:
             text = str(word["text"]).strip()
             column_index = 0
             while column_index < len(boundaries) and float(word["x0"]) >= boundaries[column_index]:
                 column_index += 1
+            column_index = min(column_index, row_width - 1)
             if (
                 column_index <= 1
                 and " " not in text
@@ -313,6 +359,36 @@ def build_row_grid_from_lines(
                     max(existing_bbox[2], word_bbox[2]),
                     max(existing_bbox[3], word_bbox[3]),
                 )
+        populated_indices = [index for index, cell in enumerate(row_cells) if cell.strip()]
+        if len(populated_indices) >= 2 and row_width >= 4:
+            rightmost_index = populated_indices[-1]
+            interior_indices = [index for index in populated_indices if 0 < index < rightmost_index]
+            if (
+                rightmost_index == row_width - 1
+                and _is_numeric_like(row_cells[rightmost_index])
+                and interior_indices
+                and not any(_is_numeric_like(row_cells[index]) for index in interior_indices)
+            ):
+                row_cells[0] = " ".join(
+                    cell
+                    for cell in [row_cells[0], *(row_cells[index] for index in interior_indices)]
+                    if cell.strip()
+                ).strip()
+                for index in interior_indices:
+                    if row_bboxes[index] is not None:
+                        existing_bbox = row_bboxes[0]
+                        moved_bbox = row_bboxes[index]
+                        if existing_bbox is None:
+                            row_bboxes[0] = moved_bbox
+                        elif moved_bbox is not None:
+                            row_bboxes[0] = (
+                                min(existing_bbox[0], moved_bbox[0]),
+                                min(existing_bbox[1], moved_bbox[1]),
+                                max(existing_bbox[2], moved_bbox[2]),
+                                max(existing_bbox[3], moved_bbox[3]),
+                            )
+                    row_cells[index] = ""
+                    row_bboxes[index] = None
         rows.append(row_cells)
         bbox_rows.append(row_bboxes)
     normalized_rows = _normalize_rows(rows)

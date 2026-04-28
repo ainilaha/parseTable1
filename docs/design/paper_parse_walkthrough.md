@@ -108,6 +108,8 @@ The current extractor uses `pymupdf4llm` as the main backend. It tries to recove
 
 For some explicit tables, the backend cell grid is too coarse even though the page still contains enough geometry to do better. When a table shows strong grouped-header signals, such as repeated `Model 1`, `Model 2`, `Model 3` blocks plus wide horizontal boundaries, extraction can now refine the explicit backend grid using word positions inside the table bounding box.
 
+For collapsed explicit grids, word-position refinement treats stable value columns as repeated value-like numeric anchors. This prevents label text such as `Q1-Q3`, `kg/m2`, or biomarker names containing digits from creating fake columns. Rows with a trailing statistic and only nonnumeric fragments to its left can also be repaired from right to left so long first-column labels remain a single row label.
+
 That refinement is no longer limited to upright tables. For rotated explicit tables, extraction can normalize the clipped word and rule coordinates into a table-local upright frame, rebuild the row/column grid there, and then write the improved grid into `ExtractedTable` while preserving the original rotation metadata separately.
 
 The extractor still scores candidates, but the score is now diagnostic rather than a hard keep-drop gate for explicit extracted tables. The current rule is:

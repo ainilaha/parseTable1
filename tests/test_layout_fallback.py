@@ -31,7 +31,76 @@ def test_build_text_layout_candidates_detects_unruled_table() -> None:
     assert len(candidates) == 1
     assert candidates[0].caption == "Table1\nBaselinecharacteristics"
     assert candidates[0].metadata["layout_source"] == "text_positions"
-    assert candidates[0].raw_rows[0][1:3] == ["Q1", "Q2"]
+    assert candidates[0].raw_rows[0][2:4] == ["Q1", "Q2"]
+
+
+def test_text_layout_fallback_ignores_repeated_numeric_label_tokens_as_value_anchors() -> None:
+    """Numeric-looking label text should not create extra value columns in collapsed grids."""
+    lines = [
+        {
+            "top": 98.0,
+            "bottom": 106.0,
+            "words": [
+                {"text": "Variables", "x0": 56.0, "x1": 90.0, "top": 98.0, "bottom": 106.0},
+                {"text": "Overall", "x0": 213.0, "x1": 240.0, "top": 98.0, "bottom": 106.0},
+                {"text": "NO", "x0": 312.0, "x1": 324.0, "top": 98.0, "bottom": 106.0},
+                {"text": "YES", "x0": 410.0, "x1": 428.0, "top": 98.0, "bottom": 106.0},
+                {"text": "P-value", "x0": 509.0, "x1": 540.0, "top": 98.0, "bottom": 106.0},
+            ],
+        },
+        {
+            "top": 122.0,
+            "bottom": 130.0,
+            "words": [
+                {"text": "No", "x0": 56.0, "x1": 66.0, "top": 122.0, "bottom": 130.0},
+                {"text": "6313", "x0": 213.0, "x1": 236.0, "top": 122.0, "bottom": 130.0},
+                {"text": "5646", "x0": 312.0, "x1": 336.0, "top": 122.0, "bottom": 130.0},
+                {"text": "667", "x0": 410.0, "x1": 426.0, "top": 122.0, "bottom": 130.0},
+            ],
+        },
+        {
+            "top": 134.0,
+            "bottom": 142.0,
+            "words": [
+                {"text": "Antihyperglycemic", "x0": 56.0, "x1": 124.0, "top": 134.0, "bottom": 142.0},
+                {"text": "drug", "x0": 126.0, "x1": 142.0, "top": 134.0, "bottom": 142.0},
+                {"text": "use", "x0": 146.0, "x1": 160.0, "top": 134.0, "bottom": 142.0},
+                {"text": "status,", "x0": 162.0, "x1": 184.0, "top": 134.0, "bottom": 142.0},
+                {"text": "n", "x0": 186.0, "x1": 190.0, "top": 134.0, "bottom": 142.0},
+                {"text": "(%)", "x0": 192.0, "x1": 206.0, "top": 134.0, "bottom": 142.0},
+                {"text": "<0.001", "x0": 509.0, "x1": 538.0, "top": 134.0, "bottom": 142.0},
+            ],
+        },
+        {
+            "top": 146.0,
+            "bottom": 154.0,
+            "words": [
+                {"text": "Yes", "x0": 56.0, "x1": 68.0, "top": 146.0, "bottom": 154.0},
+                {"text": "147", "x0": 213.0, "x1": 230.0, "top": 146.0, "bottom": 154.0},
+                {"text": "126", "x0": 312.0, "x1": 328.0, "top": 146.0, "bottom": 154.0},
+                {"text": "21", "x0": 410.0, "x1": 422.0, "top": 146.0, "bottom": 154.0},
+            ],
+        },
+        {
+            "top": 158.0,
+            "bottom": 166.0,
+            "words": [
+                {"text": "HEI2020,", "x0": 56.0, "x1": 94.0, "top": 158.0, "bottom": 166.0},
+                {"text": "Median", "x0": 98.0, "x1": 126.0, "top": 158.0, "bottom": 166.0},
+                {"text": "(Q1-Q3)", "x0": 128.0, "x1": 162.0, "top": 158.0, "bottom": 166.0},
+                {"text": "49.71", "x0": 213.0, "x1": 238.0, "top": 158.0, "bottom": 166.0},
+                {"text": "49.84", "x0": 312.0, "x1": 338.0, "top": 158.0, "bottom": 166.0},
+                {"text": "48.63", "x0": 410.0, "x1": 436.0, "top": 158.0, "bottom": 166.0},
+                {"text": "0.162", "x0": 509.0, "x1": 532.0, "top": 158.0, "bottom": 166.0},
+            ],
+        },
+    ]
+
+    rows = _build_rows_from_line_segment(lines)
+
+    assert all(len(row) == 5 for row in rows)
+    assert rows[2] == ["Antihyperglycemic drug use status, n (%)", "", "", "", "<0.001"]
+    assert rows[4][0].startswith("HEI2020, Median")
 
 
 def test_text_layout_fallback_restores_spaces_in_collapsed_first_column_tokens() -> None:

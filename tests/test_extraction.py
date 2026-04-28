@@ -1374,8 +1374,8 @@ def test_text_layout_fallback_detects_unruled_table(tmp_path, monkeypatch) -> No
     assert tables[0].n_rows == 3
     assert tables[0].n_cols == 4
     cell_map = {(cell.row_idx, cell.col_idx): cell.text for cell in tables[0].cells}
-    assert cell_map[(0, 1)] == "Q1"
-    assert cell_map[(0, 2)] == "Q2"
+    assert cell_map[(0, 2)] == "Q1"
+    assert cell_map[(0, 3)] == "Q2"
     assert tables[0].metadata["layout_source"] == "pymupdf_text_positions"
 
 

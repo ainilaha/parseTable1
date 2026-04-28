@@ -172,6 +172,7 @@ Design intent:
 - continuation linkage belongs in metadata, not in synthetic renamed titles such as `Table 1a`
 - numbering audits are for inspection only; they must not be used to silently drop extracted tables
 - extraction may refine a coarse explicit backend grid when word geometry inside the table bbox, together with strong horizontal boundaries, supports a better row/column structure
+- collapsed-grid word-position refinement chooses value-column anchors from repeated value-like numeric positions rather than one-off digit-bearing label tokens; when needed, it preserves a left label anchor and pulls nonnumeric label fragments back from value columns on rows whose only right-side value is a trailing statistic such as a p-value
 - rotated explicit tables may be refined in a table-local normalized coordinate frame; when that happens, `row_bounds` and `horizontal_rules` describe that local frame rather than raw page coordinates
 - for explicit PyMuPDF4LLM tables, extraction may record `first_column_text_x0_by_row` so normalization can infer visible row-label indentation from word positions rather than full cell boundaries; this metadata supports row classification only and does not replace cell bboxes
 
