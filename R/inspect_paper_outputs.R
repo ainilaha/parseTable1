@@ -34,6 +34,7 @@ paper_output_paths <- function(paper_dir) {
     paper_markdown = file.path(paper_dir, "paper_markdown.md"),
     paper_sections = file.path(paper_dir, "paper_sections.json"),
     paper_variable_inventory = file.path(paper_dir, "paper_variable_inventory.json"),
+    table_profiles = file.path(paper_dir, "table_profiles.json"),
     table_context_dir = file.path(paper_dir, "table_contexts")
   )
 }
@@ -64,6 +65,7 @@ load_paper_outputs <- function(paper_dir) {
     table_definitions = read_json_file(paths$deterministic),
     parsed_tables = read_optional_json(paths$parsed),
     table_processing_status = read_optional_json(paths$processing_status),
+    table_profiles = read_optional_json(paths$table_profiles),
     table_variable_plausibility_llm = read_optional_json(paths$variable_plausibility),
     paper_markdown = read_text_file(paths$paper_markdown),
     paper_sections = read_json_file(paths$paper_sections),
@@ -319,6 +321,30 @@ table_processing_status_by_index <- function(outputs, table_index = 0L, table_id
   NULL
 }
 
+table_profile_by_index <- function(outputs, table_index = 0L, table_id = NULL) {
+  profiles <- outputs$table_profiles %||% list()
+  if (length(profiles) == 0) {
+    return(NULL)
+  }
+
+  resolved_table_id <- as.character(table_id %||% "")
+  if (nzchar(resolved_table_id)) {
+    matching_profiles <- Filter(
+      function(x) identical(as.character(x$table_id %||% ""), resolved_table_id),
+      profiles
+    )
+    if (length(matching_profiles) > 0) {
+      return(matching_profiles[[1]])
+    }
+  }
+
+  idx <- as.integer(table_index) + 1L
+  if (length(profiles) >= idx) {
+    return(profiles[[idx]] %||% NULL)
+  }
+  NULL
+}
+
 summarize_table_processing <- function(paper_dir) {
   outputs <- load_paper_outputs(paper_dir)
   table_count <- max(
@@ -342,6 +368,7 @@ summarize_table_processing <- function(paper_dir) {
       ""
     )
     status_record <- table_processing_status_by_index(outputs, table_index = table_index, table_id = table_id)
+    table_profile <- table_profile_by_index(outputs, table_index = table_index, table_id = table_id)
     columns <- definition$column_definition$columns %||% definition$columns %||% list()
     attempts <- status_record$attempts %||% list()
     data.frame(
@@ -370,7 +397,7 @@ summarize_table_processing <- function(paper_dir) {
         ))
       ),
       value_count = as.integer(length(parsed$values %||% list())),
-      table_family = as.character(NA_character_),
+      table_family = as.character(table_profile$table_family %||% NA_character_),
       grid_refinement_source = as.character(extracted$metadata$grid_refinement_source %||% NA_character_),
       stringsAsFactors = FALSE
     )

@@ -255,6 +255,16 @@ def _write_sample_paper_outputs(
             ],
         )
     ]
+    table_profiles = [
+        {
+            "table_id": "tbl-1",
+            "table_family": "descriptive_characteristics",
+            "detected_primary_outcome": None,
+            "detected_exposure_or_predictor": None,
+            "confidence": 0.95,
+            "evidence": ["caption_mentions_baseline"],
+        }
+    ]
     paper_sections = [
         {
             "section_id": "section_0",
@@ -334,6 +344,7 @@ def _write_sample_paper_outputs(
     _write_json(paper_dir / "normalized_tables.json", normalized_tables)
     _write_json(paper_dir / "table_definitions.json", table_definitions)
     _write_json(paper_dir / "parsed_tables.json", parsed_tables)
+    _write_json(paper_dir / "table_profiles.json", table_profiles)
     (paper_dir / "paper_markdown.md").write_text("# Methods\nExample study population.", encoding="utf-8")
     _write_json(paper_dir / "paper_sections.json", paper_sections)
     _write_json(paper_dir / "paper_variable_inventory.json", paper_variable_inventory)
@@ -502,6 +513,7 @@ def test_r_inspection_loads_processing_status_and_summarizes_tables(tmp_path) ->
     assert "Table processing summary" in result.stdout
     assert "tbl-1" in result.stdout
     assert "ok" in result.stdout
+    assert "descriptive_characteristics" in result.stdout
 
 
 def test_r_inspection_shows_failed_table_processing_and_structure_header(tmp_path) -> None:
