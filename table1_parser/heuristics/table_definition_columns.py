@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from table1_parser.heuristics.header_role_patterns import detect_p_value_header
 from table1_parser.normalize.text_normalizer import normalize_label_text
 from table1_parser.schemas import ColumnDefinition, DefinedColumn, NormalizedTable
 from table1_parser.text_cleaning import clean_text
@@ -14,8 +15,6 @@ BY_PATTERN = re.compile(r"\b(?:stratified\s+)?by\s+(.+?)(?:[.;]|$)", re.IGNORECA
 LABEL_COLUMN_TOKENS = {"characteristic", "characteristics", "variable", "variables", "factor", "covariate"}
 OVERALL_HEADER_TOKENS = {"overall", "all", "total", "total population", "full cohort"}
 GROUP_COMPARISON_TOKENS = {"control", "controls", "reference"}
-STAT_P_VALUE_PATTERN = re.compile(r"\bp(?:[\s-]*value)?\b", re.IGNORECASE)
-STAT_TREND_PATTERN = re.compile(r"\btrend\b", re.IGNORECASE)
 STAT_SMD_PATTERN = re.compile(r"\b(?:smd|standardized mean difference)\b", re.IGNORECASE)
 RANGE_LEVEL_PATTERN = re.compile(r"^(?:[<>]=?\s*)?-?\d+(?:\.\d+)?(?:\s*-\s*-?\d+(?:\.\d+)?)?$")
 
@@ -82,14 +81,19 @@ def _build_grouping_analysis(table: NormalizedTable, descriptors: list[HeaderDes
         if label:
             if STAT_SMD_PATTERN.search(label):
                 subtype = "smd"
-            elif STAT_P_VALUE_PATTERN.search(label):
-                subtype = "p_trend" if STAT_TREND_PATTERN.search(label) else "p_value"
+            else:
+                p_value_match = detect_p_value_header(descriptor.column_label, descriptor.col_idx, len(descriptors))
+                if p_value_match is None and descriptor.leaf_label != descriptor.column_label:
+                    p_value_match = detect_p_value_header(descriptor.leaf_label, descriptor.col_idx, len(descriptors))
+                if p_value_match is not None:
+                    subtype = p_value_match.subtype
         if subtype is None:
             continue
+        p_value_match = detect_p_value_header(descriptor.column_label, descriptor.col_idx, len(descriptors))
         stat_columns[descriptor.col_idx] = StatColumnGuess(
             col_idx=descriptor.col_idx,
             subtype=subtype,
-            confidence=0.99 if subtype == "smd" else (0.98 if subtype == "p_trend" else 0.97),
+            confidence=0.99 if subtype == "smd" else (p_value_match.confidence if p_value_match else 0.97),
         )
     data_descriptors = [
         descriptor

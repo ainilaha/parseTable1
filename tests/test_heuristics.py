@@ -927,6 +927,81 @@ def test_column_role_detector_handles_required_headers() -> None:
     assert smd_roles[1].role == "smd"
 
 
+def test_column_role_detector_handles_split_p_value_headers() -> None:
+    """P-value headers split by whitespace or hyphenation should still be recognized."""
+    variants = ["P-value", "P value", "p- value", "p-\nvalue", "pvalue", "P for trend", "p-trend"]
+    for variant in variants:
+        table = NormalizedTable(
+            table_id=f"tbl-{variant}",
+            header_rows=[0],
+            body_rows=[1],
+            row_views=[_build_row(1, "Age, years", ["52.3", "51.2", "<0.001"])],
+            n_rows=2,
+            n_cols=4,
+            metadata={"cleaned_rows": [["Variable", "Overall", "Cases", variant]]},
+        )
+
+        roles = detect_column_roles(table)
+
+        assert roles[3].role == "p_value"
+        assert roles[3].confidence >= 0.94
+
+
+def test_bare_p_header_requires_rightmost_or_almost_rightmost_position() -> None:
+    """A bare p header should not classify as p_value when it is far from the right edge."""
+    table = NormalizedTable(
+        table_id="tbl-bare-p",
+        header_rows=[0],
+        body_rows=[1],
+        row_views=[_build_row(1, "Age, years", ["52.3", "51.2", "<0.001", "0.12"])],
+        n_rows=2,
+        n_cols=5,
+        metadata={"cleaned_rows": [["Variable", "p", "Overall", "Cases", "Controls"]]},
+    )
+
+    roles = detect_column_roles(table)
+
+    assert roles[1].role == "unknown"
+
+
+def test_split_p_value_header_does_not_break_categorical_levels() -> None:
+    """A p-value column rendered as p- value should not split a categorical block."""
+    table = NormalizedTable(
+        table_id="tbl-split-p-value",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4, 5, 6],
+        row_views=[
+            _build_row(1, "Race, n (%)", ["", "", "", ""]),
+            _build_row(2, "Mexican American", ["3,614 (8.7)", "3,075 (8.9)", "539 (7.5)", ""]),
+            _build_row(3, "Other Hispanic", ["2,565 (6.1)", "2,197 (6.3)", "368 (5.0)", ""]),
+            _build_row(4, "Non-Hispanic white", ["9,643 (66.2)", "7,817 (66.0)", "1,826 (67.0)", "<0.001"]),
+            _build_row(5, "Non-Hispanic Black", ["4,987 (10.6)", "4,050 (10.3)", "937 (12.1)", ""]),
+            _build_row(6, "Others", ["3,353 (8.4)", "2,889 (8.5)", "464 (7.7)", ""]),
+        ],
+        n_rows=7,
+        n_cols=5,
+        metadata={
+            "cleaned_rows": [
+                ["Characteristics", "Overall", "Non-CKD", "CKD", "p- value"],
+                ["Race, n (%)", "", "", "", ""],
+                ["Mexican American", "3,614 (8.7)", "3,075 (8.9)", "539 (7.5)", ""],
+                ["Other Hispanic", "2,565 (6.1)", "2,197 (6.3)", "368 (5.0)", ""],
+                ["Non-Hispanic white", "9,643 (66.2)", "7,817 (66.0)", "1,826 (67.0)", "<0.001"],
+                ["Non-Hispanic Black", "4,987 (10.6)", "4,050 (10.3)", "937 (12.1)", ""],
+                ["Others", "3,353 (8.4)", "2,889 (8.5)", "464 (7.7)", ""],
+            ]
+        },
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+    blocks = group_variable_blocks(table)
+
+    assert classifications[4] == "level_row"
+    assert len(blocks) == 1
+    assert blocks[0].variable_label == "Race, n (%)"
+    assert blocks[0].level_row_indices == [2, 3, 4, 5, 6]
+
+
 def test_value_pattern_detector_handles_required_examples_and_negatives() -> None:
     """Value-pattern detection should classify the required examples conservatively."""
     assert detect_value_pattern("412 (48.2)").pattern == "count_pct"

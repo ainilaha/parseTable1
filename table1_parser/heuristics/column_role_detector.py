@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from table1_parser.heuristics.header_role_patterns import detect_p_value_header
 from table1_parser.heuristics.models import ColumnRoleGuess
 from table1_parser.schemas import NormalizedTable
 from table1_parser.text_cleaning import clean_text
@@ -25,14 +26,8 @@ def detect_column_roles(table: NormalizedTable) -> list[ColumnRoleGuess]:
         lowered = label.lower()
         if not label:
             role, confidence = "unknown", 0.4
-        elif (
-            "p-value" in lowered
-            or "p value" in lowered
-            or lowered.startswith("pvalue")
-            or lowered == "p"
-            or ("trend" in lowered and "p" in lowered)
-        ):
-            role, confidence = "p_value", 0.98
+        elif p_value_match := detect_p_value_header(label, col_idx, table.n_cols):
+            role, confidence = "p_value", p_value_match.confidence
         elif "smd" in lowered:
             role, confidence = "smd", 0.98
         elif "overall" in lowered or lowered in {"all", "total"}:

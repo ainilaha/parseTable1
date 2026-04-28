@@ -249,7 +249,10 @@ def classify_row(
         row_view.has_trailing_values
         and not categorical_parent_cue
         and not strong_continuous_layout
-        and not has_data_and_statistic_values
+        and (
+            not has_data_and_statistic_values
+            or previous_classification in {"variable_header", "level_row"}
+        )
         and not has_only_statistic_values
         and count_like_level_row
         and not looks_like_binary_variable_row
