@@ -184,6 +184,11 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                     cell_bboxes = refinement["table_cells"]
                     row_bounds = refinement["row_bounds"]
                     horizontal_rules = refinement["horizontal_rules"]
+                    first_column_text_x0_by_row = _infer_first_column_text_x0_by_row(
+                        raw_rows=raw_rows,
+                        cell_bboxes=cell_bboxes,
+                        page_words=page_words,
+                    )
                     nearby_caption_candidates: list[tuple[float, str]] = []
                     table_top = bbox[1] if bbox else float("inf")
                     for candidate_box in page_boxes:
@@ -233,6 +238,7 @@ class PyMuPDF4LLMExtractor(BaseExtractor):
                                     "geometry_coordinate_frame": refinement["geometry_coordinate_frame"],
                                     "table_markdown": table.get("markdown"),
                                     "table_cells": cell_bboxes,
+                                    "first_column_text_x0_by_row": first_column_text_x0_by_row,
                                     "refined_table_cells": refinement["refined_table_cells"],
                                     "original_table_cells": table.get("cells") if raw_rows != original_raw_rows else None,
                                     "original_backend_rows": table.get("extract") if raw_rows != original_raw_rows else None,
@@ -469,6 +475,43 @@ def _infer_table_orientation_metadata(
         "rotation_direction": "upright",
         "rotation_confidence": round(horizontal_count / considered_count, 4),
     }
+
+
+def _infer_first_column_text_x0_by_row(
+    *,
+    raw_rows: list[list[str]],
+    cell_bboxes: list[list[tuple[float, float, float, float] | None]],
+    page_words: list[dict[str, object]],
+) -> dict[int, float]:
+    """Infer first visible text x-position inside first-column cells."""
+    if not raw_rows or not cell_bboxes or not page_words:
+        return {}
+    x0_by_row: dict[int, float] = {}
+    for row_idx, row in enumerate(raw_rows):
+        if not row or not str(row[0]).strip() or row_idx >= len(cell_bboxes) or not cell_bboxes[row_idx]:
+            continue
+        cell_bbox = cell_bboxes[row_idx][0]
+        if cell_bbox is None:
+            continue
+        left, top, right, bottom = cell_bbox
+        matching_word_x0s: list[float] = []
+        for word in page_words:
+            text = str(word.get("text", "")).strip()
+            if not text:
+                continue
+            word_x0 = float(word.get("x0", 0.0))
+            word_x1 = float(word.get("x1", word_x0))
+            word_top = float(word.get("top", 0.0))
+            word_bottom = float(word.get("bottom", word_top))
+            word_y_mid = (word_top + word_bottom) / 2.0
+            horizontal_overlap = min(right, word_x1) - max(left, word_x0)
+            if horizontal_overlap <= 0:
+                continue
+            if top - 1.0 <= word_y_mid <= bottom + 1.0:
+                matching_word_x0s.append(word_x0)
+        if matching_word_x0s:
+            x0_by_row[row_idx] = round(min(matching_word_x0s), 4)
+    return x0_by_row
 
 
 def _refine_explicit_table_candidate_grid(

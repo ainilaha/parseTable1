@@ -122,18 +122,34 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
     )
     first_column_bboxes: dict[int, tuple[float, float, float, float]] = {}
     x0_values: list[float] = []
+    first_column_text_x0_by_row: dict[int, float] = {}
+    raw_text_x0_by_row = table.metadata.get("first_column_text_x0_by_row")
+    if dropped_leading_cols == 0 and isinstance(raw_text_x0_by_row, dict):
+        for row_idx_key, value in raw_text_x0_by_row.items():
+            try:
+                first_column_text_x0_by_row[int(row_idx_key)] = float(value)
+            except (TypeError, ValueError):
+                continue
     for cell in table.cells:
         if cell.col_idx != dropped_leading_cols or cell.bbox is None or cell.row_idx >= table.n_rows:
             continue
         first_column_bboxes[cell.row_idx] = cell.bbox
         x0_values.append(cell.bbox[0])
     base_x0 = min(x0_values) if x0_values else None
+    body_text_x0_values = [
+        first_column_text_x0_by_row[row_idx]
+        for row_idx in body_rows
+        if row_idx in first_column_text_x0_by_row
+    ]
+    base_text_x0 = min(body_text_x0_values) if body_text_x0_values else None
     row_views = [
         build_row_signature(
             row_idx,
             raw_rows[row_idx],
             first_cell_bbox=first_column_bboxes.get(row_idx),
             base_x0=base_x0,
+            first_cell_text_x0=first_column_text_x0_by_row.get(row_idx),
+            base_text_x0=base_text_x0,
         )
         for row_idx in body_rows
     ]
@@ -213,6 +229,8 @@ def normalize_extracted_table(table: ExtractedTable) -> NormalizedTable:
                     raw_rows[row_idx],
                     first_cell_bbox=first_column_bboxes.get(row_idx),
                     base_x0=base_x0,
+                    first_cell_text_x0=first_column_text_x0_by_row.get(row_idx),
+                    base_text_x0=base_text_x0,
                 )
                 for row_idx in body_rows
             ]

@@ -17,8 +17,12 @@ def infer_indent_level(
     first_cell_raw: str,
     first_cell_bbox: tuple[float, float, float, float] | None = None,
     base_x0: float | None = None,
+    first_cell_text_x0: float | None = None,
+    base_text_x0: float | None = None,
 ) -> int | None:
     """Infer indent level from bbox position when available, else leading whitespace."""
+    if first_cell_text_x0 is not None and base_text_x0 is not None and first_cell_text_x0 >= base_text_x0:
+        return int(round(first_cell_text_x0 - base_text_x0))
     if first_cell_bbox is not None and base_x0 is not None:
         x0 = first_cell_bbox[0]
         if x0 >= base_x0:
@@ -34,6 +38,8 @@ def build_row_signature(
     raw_cells: list[str],
     first_cell_bbox: tuple[float, float, float, float] | None = None,
     base_x0: float | None = None,
+    first_cell_text_x0: float | None = None,
+    base_text_x0: float | None = None,
 ) -> RowView:
     """Build a normalized row signature from raw cell content."""
     raw_cells_copy = list(raw_cells)
@@ -57,6 +63,8 @@ def build_row_signature(
             first_cell_raw,
             first_cell_bbox=first_cell_bbox,
             base_x0=base_x0,
+            first_cell_text_x0=first_cell_text_x0,
+            base_text_x0=base_text_x0,
         ),
         likely_role=None,
     )

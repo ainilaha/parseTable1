@@ -240,6 +240,20 @@ def test_row_signature_prefers_bbox_indent_when_available() -> None:
     assert row_view.indent_level == 8
 
 
+def test_row_signature_prefers_text_x0_indent_over_cell_bbox() -> None:
+    """Text-start indentation should override full-cell bbox boundaries."""
+    row_view = build_row_signature(
+        1,
+        ["Married", "34"],
+        first_cell_bbox=(34.0, 0.0, 120.0, 10.0),
+        base_x0=34.0,
+        first_cell_text_x0=44.0,
+        base_text_x0=36.0,
+    )
+
+    assert row_view.indent_level == 8
+
+
 def test_normalization_marks_flush_left_indentation_as_uninformative() -> None:
     """Nearly uniform body-row label positions should not count as informative indentation."""
     extracted = ExtractedTable(
@@ -264,6 +278,49 @@ def test_normalization_marks_flush_left_indentation_as_uninformative() -> None:
     normalized = normalize_extracted_table(extracted)
 
     assert normalized.metadata["indentation_informative"] is False
+
+
+def test_normalization_uses_first_column_text_x0_metadata_for_indentation() -> None:
+    """Normalization should use visible first-word positions when cell bboxes are full-column bounds."""
+    extracted = ExtractedTable(
+        table_id="tbl-text-indent",
+        source_pdf="paper.pdf",
+        page_num=1,
+        n_rows=5,
+        n_cols=2,
+        cells=[
+            TableCell(row_idx=0, col_idx=0, text="Variable", bbox=(34.0, 10.0, 120.0, 18.0)),
+            TableCell(row_idx=0, col_idx=1, text="Overall"),
+            TableCell(row_idx=1, col_idx=0, text="Marital status, n (%)", bbox=(34.0, 20.0, 120.0, 28.0)),
+            TableCell(row_idx=1, col_idx=1, text=""),
+            TableCell(row_idx=2, col_idx=0, text="Married", bbox=(34.0, 30.0, 120.0, 38.0)),
+            TableCell(row_idx=2, col_idx=1, text="10 (50.0)"),
+            TableCell(row_idx=3, col_idx=0, text="Never married", bbox=(34.0, 40.0, 120.0, 48.0)),
+            TableCell(row_idx=3, col_idx=1, text="5 (25.0)"),
+            TableCell(row_idx=4, col_idx=0, text="Education level, n (%)", bbox=(34.0, 50.0, 120.0, 58.0)),
+            TableCell(row_idx=4, col_idx=1, text=""),
+        ],
+        extraction_backend="pymupdf4llm",
+        metadata={
+            "row_bounds": [(10.0, 18.0), (20.0, 28.0), (30.0, 38.0), (40.0, 48.0), (50.0, 58.0)],
+            "horizontal_rules": [19.0],
+            "first_column_text_x0_by_row": {
+                "0": 34.0,
+                "1": 36.0,
+                "2": 44.0,
+                "3": 44.0,
+                "4": 36.0,
+            }
+        },
+    )
+
+    normalized = normalize_extracted_table(extracted)
+    indents = {row_view.row_idx: row_view.indent_level for row_view in normalized.row_views}
+
+    assert indents[2] == 8
+    assert indents[3] == 8
+    assert indents[4] == 0
+    assert normalized.metadata["indentation_informative"] is True
 
 
 def test_row_signature_preserves_raw_text_word_boundaries() -> None:

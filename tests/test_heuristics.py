@@ -797,6 +797,31 @@ def test_indented_slash_label_can_be_level_row() -> None:
     assert classifications[3] == "level_row"
 
 
+def test_indented_level_continuation_tolerates_one_malformed_count_percent_cell() -> None:
+    """Indented categorical blocks should not break on one malformed count-percent value."""
+    table = NormalizedTable(
+        table_id="tbl-indent-malformed-level",
+        header_rows=[0],
+        body_rows=[1, 2, 3, 4],
+        row_views=[
+            _build_row(1, "Marital status, n (%)", [], indent_level=0),
+            _build_row(2, "Married", ["12,405 (55.2)", "10,346 (55.6)", "2,059 (53.0)"], indent_level=8),
+            _build_row(3, "Divorced", ["2,651 (10.3)", "2,109 (9.9)", "542 (12.7)"], indent_level=8),
+            _build_row(4, "Never married", ["4,514 (18.4)", "4,040 (19,5)", "474 (11.1)"], indent_level=8),
+        ],
+        n_rows=5,
+        n_cols=4,
+        metadata={"indentation_informative": True},
+    )
+
+    classifications = {item.row_idx: item.classification for item in classify_rows(table)}
+
+    assert classifications[1] == "variable_header"
+    assert classifications[2] == "level_row"
+    assert classifications[3] == "level_row"
+    assert classifications[4] == "level_row"
+
+
 def test_other_is_plausible_level_row_after_categorical_parent() -> None:
     """Generic residual category labels should be recognized under a categorical parent."""
     table = NormalizedTable(

@@ -398,6 +398,66 @@ def test_pymupdf4llm_extractor_skips_tables_after_references_heading(tmp_path, m
     assert tables[0].title == "Table 1. Baseline characteristics"
 
 
+def test_pymupdf4llm_extractor_records_first_column_text_starts(tmp_path, monkeypatch) -> None:
+    """Visible first-word x positions should be preserved for indentation inference."""
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_text("placeholder")
+    _install_fake_pymupdf4llm(
+        monkeypatch,
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "boxes": [
+                        {
+                            "bbox": [34, 80, 260, 96],
+                            "boxclass": "text",
+                            "textlines": [{"spans": [{"text": "Table 1. Baseline characteristics"}]}],
+                        },
+                        {
+                            "bbox": [34, 120, 280, 160],
+                            "boxclass": "table",
+                            "table": {
+                                "bbox": [34, 120, 280, 160],
+                                "extract": [
+                                    ["Characteristic", "Overall"],
+                                    ["Marital status, n (%)", ""],
+                                    ["Married", "10 (50.0)"],
+                                ],
+                                "cells": [
+                                    [[34, 120, 180, 132], [180, 120, 280, 132]],
+                                    [[34, 132, 180, 144], [180, 132, 280, 144]],
+                                    [[34, 144, 180, 156], [180, 144, 280, 156]],
+                                ],
+                            },
+                        },
+                    ],
+                }
+            ]
+        },
+    )
+    _install_fake_pymupdf_document(
+        monkeypatch,
+        [
+            FakePyMuPage(
+                text="Table 1. Baseline characteristics",
+                words=[
+                    {"text": "Characteristic", "x0": 36.0, "x1": 90.0, "top": 122.0, "bottom": 130.0},
+                    {"text": "Overall", "x0": 190.0, "x1": 222.0, "top": 122.0, "bottom": 130.0},
+                    {"text": "Marital", "x0": 36.0, "x1": 66.0, "top": 134.0, "bottom": 142.0},
+                    {"text": "status", "x0": 68.0, "x1": 92.0, "top": 134.0, "bottom": 142.0},
+                    {"text": "Married", "x0": 44.0, "x1": 74.0, "top": 146.0, "bottom": 154.0},
+                    {"text": "10", "x0": 190.0, "x1": 202.0, "top": 146.0, "bottom": 154.0},
+                ],
+            )
+        ],
+    )
+
+    tables = PyMuPDF4LLMExtractor(max_candidates=3, heuristic_confidence_threshold=0.0).extract(str(pdf_path))
+
+    assert tables[0].metadata["first_column_text_x0_by_row"] == {0: 36.0, 1: 36.0, 2: 44.0}
+
+
 def test_pymupdf4llm_extractor_returns_empty_on_primary_failure(tmp_path, monkeypatch) -> None:
     pdf_path = tmp_path / "paper.pdf"
     pdf_path.write_text("placeholder")

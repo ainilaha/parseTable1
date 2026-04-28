@@ -152,6 +152,7 @@ Important current `metadata` keys produced by extraction may include:
 - `explicit_grid_refined_from_words`
 - `grid_refinement_source`
 - `geometry_coordinate_frame`
+- `first_column_text_x0_by_row`
 
 `TableCell` design components:
 
@@ -172,6 +173,7 @@ Design intent:
 - numbering audits are for inspection only; they must not be used to silently drop extracted tables
 - extraction may refine a coarse explicit backend grid when word geometry inside the table bbox, together with strong horizontal boundaries, supports a better row/column structure
 - rotated explicit tables may be refined in a table-local normalized coordinate frame; when that happens, `row_bounds` and `horizontal_rules` describe that local frame rather than raw page coordinates
+- for explicit PyMuPDF4LLM tables, extraction may record `first_column_text_x0_by_row` so normalization can infer visible row-label indentation from word positions rather than full cell boundaries; this metadata supports row classification only and does not replace cell bboxes
 
 ## 2. `NormalizedTable` JSON
 

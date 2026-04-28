@@ -140,6 +140,8 @@ That does not always mean “what one backend reported verbatim.” If the backe
 
 For rotated refinements, the recovered `row_bounds` and `horizontal_rules` may be expressed in a table-local normalized coordinate frame rather than the original page frame. That is intentional: later stages use those values as structural boundaries, not as page-annotation coordinates.
 
+For explicit tables, extraction may also record the visible first-word x-position for each first-column row label. This exists because backend cell boxes often describe the full column boundary, while the actual text inside that cell may be indented. Normalization uses that compact word-position metadata for indentation inference while preserving the original cell boxes as grid geometry.
+
 ### Why `ExtractedTable` Exists
 
 This is the audit trail for extraction.

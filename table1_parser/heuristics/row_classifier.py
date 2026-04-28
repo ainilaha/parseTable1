@@ -245,6 +245,18 @@ def classify_row(
             )
         )
     )
+    looks_like_indented_count_level_continuation = (
+        row_view.has_trailing_values
+        and indentation_informative
+        and active_parent_row_view is not None
+        and active_parent_requires_indented_levels
+        and _is_more_indented(row_view, active_parent_row_view)
+        and len(non_statistic_trailing_patterns) >= 2
+        and count_like_non_stat_count >= len(non_statistic_trailing_patterns) - 1
+        and not categorical_parent_cue
+        and not strong_continuous_layout
+        and not has_only_statistic_values
+    )
     looks_like_level_continuation = (
         row_view.has_trailing_values
         and not categorical_parent_cue
@@ -254,7 +266,7 @@ def classify_row(
             or previous_classification in {"variable_header", "level_row"}
         )
         and not has_only_statistic_values
-        and count_like_level_row
+        and (count_like_level_row or looks_like_indented_count_level_continuation)
         and not looks_like_binary_variable_row
         and not _looks_scalar_count_row(
             row_view,
