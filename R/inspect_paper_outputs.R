@@ -36,6 +36,7 @@ paper_output_paths <- function(paper_dir) {
     variable_plausibility_debug_dir = file.path(paper_dir, "llm_variable_plausibility_debug"),
     paper_markdown = file.path(paper_dir, "paper_markdown.md"),
     paper_sections = file.path(paper_dir, "paper_sections.json"),
+    paper_visual_inventory = file.path(paper_dir, "paper_visual_inventory.json"),
     paper_references = file.path(paper_dir, "paper_references.json"),
     paper_variable_inventory = file.path(paper_dir, "paper_variable_inventory.json"),
     table_profiles = file.path(paper_dir, "table_profiles.json"),
@@ -76,6 +77,7 @@ load_paper_outputs <- function(paper_dir) {
     table_variable_plausibility_llm = read_optional_json(paths$variable_plausibility),
     paper_markdown = read_text_file(paths$paper_markdown),
     paper_sections = read_json_file(paths$paper_sections),
+    paper_visual_inventory = read_optional_json(paths$paper_visual_inventory) %||% list(),
     paper_references = read_optional_json(paths$paper_references) %||% list(),
     paper_variable_inventory = read_optional_json(paths$paper_variable_inventory),
     table_contexts = read_table_contexts(paths$table_context_dir)
@@ -1071,7 +1073,43 @@ summarize_llm_variable_plausibility_monitoring <- function(paper_dir, run_id = N
   invisible(summary_df)
 }
 
-show_paper_references <- function(paper_dir, reference_kind = NULL, reference_label = NULL) {
+show_paper_visuals <- function(paper_dir, visual_kind = NULL) {
+  outputs <- load_paper_outputs(paper_dir)
+  visuals <- outputs$paper_visual_inventory %||% list()
+  if (!is.null(visual_kind)) {
+    visuals <- Filter(function(x) identical(x$visual_kind %||% "", visual_kind), visuals)
+  }
+
+  cat(sprintf("Paper visuals: %s\n", outputs$paper_dir))
+  if (length(visuals) == 0) {
+    cat("[No visuals]\n")
+    return(invisible(visuals))
+  }
+
+  for (visual in visuals) {
+    cat(sprintf(
+      "[%s] %s | %s | page=%s | source_table=%s | artifact=%s | reference_check=%s\n",
+      visual$visual_id %||% "",
+      visual$visual_kind %||% "",
+      visual$label %||% "",
+      format(visual$page_num %||% NA),
+      visual$source_table_id %||% "",
+      visual$artifact_path %||% "",
+      visual$reference_check_status %||% ""
+    ))
+    if (length(visual$text_reference_ids %||% list()) > 0) {
+      cat(sprintf("text references: %s\n", paste(unlist(visual$text_reference_ids, use.names = FALSE), collapse = ", ")))
+    }
+    if (!is.null(visual$caption) && nzchar(visual$caption)) {
+      cat(visual$caption, "\n", sep = "")
+    }
+    cat("\n")
+  }
+
+  invisible(visuals)
+}
+
+show_paper_references <- function(paper_dir, reference_kind = NULL, reference_label = NULL, resolution_status = NULL) {
   outputs <- load_paper_outputs(paper_dir)
   references <- outputs$paper_references %||% list()
   if (!is.null(reference_kind)) {
@@ -1079,6 +1117,9 @@ show_paper_references <- function(paper_dir, reference_kind = NULL, reference_la
   }
   if (!is.null(reference_label)) {
     references <- Filter(function(x) identical(x$reference_label %||% "", reference_label), references)
+  }
+  if (!is.null(resolution_status)) {
+    references <- Filter(function(x) identical(x$resolution_status %||% "", resolution_status), references)
   }
 
   cat(sprintf("Paper references: %s\n", outputs$paper_dir))
@@ -1089,19 +1130,15 @@ show_paper_references <- function(paper_dir, reference_kind = NULL, reference_la
 
   for (reference in references) {
     cat(sprintf(
-      "[%s] %s | %s | paragraph=%s\n",
+      "[%s] %s | %s | status=%s | visual=%s | paragraph=%s\n",
       reference$reference_id %||% "",
       reference$reference_label %||% "",
       reference$heading %||% "",
+      reference$resolution_status %||% "",
+      reference$resolved_visual_id %||% "",
       format(reference$paragraph_index %||% NA)
     ))
-    if (!is.null(reference$previous_text) && nzchar(reference$previous_text)) {
-      cat("prev: ", reference$previous_text, "\n", sep = "")
-    }
-    cat(reference$text %||% "", "\n", sep = "")
-    if (!is.null(reference$next_text) && nzchar(reference$next_text)) {
-      cat("next: ", reference$next_text, "\n", sep = "")
-    }
+    cat(reference$anchor_text %||% "", "\n", sep = "")
     cat("\n")
   }
 
@@ -1126,6 +1163,12 @@ show_table_context <- function(paper_dir, table_index = 0L, match_type = NULL) {
   if (!is.null(context$caption) && nzchar(context$caption)) {
     cat(sprintf("Caption: %s\n", context$caption))
   }
+  if (length(context$reference_ids %||% list()) > 0) {
+    cat(sprintf("Reference IDs: %s\n", paste(unlist(context$reference_ids, use.names = FALSE), collapse = ", ")))
+  }
+  if (length(context$resolved_visual_ids %||% list()) > 0) {
+    cat(sprintf("Resolved visuals: %s\n", paste(unlist(context$resolved_visual_ids, use.names = FALSE), collapse = ", ")))
+  }
   cat("\n")
 
   for (passage in passages) {
@@ -1136,15 +1179,6 @@ show_table_context <- function(paper_dir, table_index = 0L, match_type = NULL) {
       passage$match_type %||% "",
       format(passage$score %||% NA)
     ))
-    passage_references <- passage$references %||% list()
-    if (length(passage_references) > 0) {
-      labels <- vapply(
-        passage_references,
-        function(x) as.character(x$reference_label %||% ""),
-        character(1)
-      )
-      cat(sprintf("refs: %s\n", paste(labels[nzchar(labels)], collapse = ", ")))
-    }
     cat(passage$text %||% "", "\n\n", sep = "")
   }
 

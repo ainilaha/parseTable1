@@ -10,13 +10,14 @@ from table1_parser.schemas import (
     DefinedColumn,
     DefinedLevel,
     DefinedVariable,
-    DocumentReference,
     ExtractedTable,
     LLMVariablePlausibilityCallRecord,
     LLMVariablePlausibilityMonitoringReport,
     NormalizedTable,
     PaperSection,
     PaperVariableInventory,
+    PaperVisual,
+    PaperVisualReference,
     ParsedColumn,
     ParsedLevel,
     ParsedTable,
@@ -277,6 +278,8 @@ def test_document_context_schemas_create_without_llm_logic() -> None:
         column_terms=["Non-DKD", "DKD"],
         grouping_terms=["DKD status"],
         methods_like_section_ids=["section_0"],
+        reference_ids=["paper_ref:section_0:p0:r0"],
+        resolved_visual_ids=["paper_visual:table:2"],
         passages=[
             RetrievedPassage(
                 passage_id="section_0_p0",
@@ -285,28 +288,48 @@ def test_document_context_schemas_create_without_llm_logic() -> None:
                 text="Age and DKD status were collected.",
                 match_type="methods_term_match",
                 score=0.8,
-                references=[
-                    DocumentReference(
-                        reference_id="section_0_p0_r0",
-                        reference_kind="table",
-                        reference_label="Table 2",
-                        reference_number="2",
-                        section_id="section_0",
-                        heading="Methods",
-                        role_hint="methods_like",
-                        paragraph_index=0,
-                        start_char=0,
-                        end_char=7,
-                        text="Table 2 reports baseline characteristics.",
-                    )
-                ],
             )
         ],
     )
 
     assert section.model_dump()["role_hint"] == "methods_like"
     assert context.model_dump(mode="json")["passages"][0]["match_type"] == "methods_term_match"
-    assert context.model_dump(mode="json")["passages"][0]["references"][0]["reference_label"] == "Table 2"
+    assert context.model_dump(mode="json")["reference_ids"] == ["paper_ref:section_0:p0:r0"]
+
+
+def test_paper_visual_reference_schemas_serialize_cleanly() -> None:
+    """Paper visual-reference schemas should stay explicit and JSON-serializable."""
+    visual = PaperVisual(
+        visual_id="paper_visual:figure:2",
+        visual_kind="figure",
+        label="Figure 2",
+        number="2",
+        caption="Figure 2. Study flow.",
+        caption_source="markdown_caption",
+        confidence=0.8,
+        text_reference_ids=["paper_ref:section_0:p0:r0"],
+        reference_check_status="referenced_in_text",
+    )
+    reference = PaperVisualReference(
+        reference_id="paper_ref:section_0:p0:r0",
+        reference_kind="figure",
+        reference_label="Figure 2",
+        reference_number="2",
+        matched_text="Figure 2",
+        section_id="section_0",
+        heading="Results",
+        role_hint="results_like",
+        paragraph_index=0,
+        start_char=32,
+        end_char=40,
+        anchor_text="The study selection process is shown in Figure 2.",
+        resolved_visual_id="paper_visual:figure:2",
+        resolution_status="resolved",
+    )
+
+    assert visual.model_dump(mode="json")["visual_kind"] == "figure"
+    assert visual.model_dump(mode="json")["reference_check_status"] == "referenced_in_text"
+    assert reference.model_dump(mode="json")["resolution_status"] == "resolved"
 
 
 def test_paper_variable_inventory_schema_serializes_cleanly() -> None:

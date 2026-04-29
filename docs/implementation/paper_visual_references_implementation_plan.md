@@ -107,6 +107,9 @@ VisualReferenceResolutionStatus = Literal[
 - `source_table_id: str | None = None`
 - `source: str | None = None`
 - `confidence: float | None = Field(default=None, ge=0.0, le=1.0)`
+- `text_reference_ids: list[str] = Field(default_factory=list)`
+- `reference_check_status: VisualReferenceCheckStatus = "not_checked"`
+- `reference_check_notes: list[str] = Field(default_factory=list)`
 - `notes: list[str] = Field(default_factory=list)`
 
 `PaperVisualReference` fields:
@@ -317,6 +320,7 @@ In `table1_parser/cli.py`:
 - build visual inventory before references
 - build references from sections plus visual inventory
 - write both JSON artifacts in `_write_parse_outputs(...)`
+- annotate visual records with reference-check status after references are resolved
 
 Output must be additive. Existing outputs must remain unchanged:
 
@@ -464,6 +468,9 @@ The first complete implementation is done when:
 - `table1-parser parse` writes `paper_references.json`
 - all table and figure references found in markdown sections are preserved
 - references resolve only when the referenced visual exists in `paper_visual_inventory.json`
+- standard in-paper visuals record `referenced_in_text` only when they have at least one resolved non-self text reference
+- caption/table-body self mentions do not satisfy the text-reference check
+- supplementary visuals are marked `supplementary_exempt`
 - unresolved and bibliographic references are explicit, not dropped
 - figure captions are represented as figure visuals
 - no figure image extraction is required

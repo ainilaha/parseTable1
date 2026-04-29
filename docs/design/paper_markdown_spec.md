@@ -10,6 +10,7 @@ It exists to support:
 
 - section detection
 - `Table X` reference retrieval
+- table and figure caption/reference inventory building
 - variable and column-context retrieval
 - paper-level candidate variable inventory building
 - later LLM semantic interpretation
@@ -38,6 +39,8 @@ outputs/papers/<paper_stem>/paper_markdown.md
 - Do not use it as a replacement for `ExtractedTable` or `NormalizedTable`.
 - Keep it paired with:
   - `paper_sections.json`
+  - `paper_visual_inventory.json`
+  - `paper_references.json`
   - `table_contexts/table_<n>_context.json`
 
 ## Expected Variation
@@ -57,6 +60,8 @@ The pipeline should therefore:
 - preserve the extracted markdown structure with only conservative glyph repair
 - treat these repairs as extractor-symbol recovery, not as a general-purpose file-encoding pass
 - derive structure in `paper_sections.json`
+- derive actual in-paper table/figure objects in `paper_visual_inventory.json`
+- derive anchored prose mentions in `paper_references.json`, resolving them against the visual inventory rather than assuming every `Figure X` mention belongs to this paper
 - tolerate section-name variation
 - avoid hardcoding exact heading names as the only way to find methods-like or results-like content
 - avoid using the references or bibliography as a primary source for paper-level variable inventory

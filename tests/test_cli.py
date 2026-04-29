@@ -92,7 +92,7 @@ def _patch_paper_context(monkeypatch) -> None:
     monkeypatch.setattr(
         cli,
         "build_table_contexts",
-        lambda sections, definitions: [
+        lambda sections, definitions, paper_visual_inventory=None, paper_references=None: [
             TableContext(
                 table_id=definitions[0].table_id,
                 table_index=0,
@@ -144,6 +144,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     parse_quality_reports_path = tmp_path / "outputs" / "papers" / "paper" / "parse_quality_reports.json"
     paper_markdown_path = tmp_path / "outputs" / "papers" / "paper" / "paper_markdown.md"
     paper_sections_path = tmp_path / "outputs" / "papers" / "paper" / "paper_sections.json"
+    paper_visual_inventory_path = tmp_path / "outputs" / "papers" / "paper" / "paper_visual_inventory.json"
     paper_references_path = tmp_path / "outputs" / "papers" / "paper" / "paper_references.json"
     paper_variable_inventory_path = tmp_path / "outputs" / "papers" / "paper" / "paper_variable_inventory.json"
     table_context_path = tmp_path / "outputs" / "papers" / "paper" / "table_contexts" / "table_0_context.json"
@@ -161,6 +162,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert parse_quality_reports_path.exists()
     assert paper_markdown_path.exists()
     assert paper_sections_path.exists()
+    assert paper_visual_inventory_path.exists()
     assert paper_references_path.exists()
     assert paper_variable_inventory_path.exists()
     assert table_context_path.exists()
@@ -178,6 +180,9 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert "column_diagnostics" in parse_quality_payload[0]
     assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
     assert json.loads(paper_sections_path.read_text(encoding="utf-8"))[0]["section_id"] == "section_0"
+    visual_payload = json.loads(paper_visual_inventory_path.read_text(encoding="utf-8"))
+    assert visual_payload[0]["visual_id"] == "paper_visual:table:1"
+    assert visual_payload[0]["reference_check_status"] == "no_text_reference"
     assert json.loads(paper_references_path.read_text(encoding="utf-8")) == []
     assert json.loads(paper_variable_inventory_path.read_text(encoding="utf-8"))["paper_id"] == "paper"
     assert json.loads(table_context_path.read_text(encoding="utf-8"))["table_id"] == "tbl-1"

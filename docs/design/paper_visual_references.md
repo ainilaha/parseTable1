@@ -73,6 +73,9 @@ Planned fields:
 - `source_table_id`
 - `source`
 - `confidence`
+- `text_reference_ids`
+- `reference_check_status`
+- `reference_check_notes`
 - `notes`
 
 `visual_kind` should be:
@@ -95,6 +98,9 @@ Example table visual:
   "source_table_id": "tbl-1",
   "source": "table_extraction",
   "confidence": 0.95,
+  "text_reference_ids": ["paper_ref:section_4:p2:r0"],
+  "reference_check_status": "referenced_in_text",
+  "reference_check_notes": [],
   "notes": []
 }
 ```
@@ -114,6 +120,9 @@ Example figure visual:
   "source_table_id": null,
   "source": "markdown_caption",
   "confidence": 0.8,
+  "text_reference_ids": [],
+  "reference_check_status": "no_text_reference",
+  "reference_check_notes": ["no_non_self_text_reference_found"],
   "notes": []
 }
 ```
@@ -190,6 +199,40 @@ Planned fields:
 - `unresolved`
 - `external_or_bibliographic`
 - `ambiguous`
+
+## Visual Reference Check
+
+Every in-paper table and figure should normally be referenced from prose outside the visual object itself.
+
+The parser should therefore annotate each `PaperVisual` with:
+
+- `text_reference_ids`
+- `reference_check_status`
+- `reference_check_notes`
+
+`reference_check_status` should be:
+
+- `referenced_in_text`
+- `no_text_reference`
+- `supplementary_exempt`
+- `not_checked`
+
+Only resolved references should count toward `text_reference_ids`.
+
+Caption-like and table-body self mentions should not count as supporting text references. Examples that should not satisfy the check include:
+
+- `Table 1. Baseline characteristics...`
+- `Figure 2. Study flow diagram...`
+- table markdown or extracted table text that contains its own table label
+
+Prose references should count, for example:
+
+- `Baseline characteristics are shown in Table 1.`
+- `The study flow is summarized in Figure 2.`
+
+Supplementary tables and figures are exempt because they may be listed only in supplementary material. A visual should be treated as supplementary when its number starts with `S` or its label/caption clearly includes terms such as `supplementary` or `supplemental`.
+
+This check is an observability signal. It should not make `table1-parser parse` fail.
 
 Example resolved reference:
 

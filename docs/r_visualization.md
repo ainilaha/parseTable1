@@ -34,6 +34,8 @@ Public functions:
 - `show_merged_table1(paper_dir, group_index = 0L, max_rows = 30L)`
 - `show_paper_variable_mentions(paper_dir, role_hint = NULL, source_type = NULL, mention_role = NULL)`
 - `show_paper_variable_candidates(paper_dir, min_priority = NULL)`
+- `show_paper_visuals(paper_dir, visual_kind = NULL)`
+- `show_paper_references(paper_dir, reference_kind = NULL, reference_label = NULL, resolution_status = NULL)`
 - `show_table_structure(paper_dir, table_index = 0L, max_rows = NULL)`
 - `llm_variable_plausibility_df(outputs, table_index = NULL)`
 - `show_llm_variable_plausibility(paper_dir, table_index = 0L)`
@@ -56,6 +58,8 @@ summarize_table1_continuations("outputs/papers/cobaltpaper")
 show_merged_table1("outputs/papers/cobaltpaper", group_index = 0L, max_rows = 20L)
 show_paper_variable_candidates("outputs/papers/cobaltpaper")
 show_paper_variable_mentions("outputs/papers/cobaltpaper", source_type = "text_based", mention_role = "variable")
+show_paper_visuals("outputs/papers/cobaltpaper", visual_kind = "figure")
+show_paper_references("outputs/papers/cobaltpaper", resolution_status = "resolved")
 show_table_structure("outputs/papers/cobaltpaper", table_index = 0L)
 llm_variable_plausibility_df(x)
 show_llm_variable_plausibility("outputs/papers/cobaltpaper", table_index = 0L)
@@ -74,6 +78,10 @@ What these are for:
   print deterministic table, row, and column diagnostics, including column-role warnings such as weak p-value columns
 - `show_merged_table1(...)`
   print the artifact-only merged Table 1 rows with source table and source row provenance
+- `show_paper_visuals(...)`
+  print actual in-paper table and figure objects, including captions, reference-check status, text reference IDs, and future figure artifact paths when available
+- `show_paper_references(...)`
+  print anchored table and figure mentions, including whether each mention resolved to an in-paper visual
 - `llm_variable_plausibility_df(...)`
   flatten the saved variable-plausibility review into one row per variable
 - `show_llm_variable_plausibility(...)`
@@ -91,6 +99,8 @@ What these are for:
 - `table1_continuation_groups`
 - `merged_table1_tables`
 - `table_variable_plausibility_llm`
+- `paper_visual_inventory`
+- `paper_references`
 
 ## Example Workflow
 

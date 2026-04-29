@@ -421,22 +421,62 @@ def _write_sample_paper_outputs(
             }
         ],
         "methods_like_section_ids": ["section_0"],
+        "reference_ids": ["paper_ref:section_0:p0:r0"],
+        "resolved_visual_ids": ["paper_visual:table:1"],
     }
+    paper_visual_inventory = [
+        {
+            "visual_id": "paper_visual:table:1",
+            "visual_kind": "table",
+            "label": "Table 1",
+            "number": "1",
+            "caption": "Baseline characteristics by DKD status",
+            "caption_source": "extracted_table",
+            "page_num": 5,
+            "artifact_path": None,
+            "source_table_id": "tbl-1",
+            "source": "table_extraction",
+            "confidence": 0.95,
+            "text_reference_ids": ["paper_ref:section_0:p0:r0"],
+            "reference_check_status": "referenced_in_text",
+            "reference_check_notes": [],
+            "notes": [],
+        },
+        {
+            "visual_id": "paper_visual:figure:1",
+            "visual_kind": "figure",
+            "label": "Figure 1",
+            "number": "1",
+            "caption": "Figure 1. Enrollment.",
+            "caption_source": "markdown_caption",
+            "page_num": None,
+            "artifact_path": None,
+            "source_table_id": None,
+            "source": "markdown_caption",
+            "confidence": 0.8,
+            "text_reference_ids": [],
+            "reference_check_status": "no_text_reference",
+            "reference_check_notes": ["no_non_self_text_reference_found"],
+            "notes": [],
+        },
+    ]
     paper_references = [
         {
-            "reference_id": "section_0_p0_r0",
+            "reference_id": "paper_ref:section_0:p0:r0",
             "reference_kind": "table",
             "reference_label": "Table 1",
             "reference_number": "1",
+            "matched_text": "Table 1",
             "section_id": "section_0",
             "heading": "Methods",
             "role_hint": "methods_like",
             "paragraph_index": 0,
             "start_char": 0,
             "end_char": 7,
-            "text": "Table 1 shows age and sex by DKD status.",
-            "previous_text": None,
-            "next_text": "Figure 1 shows enrollment.",
+            "anchor_text": "Table 1 shows age and sex by DKD status.",
+            "resolved_visual_id": "paper_visual:table:1",
+            "resolution_status": "resolved",
+            "resolution_notes": [],
         }
     ]
 
@@ -450,6 +490,7 @@ def _write_sample_paper_outputs(
     _write_json(paper_dir / "parse_quality_reports.json", parse_quality_reports)
     (paper_dir / "paper_markdown.md").write_text("# Methods\nExample study population.", encoding="utf-8")
     _write_json(paper_dir / "paper_sections.json", paper_sections)
+    _write_json(paper_dir / "paper_visual_inventory.json", paper_visual_inventory)
     _write_json(paper_dir / "paper_references.json", paper_references)
     _write_json(paper_dir / "paper_variable_inventory.json", paper_variable_inventory)
     _write_json(context_dir / "table_0_context.json", table_context)
@@ -588,6 +629,39 @@ def test_r_inspection_loads_and_shows_paper_variable_inventory(tmp_path) -> None
     assert "Paper variable candidates" in result.stdout
     assert "Paper variable mentions" in result.stdout
     assert "Age" in result.stdout
+
+
+def test_r_inspection_loads_and_shows_paper_visual_references(tmp_path) -> None:
+    """The R helper should load and print paper visual inventory and references."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "paper_visuals" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_variable_review=False, include_processing_status=True)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'show_paper_visuals("{paper_dir}", visual_kind = "figure"); '
+                f'show_paper_references("{paper_dir}", resolution_status = "resolved"); '
+                f'show_table_context("{paper_dir}", table_index = 0L)'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Paper visuals" in result.stdout
+    assert "Figure 1" in result.stdout
+    assert "Paper references" in result.stdout
+    assert "paper_ref:section_0:p0:r0" in result.stdout
+    assert "Reference IDs" in result.stdout
 
 
 def test_r_inspection_loads_processing_status_and_summarizes_tables(tmp_path) -> None:

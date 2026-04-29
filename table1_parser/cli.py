@@ -12,9 +12,11 @@ from pathlib import Path
 
 from table1_parser.config import Settings
 from table1_parser.context import (
-    build_document_references,
+    annotate_visual_reference_checks,
+    build_paper_visual_inventory,
     build_table_contexts,
     build_paper_variable_inventory,
+    collect_paper_visual_references,
     extract_paper_markdown,
     paper_variable_inventory_to_payload,
     paper_sections_to_payload,
@@ -34,12 +36,13 @@ from table1_parser.parse import build_parsed_tables, parsed_tables_to_payload
 from table1_parser.processing_status import build_table_processing_statuses
 from table1_parser.schemas import (
     ExtractedTable,
-    DocumentReference,
     LLMVariablePlausibilityCallRecord,
     LLMVariablePlausibilityMonitoringReport,
     NormalizedTable,
     PaperSection,
     PaperVariableInventory,
+    PaperVisual,
+    PaperVisualReference,
     ParsedTable,
     TableContext,
     TableDefinition,
@@ -69,8 +72,9 @@ class PaperParseArtifacts:
     parse_quality_reports: list[ParseQualityReport]
     paper_markdown: str
     paper_sections: list[PaperSection]
+    paper_visual_inventory: list[PaperVisual]
     paper_variable_inventory: PaperVariableInventory
-    paper_references: list[DocumentReference]
+    paper_references: list[PaperVisualReference]
     table_contexts: list[TableContext]
 
 
@@ -385,9 +389,11 @@ def _build_paper_parse_artifacts(pdf_path: str) -> PaperParseArtifacts:
     paper_markdown = extract_paper_markdown(pdf_path)
     paper_sections = parse_markdown_sections(paper_markdown)
     paper_stem = Path(pdf_path).stem
-    paper_references = build_document_references(paper_sections)
+    paper_visual_inventory = build_paper_visual_inventory(extracted_tables, table_definitions, paper_sections)
+    paper_references = collect_paper_visual_references(paper_sections, paper_visual_inventory)
+    paper_visual_inventory = annotate_visual_reference_checks(paper_visual_inventory, paper_references)
     paper_variable_inventory = build_paper_variable_inventory(paper_stem, paper_sections, table_definitions)
-    table_contexts = build_table_contexts(paper_sections, table_definitions)
+    table_contexts = build_table_contexts(paper_sections, table_definitions, paper_visual_inventory, paper_references)
     return PaperParseArtifacts(
         paper_stem=paper_stem,
         extracted_tables=extracted_tables,
@@ -400,6 +406,7 @@ def _build_paper_parse_artifacts(pdf_path: str) -> PaperParseArtifacts:
         parse_quality_reports=parse_quality_reports,
         paper_markdown=paper_markdown,
         paper_sections=paper_sections,
+        paper_visual_inventory=paper_visual_inventory,
         paper_references=paper_references,
         paper_variable_inventory=paper_variable_inventory,
         table_contexts=table_contexts,
@@ -464,6 +471,7 @@ def _write_parse_outputs(
     parse_quality_reports_output_path = paper_dir / "parse_quality_reports.json"
     paper_markdown_output_path = paper_dir / "paper_markdown.md"
     paper_sections_output_path = paper_dir / "paper_sections.json"
+    paper_visual_inventory_output_path = paper_dir / "paper_visual_inventory.json"
     paper_references_output_path = paper_dir / "paper_references.json"
     paper_variable_inventory_output_path = paper_dir / "paper_variable_inventory.json"
     table_context_output_dir = paper_dir / "table_contexts"
@@ -504,6 +512,10 @@ def _write_parse_outputs(
     paper_markdown_output_path.write_text(artifacts.paper_markdown, encoding="utf-8")
     paper_sections_output_path.write_text(
         json.dumps(paper_sections_to_payload(artifacts.paper_sections), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    paper_visual_inventory_output_path.write_text(
+        json.dumps([visual.model_dump(mode="json") for visual in artifacts.paper_visual_inventory], indent=2) + "\n",
         encoding="utf-8",
     )
     paper_references_output_path.write_text(

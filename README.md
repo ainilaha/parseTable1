@@ -84,6 +84,8 @@ outputs/papers/<paper_stem>/parsed_tables.json
 outputs/papers/<paper_stem>/table_processing_status.json
 outputs/papers/<paper_stem>/paper_markdown.md
 outputs/papers/<paper_stem>/paper_sections.json
+outputs/papers/<paper_stem>/paper_visual_inventory.json
+outputs/papers/<paper_stem>/paper_references.json
 outputs/papers/<paper_stem>/paper_variable_inventory.json
 outputs/papers/<paper_stem>/table_contexts/table_0_context.json
 ```
@@ -94,7 +96,7 @@ For example:
 table1-parser parse testpapers/cobaltpaper.pdf
 ```
 
-This writes the extraction, normalization, table-profile, table-definition, final parsed-table, processing-status, and paper-context outputs in one run.
+This writes the extraction, normalization, table-profile, table-definition, final parsed-table, processing-status, visual-reference, and paper-context outputs in one run.
 
 To run the optional LLM variable-plausibility review:
 
@@ -247,6 +249,8 @@ outputs/
       table_processing_status.json
       paper_markdown.md
       paper_sections.json
+      paper_visual_inventory.json
+      paper_references.json
       paper_variable_inventory.json
       table_contexts/
         table_0_context.json
@@ -267,11 +271,12 @@ The easiest way to inspect one paper is:
 2. read `normalized_tables.json` to see the cleaned table structure
 3. read `table_profiles.json` to see how each table was routed
 4. read `table_definitions.json` to see the deterministic row and column interpretation
-5. read `paper_variable_inventory.json` to see the paper-level candidate variable reference list
-6. read `parsed_tables.json` to see the final structured values
-7. read `table_processing_status.json` to see whether each table parsed cleanly, was rescued, or failed
-8. use `paper_sections.json` and `table_contexts/*.json` separately when you want to inspect the paper-context artifacts that may support later grounding work
-9. read `table_variable_plausibility_llm.json` when present to see the optional LLM variable-plausibility review
+5. read `paper_visual_inventory.json` and `paper_references.json` to see actual in-paper tables/figures and anchored prose mentions
+6. read `paper_variable_inventory.json` to see the paper-level candidate variable reference list
+7. read `parsed_tables.json` to see the final structured values
+8. read `table_processing_status.json` to see whether each table parsed cleanly, was rescued, or failed
+9. use `paper_sections.json` and `table_contexts/*.json` separately when you want to inspect the paper-context artifacts that may support later grounding work
+10. read `table_variable_plausibility_llm.json` when present to see the optional LLM variable-plausibility review
 
 In practice:
 
@@ -320,7 +325,13 @@ If you want to find the table caption or where the paper refers to a table:
   - `table_label`
   - `title`
   - `caption`
+  - linked `reference_ids`
+  - linked `resolved_visual_ids`
   - retrieved `passages`
+- `paper_visual_inventory.json`
+  lists actual in-paper table and figure objects, including table IDs, figure captions, and whether each visual has a non-self text reference
+- `paper_references.json`
+  lists anchored table and figure mentions and marks each as `resolved`, `unresolved`, `external_or_bibliographic`, or `ambiguous`
 
 The most useful passages for table references are usually those with:
 
@@ -338,7 +349,7 @@ You can use `section_id` to find the broader section in `paper_sections.json`.
 Current limitation:
 
 - the context files currently provide section IDs, headings, and passage text
-- they do not yet provide page anchors or line numbers inside the paper markdown
+- visual references provide section, paragraph, and character anchors, but not yet page anchors or line numbers inside the paper markdown
 
 ## How To Judge The LLM Review
 

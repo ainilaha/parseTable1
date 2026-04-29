@@ -17,25 +17,6 @@ SectionRoleHint = Literal[
     "other",
 ]
 PassageMatchType = Literal["table_reference", "methods_term_match", "results_term_match"]
-ReferenceKind = Literal["table", "figure"]
-
-
-class DocumentReference(BaseModel):
-    """One table or figure reference found in the paper markdown context."""
-
-    reference_id: str
-    reference_kind: ReferenceKind
-    reference_label: str
-    reference_number: str
-    section_id: str | None = None
-    heading: str | None = None
-    role_hint: SectionRoleHint = "other"
-    paragraph_index: int = Field(ge=0)
-    start_char: int = Field(ge=0)
-    end_char: int = Field(ge=0)
-    text: str
-    previous_text: str | None = None
-    next_text: str | None = None
 
 
 class PaperSection(BaseModel):
@@ -58,7 +39,6 @@ class RetrievedPassage(BaseModel):
     text: str
     match_type: PassageMatchType
     score: float | None = Field(default=None, ge=0.0)
-    references: list[DocumentReference] = Field(default_factory=list)
 
 
 class TableContext(BaseModel):
@@ -75,4 +55,5 @@ class TableContext(BaseModel):
     methods_like_section_ids: list[str] = Field(default_factory=list)
     results_like_section_ids: list[str] = Field(default_factory=list)
     passages: list[RetrievedPassage] = Field(default_factory=list)
-    references: list[DocumentReference] = Field(default_factory=list)
+    reference_ids: list[str] = Field(default_factory=list)
+    resolved_visual_ids: list[str] = Field(default_factory=list)

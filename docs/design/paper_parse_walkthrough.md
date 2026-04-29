@@ -36,6 +36,8 @@ Today that directory may contain:
 - `parse_quality_reports.json`
 - `paper_markdown.md`
 - `paper_sections.json`
+- `paper_visual_inventory.json`
+- `paper_references.json`
 - `paper_variable_inventory.json`
 - `table_contexts/table_<n>_context.json`
 - `table_variable_plausibility_llm.json` when `review-variable-plausibility` is run
@@ -441,7 +443,7 @@ This is separate from table extraction.
 The current paper-context path is:
 
 ```text
-PDF -> paper_markdown.md -> paper_sections.json -> paper_variable_inventory.json -> table_contexts/*.json
+PDF -> paper_markdown.md -> paper_sections.json -> paper_visual_inventory.json -> paper_references.json -> paper_variable_inventory.json -> table_contexts/*.json
 ```
 
 ### `paper_markdown.md`
@@ -465,6 +467,26 @@ The markdown is split into a linear list of sections, with simple role hints suc
 
 This gives the parser a document structure that is easier to retrieve from than raw markdown alone.
 
+### `paper_visual_inventory.json`
+
+The parser builds a paper-level inventory of actual in-paper visual objects.
+
+For tables, this starts from extracted table titles and captions and links back to `table_id` when possible.
+
+For figures, the current implemented scope is caption inventory from markdown-derived text. Figure image extraction is intentionally separate and can later populate artifact paths without changing the reference schema.
+
+This inventory is the check that prevents every prose mention of `Figure X` from being treated as an in-paper figure reference.
+
+After references are resolved, each visual is annotated with a reference-check status. Standard in-paper tables and figures should have at least one resolved prose reference outside the visual object itself. Caption-like mentions such as `Table 1. Baseline characteristics` and extracted table-body text do not satisfy this check. Supplementary tables and figures are exempt.
+
+### `paper_references.json`
+
+The parser scans all paper sections for table and figure mentions such as `Table 1`, `Table1`, `Fig. 2`, and compound mentions like `Figures 2A and 2B`.
+
+Each reference keeps a stable reference ID, section and paragraph anchor fields, character offsets, and the anchor paragraph text.
+
+References are resolved against `paper_visual_inventory.json` when possible. Mentions that do not match an actual in-paper visual remain explicit as `unresolved` or `external_or_bibliographic` rather than being dropped.
+
 ### `paper_variable_inventory.json`
 
 The parser then builds a paper-level candidate reference list of variables.
@@ -486,6 +508,7 @@ For each table, the parser builds a focused context bundle using:
 - the table title and caption
 - variable labels
 - grouping labels
+- resolved paper-level table reference IDs when available
 
 This produces per-table passages and term lists that can later support standalone review workflows or future semantic interpretation.
 
@@ -554,7 +577,7 @@ When a parse looks wrong, inspect the outputs in this order.
 8. `parse_quality_reports.json`
    If the parse succeeded but the columns, p-values, headers, or row classifications look suspicious, inspect this artifact for deterministic quality warnings.
 
-9. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
+9. `paper_markdown.md`, `paper_sections.json`, `paper_visual_inventory.json`, `paper_references.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
    If semantic context retrieval is weak, inspect these next.
 
 10. `table_variable_plausibility_llm.json`

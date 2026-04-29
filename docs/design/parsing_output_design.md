@@ -75,7 +75,7 @@ This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifa
 | Table 1 continuation inspection | `Table1ContinuationGroup`, `NormalizedTable` | Written now as `table1_continuation_groups.json` and `merged_table1_tables.json` by `parse` | Persist artifact-only grouping and merged normalized rows for explicit Table 1 continuations without altering the main parse |
 | Table routing | `TableProfile` | Written now as `table_profiles.json` by `parse` | Persist deterministic family routing decisions |
 | Table definition | `TableDefinition` | Written now as `table_definitions.json` by `parse` | Persist value-free row-variable, level, and column semantics |
-| Paper context | `PaperSection`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections and per-table retrieval bundles, with only conservative glyph repair in the markdown text |
+| Paper context | `PaperSection`, `PaperVisual`, `PaperVisualReference`, `TableContext` | Written now as `paper_markdown.md`, `paper_sections.json`, `paper_visual_inventory.json`, `paper_references.json`, and `table_contexts/*.json` by `parse` | Persist markdown sections, actual in-paper visual objects, anchored table/figure references, and per-table retrieval bundles, with only conservative glyph repair in the markdown text |
 | Paper variable inventory | `PaperVariableInventory`, `VariableMention`, `VariableCandidate` | Written now as `paper_variable_inventory.json` by `parse` | Persist the paper-level candidate variable reference list with explicit text/table provenance |
 | Variable-plausibility LLM review | `LLMVariablePlausibilityTableReview` | Written now as `table_variable_plausibility_llm.json` by `review-variable-plausibility` when LLM config is available | Persist table-local QA scores for variable label/type/level plausibility without rewriting the deterministic definition |
 | Variable-plausibility debug monitoring | `LLMVariablePlausibilityMonitoringReport`, `LLMVariablePlausibilityCallRecord` | Written only when `LLM_DEBUG=true` as `llm_variable_plausibility_debug/<timestamp>/llm_variable_plausibility_monitoring.json` plus per-table trace files | Persist per-table timing, payload-size, status, and raw-response debug evidence for the standalone review command |
@@ -405,6 +405,8 @@ Current CLI paths:
 ```text
 outputs/papers/<paper_stem>/paper_markdown.md
 outputs/papers/<paper_stem>/paper_sections.json
+outputs/papers/<paper_stem>/paper_visual_inventory.json
+outputs/papers/<paper_stem>/paper_references.json
 outputs/papers/<paper_stem>/paper_variable_inventory.json
 outputs/papers/<paper_stem>/table_contexts/table_<n>_context.json
 ```
@@ -412,6 +414,8 @@ outputs/papers/<paper_stem>/table_contexts/table_<n>_context.json
 Canonical models:
 
 - `PaperSection`
+- `PaperVisual`
+- `PaperVisualReference`
 - `PaperVariableInventory`
 - child models: `VariableMention`, `VariableCandidate`
 - `TableContext`
@@ -423,6 +427,10 @@ Design components:
   raw markdown extracted from the full paper
 - `paper_sections.json`
   markdown-derived sections with heading level and simple role hints
+- `paper_visual_inventory.json`
+  paper-level inventory of actual in-paper tables and figure captions, keyed by stable visual IDs such as `paper_visual:table:1`, with reference-check status fields showing whether the visual has at least one non-self text reference
+- `paper_references.json`
+  prose mentions of tables and figures, anchored to section/paragraph/character positions and resolved against the visual inventory when possible
 - `paper_variable_inventory.json`
   paper-level variable-search artifact with broad mention-level records and a stricter consolidated candidate-variable list
 - `table_contexts/*.json`
@@ -437,6 +445,8 @@ Design components:
 - `grouping_terms`
 - `methods_like_section_ids`
 - `results_like_section_ids`
+- `reference_ids`
+- `resolved_visual_ids`
 - `passages`
 
 `RetrievedPassage` design components:
@@ -454,6 +464,7 @@ Design intent:
 - keep the candidate variable reference list explicit and easy to load in both Python and R
 - preserve a distinction between broad harvested mentions and the narrower promoted candidate list
 - support future LLM semantic interpretation with compact retrieved evidence
+- help readers distinguish references to actual in-paper tables and figures from unresolved or bibliographic mentions
 - avoid tying retrieval to exact section names like `Methods`
 - preserve `paper_markdown.md` as the paper-level markdown artifact, allowing only conservative glyph repair, and move derived structure into `paper_sections.json`
 - preserve a JSON-first, inspectable context path alongside the table path
