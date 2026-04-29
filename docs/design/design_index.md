@@ -24,6 +24,9 @@ Then use the documents below as needed.
 - `docs/design/rescue_failure_logic.md`
   Structured rescue ordering, adequacy checks, and failure tracking for collapsed or empty table parses.
 
+- `docs/design/parse_quality_reports_artifact.md`
+  Design for writing deterministic row/column/value-pattern diagnostics as a normal parse artifact without changing parser behavior.
+
 - `docs/design/collapsed_grid_refinement_scope.md`
   Narrow scope for consolidating the duplicated rotated/upright collapsed-grid refinement logic in the extractor.
 
