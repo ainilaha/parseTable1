@@ -9,6 +9,11 @@ from table1_parser.text_cleaning import clean_text
 
 
 PARAGRAPH_SPLIT_PATTERN = re.compile(r"\n\s*\n")
+EMBEDDED_MARKDOWN_TABLE_START_PATTERN = re.compile(
+    r"\bTable\s+[A-Za-z]?\d+[A-Za-z]?\b(?=.{0,240}\|)",
+    re.IGNORECASE,
+)
+SENTENCE_BOUNDARY_PATTERN = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9])")
 VISUAL_LABEL_PATTERN = re.compile(
     r"\b(?P<kind>Table|Tables|Fig\.?|Figs\.?|Figure|Figures)\s*(?P<number>[A-Za-z]?\d+[A-Za-z]?)\b",
     re.IGNORECASE,
@@ -70,6 +75,11 @@ def collect_paper_visual_references(
                 visual_kind = "table" if match.group("kind").lower().startswith("table") else "figure"
                 for number_match in REFERENCE_NUMBER_PATTERN.finditer(match.group("numbers")):
                     number = _canonical_number(number_match.group(0))
+                    anchor_text, anchor_start = reference_anchor_text(
+                        paragraph,
+                        match.start(),
+                        match.end(),
+                    )
                     reference_label = f"{'Table' if visual_kind == 'table' else 'Figure'} {number}"
                     key = f"{visual_kind}:{number}"
                     candidate_visual_ids = visual_ids_by_key.get(key, [])
@@ -102,9 +112,9 @@ def collect_paper_visual_references(
                             heading=section.heading,
                             role_hint=section.role_hint,
                             paragraph_index=paragraph_index,
-                            start_char=match.start(),
-                            end_char=match.end(),
-                            anchor_text=paragraph,
+                            start_char=match.start() - anchor_start,
+                            end_char=match.end() - anchor_start,
+                            anchor_text=anchor_text,
                             resolved_visual_id=resolved_visual_id,
                             resolution_status=resolution_status,
                             resolution_notes=resolution_notes,
@@ -166,12 +176,44 @@ def annotate_visual_reference_checks(
 
 
 def section_paragraphs(section: PaperSection) -> list[str]:
-    """Return cleaned paragraph chunks for one markdown-derived section."""
-    return (
-        [chunk for chunk in (clean_text(part) for part in PARAGRAPH_SPLIT_PATTERN.split(section.content)) if chunk]
-        if section.content
-        else []
+    """Return cleaned prose chunks for one markdown-derived section, excluding embedded table bodies."""
+    if not section.content:
+        return []
+    chunks: list[str] = []
+    for part in PARAGRAPH_SPLIT_PATTERN.split(section.content):
+        cleaned = clean_text(part)
+        if not cleaned:
+            continue
+        for table_start in EMBEDDED_MARKDOWN_TABLE_START_PATTERN.finditer(cleaned):
+            prefix = clean_text(cleaned[max(0, table_start.start() - 120) : table_start.start()])
+            if TEXT_REFERENCE_CUE_PATTERN.search(prefix):
+                continue
+            if _looks_like_markdown_table_text(cleaned[table_start.start() :]):
+                cleaned = clean_text(cleaned[: table_start.start()])
+                break
+        if cleaned and not _looks_like_markdown_table_text(cleaned):
+            chunks.append(cleaned)
+    return chunks
+
+
+def reference_anchor_text(paragraph: str, start_char: int, end_char: int, sentence_window: int = 1) -> tuple[str, int]:
+    """Return a compact sentence-window anchor and its start offset in the paragraph."""
+    spans = _sentence_spans(paragraph)
+    sentence_index = next(
+        (
+            index
+            for index, (sentence_start, sentence_end) in enumerate(spans)
+            if sentence_start <= start_char < sentence_end
+        ),
+        None,
     )
+    if sentence_index is None:
+        return paragraph, 0
+    window_start_index = max(0, sentence_index - sentence_window)
+    window_end_index = min(len(spans) - 1, sentence_index + sentence_window)
+    window_start = spans[window_start_index][0]
+    window_end = spans[window_end_index][1]
+    return paragraph[window_start:window_end].strip(), window_start
 
 
 def _canonical_number(number: str) -> str:
@@ -201,3 +243,21 @@ def _is_supplementary_visual(visual: PaperVisual) -> bool:
         return True
     searchable = " ".join(part for part in [visual.label, visual.caption or "", *visual.notes] if part)
     return SUPPLEMENTARY_PATTERN.search(searchable) is not None
+
+
+def _looks_like_markdown_table_text(text: str) -> bool:
+    """Return whether text is dominated by markdown table syntax."""
+    return text.count("|") >= 8 or "|---|" in text or re.search(r"\|\s*-{3,}\s*\|", text) is not None
+
+
+def _sentence_spans(text: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    start = 0
+    for boundary in SENTENCE_BOUNDARY_PATTERN.finditer(text):
+        end = boundary.start()
+        if text[start:end].strip():
+            spans.append((start, end))
+        start = boundary.end()
+    if text[start:].strip():
+        spans.append((start, len(text)))
+    return spans or [(0, len(text))]

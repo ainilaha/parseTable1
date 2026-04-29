@@ -138,6 +138,9 @@ def test_build_table_context_collects_table_mentions_and_term_matches() -> None:
     assert context.methods_like_section_ids == ["section_0"]
     assert context.results_like_section_ids == ["section_1"]
     assert any(passage.match_type == "table_reference" for passage in context.passages)
+    assert next(passage for passage in context.passages if passage.match_type == "table_reference").text == (
+        "Table 2 shows differences by DKD status. Figure 1 shows enrollment."
+    )
     assert context.reference_ids == ["paper_ref:section_1:p0:r0"]
     assert context.resolved_visual_ids == ["paper_visual:table:2"]
     assert "Age" in context.row_terms

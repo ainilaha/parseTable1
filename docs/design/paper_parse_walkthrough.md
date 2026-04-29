@@ -483,7 +483,7 @@ After references are resolved, each visual is annotated with a reference-check s
 
 The parser scans all paper sections for table and figure mentions such as `Table 1`, `Table1`, `Fig. 2`, and compound mentions like `Figures 2A and 2B`.
 
-Each reference keeps a stable reference ID, section and paragraph anchor fields, character offsets, and the anchor paragraph text.
+Each reference keeps a stable reference ID, section and paragraph anchor fields, character offsets, and compact anchor text. By default the anchor text is the sentence containing the mention plus one preceding and one following sentence when available.
 
 References are resolved against `paper_visual_inventory.json` when possible. Mentions that do not match an actual in-paper visual remain explicit as `unresolved` or `external_or_bibliographic` rather than being dropped.
 

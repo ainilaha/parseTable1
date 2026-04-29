@@ -300,7 +300,7 @@ Resolution should not use an LLM. Later LLM workflows may consume resolved refer
 
 ## Anchor-First Text Model
 
-The first implementation should store anchor coordinates, not precomputed large text windows.
+The default anchor should be compact: the sentence containing the reference plus one preceding and one following sentence when available.
 
 Required anchor fields:
 
@@ -310,7 +310,7 @@ Required anchor fields:
 - `end_char`
 - `anchor_text`
 
-This lets later tools compute different regions on demand:
+This keeps `paper_references.json` and `table_contexts/*.json` readable by default while preserving enough location information for later tools to compute different regions on demand:
 
 - matched sentence
 - same paragraph

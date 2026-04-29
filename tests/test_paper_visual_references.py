@@ -8,6 +8,7 @@ from table1_parser.context.visual_references import (
     annotate_visual_reference_checks,
     collect_paper_visual_references,
     normalize_visual_label,
+    section_paragraphs,
 )
 from table1_parser.schemas import ColumnDefinition, ExtractedTable, PaperVisual, TableCell, TableDefinition
 
@@ -112,6 +113,45 @@ def test_collect_paper_visual_references_resolves_and_preserves_unresolved_menti
     assert references[1].resolved_visual_id == "paper_visual:figure:2A"
     assert references[2].resolution_status == "unresolved"
     assert references[3].resolution_status == "external_or_bibliographic"
+
+
+def test_reference_anchors_exclude_embedded_markdown_table_text() -> None:
+    """Reference anchors should keep prose before a collapsed table but not the table body."""
+    sections = parse_markdown_sections(
+        "# Results\n"
+        "Baseline characteristics are shown in Table 1. Table 1 Baseline characteristics "
+        "|||Q1|Q2| |---|---| |Age|50|60|"
+    )
+    visuals = [PaperVisual(visual_id="paper_visual:table:1", visual_kind="table", label="Table 1", number="1")]
+
+    references = collect_paper_visual_references(sections, visuals)
+
+    assert [reference.anchor_text for reference in references] == ["Baseline characteristics are shown in Table 1."]
+    assert "|" not in references[0].anchor_text
+
+
+def test_reference_anchor_uses_sentence_window_by_default() -> None:
+    """Reference anchors should include the containing sentence plus nearby sentences."""
+    sections = parse_markdown_sections(
+        "# Results\n"
+        "First sentence. Baseline characteristics are shown in Table 1. Follow-up sentence. Fourth sentence."
+    )
+    visuals = [PaperVisual(visual_id="paper_visual:table:1", visual_kind="table", label="Table 1", number="1")]
+
+    references = collect_paper_visual_references(sections, visuals)
+
+    assert references[0].anchor_text == (
+        "First sentence. Baseline characteristics are shown in Table 1. Follow-up sentence."
+    )
+    assert references[0].start_char == len("First sentence. Baseline characteristics are shown in ")
+    assert references[0].end_char == references[0].start_char + len("Table 1")
+
+
+def test_section_paragraphs_drop_table_only_chunks() -> None:
+    """Markdown table chunks should not become retrieved prose context passages."""
+    sections = parse_markdown_sections("# Results\nTable 1 Baseline |||Q1|Q2| |---|---| |Age|50|60|")
+
+    assert section_paragraphs(sections[0]) == []
 
 
 def test_annotate_visual_reference_checks_excludes_self_mentions_and_exempts_supplement() -> None:

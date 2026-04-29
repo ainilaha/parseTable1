@@ -74,13 +74,19 @@ def build_table_context(
         for paragraph_index, paragraph in enumerate(paragraphs):
             lowered = paragraph.lower()
             if table_label and table_label.lower() in lowered:
+                passage_text = _reference_anchor_text(
+                    section.section_id,
+                    paragraph_index,
+                    table_label,
+                    paper_references or [],
+                ) or paragraph
                 ranked.append(
                     (
                         1.0,
                         _passage(
                             section,
                             paragraph_index,
-                            paragraph,
+                            passage_text,
                             "table_reference",
                             1.0,
                         ),
@@ -207,3 +213,19 @@ def _table_visual_ids(
     if parsed is not None and parsed[0] == "table":
         visual_ids.add(visual_id_for("table", parsed[1]))
     return visual_ids
+
+
+def _reference_anchor_text(
+    section_id: str | None,
+    paragraph_index: int,
+    table_label: str,
+    paper_references: list[PaperVisualReference],
+) -> str | None:
+    for reference in paper_references:
+        if (
+            reference.section_id == section_id
+            and reference.paragraph_index == paragraph_index
+            and reference.reference_label.lower() == table_label.lower()
+        ):
+            return reference.anchor_text
+    return None
