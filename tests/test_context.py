@@ -7,7 +7,7 @@ from types import ModuleType
 
 from table1_parser.context import build_paper_variable_inventory
 from table1_parser.context.markdown_extractor import extract_paper_markdown
-from table1_parser.context.retrieval import build_table_context
+from table1_parser.context.retrieval import build_document_references, build_table_context
 from table1_parser.context.section_parser import parse_markdown_sections
 from table1_parser.schemas import ColumnDefinition, DefinedColumn, DefinedVariable, TableDefinition
 
@@ -111,7 +111,7 @@ def test_build_table_context_collects_table_mentions_and_term_matches() -> None:
     )
     sections = parse_markdown_sections(
         "# Study Population\nAge and DKD status were collected.\n\n"
-        "# Results\nTable 2 shows differences by DKD status."
+        "# Results\nTable 2 shows differences by DKD status. Figure 1 shows enrollment."
     )
 
     context = build_table_context(0, definition, sections)
@@ -120,8 +120,35 @@ def test_build_table_context_collects_table_mentions_and_term_matches() -> None:
     assert context.methods_like_section_ids == ["section_0"]
     assert context.results_like_section_ids == ["section_1"]
     assert any(passage.match_type == "table_reference" for passage in context.passages)
+    assert any(reference.reference_label == "Table 2" for reference in context.references)
+    assert any(
+        reference.reference_label == "Figure 1"
+        for passage in context.passages
+        for reference in passage.references
+    )
     assert "Age" in context.row_terms
     assert "DKD status" in context.grouping_terms
+
+
+def test_build_document_references_collects_table_and_figure_nearby_text() -> None:
+    """Reference extraction should keep section and neighboring paragraph context."""
+    sections = parse_markdown_sections(
+        "# Results\n"
+        "Baseline text.\n\n"
+        "Table 1 reports baseline characteristics. Fig. 2 shows the flow diagram.\n\n"
+        "Follow-up text."
+    )
+
+    references = build_document_references(sections)
+
+    assert [reference.reference_label for reference in references] == ["Table 1", "Figure 2"]
+    assert references[0].reference_kind == "table"
+    assert references[1].reference_kind == "figure"
+    assert references[0].section_id == "section_0"
+    assert references[0].heading == "Results"
+    assert references[0].paragraph_index == 1
+    assert references[0].previous_text == "Baseline text."
+    assert references[0].next_text == "Follow-up text."
 
 
 def test_build_paper_variable_inventory_prioritizes_sections_and_excludes_references() -> None:

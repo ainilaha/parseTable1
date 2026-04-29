@@ -422,6 +422,23 @@ def _write_sample_paper_outputs(
         ],
         "methods_like_section_ids": ["section_0"],
     }
+    paper_references = [
+        {
+            "reference_id": "section_0_p0_r0",
+            "reference_kind": "table",
+            "reference_label": "Table 1",
+            "reference_number": "1",
+            "section_id": "section_0",
+            "heading": "Methods",
+            "role_hint": "methods_like",
+            "paragraph_index": 0,
+            "start_char": 0,
+            "end_char": 7,
+            "text": "Table 1 shows age and sex by DKD status.",
+            "previous_text": None,
+            "next_text": "Figure 1 shows enrollment.",
+        }
+    ]
 
     _write_json(paper_dir / "extracted_tables.json", extracted_tables)
     _write_json(paper_dir / "normalized_tables.json", normalized_tables)
@@ -433,6 +450,7 @@ def _write_sample_paper_outputs(
     _write_json(paper_dir / "parse_quality_reports.json", parse_quality_reports)
     (paper_dir / "paper_markdown.md").write_text("# Methods\nExample study population.", encoding="utf-8")
     _write_json(paper_dir / "paper_sections.json", paper_sections)
+    _write_json(paper_dir / "paper_references.json", paper_references)
     _write_json(paper_dir / "paper_variable_inventory.json", paper_variable_inventory)
     _write_json(context_dir / "table_0_context.json", table_context)
 

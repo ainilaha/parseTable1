@@ -144,6 +144,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     parse_quality_reports_path = tmp_path / "outputs" / "papers" / "paper" / "parse_quality_reports.json"
     paper_markdown_path = tmp_path / "outputs" / "papers" / "paper" / "paper_markdown.md"
     paper_sections_path = tmp_path / "outputs" / "papers" / "paper" / "paper_sections.json"
+    paper_references_path = tmp_path / "outputs" / "papers" / "paper" / "paper_references.json"
     paper_variable_inventory_path = tmp_path / "outputs" / "papers" / "paper" / "paper_variable_inventory.json"
     table_context_path = tmp_path / "outputs" / "papers" / "paper" / "table_contexts" / "table_0_context.json"
 
@@ -160,6 +161,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert parse_quality_reports_path.exists()
     assert paper_markdown_path.exists()
     assert paper_sections_path.exists()
+    assert paper_references_path.exists()
     assert paper_variable_inventory_path.exists()
     assert table_context_path.exists()
     assert json.loads(extracted_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
@@ -176,6 +178,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert "column_diagnostics" in parse_quality_payload[0]
     assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
     assert json.loads(paper_sections_path.read_text(encoding="utf-8"))[0]["section_id"] == "section_0"
+    assert json.loads(paper_references_path.read_text(encoding="utf-8")) == []
     assert json.loads(paper_variable_inventory_path.read_text(encoding="utf-8"))["paper_id"] == "paper"
     assert json.loads(table_context_path.read_text(encoding="utf-8"))["table_id"] == "tbl-1"
     assert captured.out == ""

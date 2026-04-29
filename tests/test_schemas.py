@@ -10,6 +10,7 @@ from table1_parser.schemas import (
     DefinedColumn,
     DefinedLevel,
     DefinedVariable,
+    DocumentReference,
     ExtractedTable,
     LLMVariablePlausibilityCallRecord,
     LLMVariablePlausibilityMonitoringReport,
@@ -284,12 +285,28 @@ def test_document_context_schemas_create_without_llm_logic() -> None:
                 text="Age and DKD status were collected.",
                 match_type="methods_term_match",
                 score=0.8,
+                references=[
+                    DocumentReference(
+                        reference_id="section_0_p0_r0",
+                        reference_kind="table",
+                        reference_label="Table 2",
+                        reference_number="2",
+                        section_id="section_0",
+                        heading="Methods",
+                        role_hint="methods_like",
+                        paragraph_index=0,
+                        start_char=0,
+                        end_char=7,
+                        text="Table 2 reports baseline characteristics.",
+                    )
+                ],
             )
         ],
     )
 
     assert section.model_dump()["role_hint"] == "methods_like"
     assert context.model_dump(mode="json")["passages"][0]["match_type"] == "methods_term_match"
+    assert context.model_dump(mode="json")["passages"][0]["references"][0]["reference_label"] == "Table 2"
 
 
 def test_paper_variable_inventory_schema_serializes_cleanly() -> None:

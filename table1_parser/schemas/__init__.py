@@ -1,6 +1,6 @@
 """Pydantic schema exports for the Table 1 parser."""
 
-from table1_parser.schemas.document_context import PaperSection, RetrievedPassage, TableContext
+from table1_parser.schemas.document_context import DocumentReference, PaperSection, RetrievedPassage, TableContext
 from table1_parser.schemas.extracted_table import ExtractedTable, TableCell
 from table1_parser.schemas.llm_variable_plausibility_monitoring import (
     LLMVariablePlausibilityCallRecord,
@@ -42,6 +42,7 @@ __all__ = [
     "DefinedColumn",
     "DefinedLevel",
     "DefinedVariable",
+    "DocumentReference",
     "ParsedColumn",
     "ParsedLevel",
     "ParsedTable",
