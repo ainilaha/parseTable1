@@ -29,6 +29,7 @@ Public functions:
 - `load_paper_outputs(paper_dir)`
 - `summarize_table_processing(paper_dir)`
 - `show_table_processing(paper_dir, table_index = 0L)`
+- `show_parse_quality(paper_dir, table_index = 0L)`
 - `summarize_table1_continuations(paper_dir)`
 - `show_merged_table1(paper_dir, group_index = 0L, max_rows = 30L)`
 - `show_paper_variable_mentions(paper_dir, role_hint = NULL, source_type = NULL, mention_role = NULL)`
@@ -50,6 +51,7 @@ source("R/inspect_paper_outputs.R")
 x <- load_paper_outputs("outputs/papers/cobaltpaper")
 summarize_table_processing("outputs/papers/cobaltpaper")
 show_table_processing("outputs/papers/cobaltpaper", table_index = 0L)
+show_parse_quality("outputs/papers/cobaltpaper", table_index = 0L)
 summarize_table1_continuations("outputs/papers/cobaltpaper")
 show_merged_table1("outputs/papers/cobaltpaper", group_index = 0L, max_rows = 20L)
 show_paper_variable_candidates("outputs/papers/cobaltpaper")
@@ -68,6 +70,8 @@ What these are for:
   print one saved table's normalized rows, deterministic columns, and row-variable definitions together
 - `summarize_table1_continuations(...)`
   print one row per detected Table 1 continuation group, including merge/skip decision and source table IDs
+- `show_parse_quality(...)`
+  print deterministic table, row, and column diagnostics, including column-role warnings such as weak p-value columns
 - `show_merged_table1(...)`
   print the artifact-only merged Table 1 rows with source table and source row provenance
 - `llm_variable_plausibility_df(...)`
@@ -83,6 +87,7 @@ What these are for:
 
 - `parsed_tables`
 - `table_processing_status`
+- `parse_quality_reports`
 - `table1_continuation_groups`
 - `merged_table1_tables`
 - `table_variable_plausibility_llm`

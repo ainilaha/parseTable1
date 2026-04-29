@@ -19,9 +19,13 @@ from table1_parser.context import (
     paper_sections_to_payload,
     parse_markdown_sections,
 )
+from table1_parser.diagnostics import ParseQualityReport, build_parse_quality_report
 from table1_parser.extract import build_extractor
+from table1_parser.heuristics.column_role_detector import detect_column_roles
+from table1_parser.heuristics.row_classifier import classify_rows
 from table1_parser.heuristics.table_definition_builder import build_table_definitions, table_definitions_to_payload
 from table1_parser.heuristics.table_profile import build_table_profiles, table_profiles_to_payload
+from table1_parser.heuristics.variable_grouper import group_variable_blocks
 from table1_parser.llm import LLMConfigurationError, build_llm_client
 from table1_parser.llm.variable_plausibility_parser import LLMVariablePlausibilityTableReviewParser
 from table1_parser.normalize import normalize_extracted_tables, normalized_tables_to_payload, write_normalized_tables
@@ -60,6 +64,7 @@ class PaperParseArtifacts:
     table_profiles: list[TableProfile]
     table_definitions: list[TableDefinition]
     parsed_tables: list[ParsedTable]
+    parse_quality_reports: list[ParseQualityReport]
     paper_markdown: str
     paper_sections: list[PaperSection]
     paper_variable_inventory: PaperVariableInventory
@@ -356,6 +361,21 @@ def _build_paper_parse_artifacts(pdf_path: str) -> PaperParseArtifacts:
     extracted_tables = extractor.extract(pdf_path)
     normalized_tables = normalize_extracted_tables(extracted_tables)
     table1_continuation_groups, merged_table1_tables = build_table1_continuation_artifacts(normalized_tables)
+    parse_quality_reports = []
+    for table_index, table in enumerate(normalized_tables):
+        row_classifications = classify_rows(table)
+        variable_blocks = group_variable_blocks(table, classifications=row_classifications)
+        column_roles = detect_column_roles(table)
+        parse_quality_reports.append(
+            build_parse_quality_report(
+                table,
+                row_classifications,
+                variable_blocks,
+                column_roles,
+                extracted_table=extracted_tables[table_index] if table_index < len(extracted_tables) else None,
+                source_identifier=pdf_path,
+            )
+        )
     table_profiles = build_table_profiles(normalized_tables)
     table_definitions = build_table_definitions(normalized_tables)
     parsed_tables = build_parsed_tables(normalized_tables, table_definitions)
@@ -373,6 +393,7 @@ def _build_paper_parse_artifacts(pdf_path: str) -> PaperParseArtifacts:
         table_profiles=table_profiles,
         table_definitions=table_definitions,
         parsed_tables=parsed_tables,
+        parse_quality_reports=parse_quality_reports,
         paper_markdown=paper_markdown,
         paper_sections=paper_sections,
         paper_variable_inventory=paper_variable_inventory,
@@ -435,6 +456,7 @@ def _write_parse_outputs(
     table_definition_output_path = paper_dir / "table_definitions.json"
     parsed_output_path = paper_dir / "parsed_tables.json"
     processing_status_output_path = paper_dir / "table_processing_status.json"
+    parse_quality_reports_output_path = paper_dir / "parse_quality_reports.json"
     paper_markdown_output_path = paper_dir / "paper_markdown.md"
     paper_sections_output_path = paper_dir / "paper_sections.json"
     paper_variable_inventory_output_path = paper_dir / "paper_variable_inventory.json"
@@ -467,6 +489,10 @@ def _write_parse_outputs(
     )
     processing_status_output_path.write_text(
         json.dumps([status.model_dump(mode="json") for status in table_processing_statuses], indent=2) + "\n",
+        encoding="utf-8",
+    )
+    parse_quality_reports_output_path.write_text(
+        json.dumps([report.model_dump(mode="json") for report in artifacts.parse_quality_reports], indent=2) + "\n",
         encoding="utf-8",
     )
     paper_markdown_output_path.write_text(artifacts.paper_markdown, encoding="utf-8")

@@ -33,6 +33,7 @@ Today that directory may contain:
 - `table_definitions.json`
 - `parsed_tables.json`
 - `table_processing_status.json`
+- `parse_quality_reports.json`
 - `paper_markdown.md`
 - `paper_sections.json`
 - `paper_variable_inventory.json`
@@ -67,6 +68,7 @@ PDF
   -> table definitions
   -> parsed tables
   -> table processing statuses
+  -> parse quality reports
 
 PDF
   -> paper markdown
@@ -415,7 +417,22 @@ Because row and column semantics can be right even when value parsing is wrong, 
 
 Keeping these apart makes debugging much more honest.
 
-## Step 8: Build Paper-Level Document Context
+## Step 8: Build Parse Quality Reports
+
+The parser also writes `parse_quality_reports.json`.
+
+This is an inspection artifact built from deterministic row classifications, variable blocks, column-role guesses, and value-pattern recognition.
+It is meant to answer questions like:
+
+- are many rows still classified as unknown?
+- did a p-value column mostly contain p-value-like values?
+- are inferred group or overall columns mostly numeric/statistical?
+- did header detection or normalization emit suspicious structural signals?
+
+This step does not change `table_definitions.json` or `parsed_tables.json`.
+It exists so column and row problems are visible even when the table technically parses.
+
+## Step 9: Build Paper-Level Document Context
 
 The parser also builds a paper-level context representation from the whole document.
 
@@ -472,7 +489,7 @@ For each table, the parser builds a focused context bundle using:
 
 This produces per-table passages and term lists that can later support standalone review workflows or future semantic interpretation.
 
-## Step 9: Optional Variable-Plausibility LLM Review
+## Step 10: Optional Variable-Plausibility LLM Review
 
 The separate `review-variable-plausibility` command can run a narrow LLM review using:
 
@@ -498,7 +515,7 @@ Why this stage is optional:
 - LLM use should be focused on ambiguity, not raw PDF recovery
 - review calls should be inspectable and skippable
 
-## Step 10: Write Table Processing Status
+## Step 11: Write Table Processing Status
 
 After deterministic parsing, the parser writes `table_processing_status.json`.
 
@@ -534,10 +551,13 @@ When a parse looks wrong, inspect the outputs in this order.
 7. `table_processing_status.json`
    If a table is empty or incomplete, inspect this next to see which rescue paths were attempted and where failure was recorded.
 
-8. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
+8. `parse_quality_reports.json`
+   If the parse succeeded but the columns, p-values, headers, or row classifications look suspicious, inspect this artifact for deterministic quality warnings.
+
+9. `paper_markdown.md`, `paper_sections.json`, `paper_variable_inventory.json`, and `table_contexts/*.json`
    If semantic context retrieval is weak, inspect these next.
 
-9. `table_variable_plausibility_llm.json`
+10. `table_variable_plausibility_llm.json`
    If deterministic variables were reasonable but the plausibility review looks wrong, the issue is in prompting, provider behavior, or validation for the standalone review command.
 
 ## Why This Pipeline Shape Is Worth Keeping
@@ -554,6 +574,7 @@ This separation gives the project:
 - explicit routing for mixed-table papers
 - value-free semantics before value parsing
 - optional standalone variable plausibility review
+- deterministic parse-quality diagnostics
 - easier debugging when a paper fails in only one part of the pipeline
 
 That is the main reason the project can support both engineering work and research iteration without collapsing all errors into one opaque final output.

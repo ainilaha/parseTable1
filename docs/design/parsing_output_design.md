@@ -82,6 +82,7 @@ This principle applies to `TableDefinition`, `ParsedTable`, paper-context artifa
 | Variable-plausibility per-table trace files | wrapper JSON files | Written only when `LLM_DEBUG=true` as `variable_plausibility_llm_input.json`, `variable_plausibility_llm_metrics.json`, `variable_plausibility_llm_output.json`, and `variable_plausibility_llm_review.json` | Preserve prompt payloads, metrics, raw provider responses, and validated plausibility reviews for inspection |
 | Final parsed output | `ParsedTable` | Written now as `parsed_tables.json` by `parse` | Validated downstream structured table data |
 | Table processing status | `TableProcessingStatus`, `TableProcessingAttempt` | Written now as `table_processing_status.json` by `parse` | Persist rescue attempts, terminal failure stage, and failure reason without overloading semantic artifacts |
+| Parse quality diagnostics | `ParseQualityReport` | Written now as `parse_quality_reports.json` by `parse` | Persist deterministic row, column, and value-pattern diagnostics without changing parse behavior |
 
 Design note for future multitable support:
 
@@ -705,6 +706,41 @@ Design intent:
 - record which ones actually ran
 - record whether a table ended as `ok`, `rescued`, or `failed`
 - make empty descriptive-table parses explicit failures rather than silent success
+
+## 10. `parse_quality_reports.json`
+
+Current status:
+
+- canonical diagnostic schema exists now
+- written by the `parse` CLI command as `parse_quality_reports.json`
+- inspection artifact only; it does not alter table definitions or parsed tables
+
+Current CLI path:
+
+```text
+outputs/papers/<paper_stem>/parse_quality_reports.json
+```
+
+Canonical model:
+
+- `ParseQualityReport`
+- child models: `ParseQualitySummary`, `DiagnosticItem`
+
+Top-level design components:
+
+- `table_id`
+- `summary`
+- `table_diagnostics`
+- `row_diagnostics`
+- `column_diagnostics`
+
+Design intent:
+
+- expose deterministic quality signals for every normalized table considered by `parse`
+- make column-determination problems inspectable, including weak p-value columns, mostly empty columns, and group/overall columns with low value-pattern recognition
+- keep softer quality warnings separate from `table_processing_status.json`, which records coarse pass/fail outcomes and rescue attempts
+- preserve parse behavior: warnings and errors in this artifact do not halt parsing and do not rewrite `table_definitions.json` or `parsed_tables.json`
+- support R-side inspection and corpus review before making higher-risk changes such as consolidated Table 1 parsing
 
 ## Trace Wrappers vs Canonical Payloads
 

@@ -31,6 +31,7 @@ paper_output_paths <- function(paper_dir) {
     deterministic = file.path(paper_dir, "table_definitions.json"),
     parsed = file.path(paper_dir, "parsed_tables.json"),
     processing_status = file.path(paper_dir, "table_processing_status.json"),
+    parse_quality_reports = file.path(paper_dir, "parse_quality_reports.json"),
     variable_plausibility = file.path(paper_dir, "table_variable_plausibility_llm.json"),
     variable_plausibility_debug_dir = file.path(paper_dir, "llm_variable_plausibility_debug"),
     paper_markdown = file.path(paper_dir, "paper_markdown.md"),
@@ -69,6 +70,7 @@ load_paper_outputs <- function(paper_dir) {
     table_definitions = read_json_file(paths$deterministic),
     parsed_tables = read_optional_json(paths$parsed),
     table_processing_status = read_optional_json(paths$processing_status),
+    parse_quality_reports = read_optional_json(paths$parse_quality_reports),
     table_profiles = read_optional_json(paths$table_profiles),
     table_variable_plausibility_llm = read_optional_json(paths$variable_plausibility),
     paper_markdown = read_text_file(paths$paper_markdown),
@@ -349,6 +351,80 @@ table_profile_by_index <- function(outputs, table_index = 0L, table_id = NULL) {
   NULL
 }
 
+parse_quality_report_by_index <- function(outputs, table_index = 0L, table_id = NULL) {
+  reports <- outputs$parse_quality_reports %||% list()
+  if (length(reports) == 0) {
+    return(NULL)
+  }
+
+  resolved_table_id <- as.character(table_id %||% "")
+  if (!nzchar(resolved_table_id)) {
+    idx <- as.integer(table_index) + 1L
+    deterministic <- (outputs$table_definitions %||% list())[[idx]] %||% NULL
+    normalized <- (outputs$normalized_tables %||% list())[[idx]] %||% NULL
+    parsed <- (outputs$parsed_tables %||% list())[[idx]] %||% NULL
+    resolved_table_id <- as.character(
+      deterministic$table_id %||%
+      normalized$table_id %||%
+      parsed$table_id %||%
+      ""
+    )
+  }
+
+  if (nzchar(resolved_table_id)) {
+    matching_reports <- Filter(
+      function(x) identical(as.character(x$table_id %||% ""), resolved_table_id),
+      reports
+    )
+    if (length(matching_reports) > 0) {
+      return(matching_reports[[1]])
+    }
+  }
+
+  idx <- as.integer(table_index) + 1L
+  if (length(reports) >= idx) {
+    return(reports[[idx]] %||% NULL)
+  }
+  NULL
+}
+
+quality_diagnostic_count <- function(report, group_name, severity) {
+  if (is.null(report)) {
+    return(NA_integer_)
+  }
+  items <- report[[group_name]] %||% list()
+  as.integer(sum(vapply(
+    items,
+    function(item) identical(as.character(item$severity %||% ""), severity),
+    logical(1)
+  )))
+}
+
+diagnostic_items_df <- function(items) {
+  rows <- lapply(items %||% list(), function(item) {
+    data.frame(
+      severity = as.character(item$severity %||% ""),
+      code = as.character(item$code %||% ""),
+      message = as.character(item$message %||% ""),
+      row_idx = as.integer(item$row_idx %||% NA_integer_),
+      col_idx = as.integer(item$col_idx %||% NA_integer_),
+      stringsAsFactors = FALSE
+    )
+  })
+  if (length(rows) == 0) {
+    data.frame(
+      severity = character(),
+      code = character(),
+      message = character(),
+      row_idx = integer(),
+      col_idx = integer(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    do.call(rbind, rows)
+  }
+}
+
 summarize_table1_continuations <- function(paper_dir) {
   outputs <- load_paper_outputs(paper_dir)
   groups <- outputs$table1_continuation_groups %||% list()
@@ -475,6 +551,7 @@ summarize_table_processing <- function(paper_dir) {
     )
     status_record <- table_processing_status_by_index(outputs, table_index = table_index, table_id = table_id)
     table_profile <- table_profile_by_index(outputs, table_index = table_index, table_id = table_id)
+    quality_report <- parse_quality_report_by_index(outputs, table_index = table_index, table_id = table_id)
     columns <- definition$column_definition$columns %||% definition$columns %||% list()
     attempts <- status_record$attempts %||% list()
     data.frame(
@@ -505,6 +582,12 @@ summarize_table_processing <- function(paper_dir) {
       value_count = as.integer(length(parsed$values %||% list())),
       table_family = as.character(table_profile$table_family %||% NA_character_),
       grid_refinement_source = as.character(extracted$metadata$grid_refinement_source %||% NA_character_),
+      quality_table_warning_count = quality_diagnostic_count(quality_report, "table_diagnostics", "warning"),
+      quality_table_error_count = quality_diagnostic_count(quality_report, "table_diagnostics", "error"),
+      quality_row_warning_count = quality_diagnostic_count(quality_report, "row_diagnostics", "warning"),
+      quality_row_error_count = quality_diagnostic_count(quality_report, "row_diagnostics", "error"),
+      quality_column_warning_count = quality_diagnostic_count(quality_report, "column_diagnostics", "warning"),
+      quality_column_error_count = quality_diagnostic_count(quality_report, "column_diagnostics", "error"),
       stringsAsFactors = FALSE
     )
   })
@@ -524,6 +607,12 @@ summarize_table_processing <- function(paper_dir) {
       value_count = integer(),
       table_family = character(),
       grid_refinement_source = character(),
+      quality_table_warning_count = integer(),
+      quality_table_error_count = integer(),
+      quality_row_warning_count = integer(),
+      quality_row_error_count = integer(),
+      quality_column_warning_count = integer(),
+      quality_column_error_count = integer(),
       stringsAsFactors = FALSE
     )
   } else {
@@ -607,6 +696,47 @@ show_table_processing <- function(paper_dir, table_index = 0L) {
   )
   print(attempts_df, row.names = FALSE, right = FALSE)
   invisible(status_record)
+}
+
+show_parse_quality <- function(paper_dir, table_index = 0L) {
+  outputs <- load_paper_outputs(paper_dir)
+  normalized <- normalized_table_by_index(outputs, table_index)
+  report <- parse_quality_report_by_index(
+    outputs,
+    table_index = table_index,
+    table_id = as.character(normalized$table_id %||% "")
+  )
+  if (is.null(report)) {
+    stop(sprintf("No parse_quality_reports.json record found for table_index=%s.", as.integer(table_index)), call. = FALSE)
+  }
+
+  summary <- report$summary %||% list()
+  cat(sprintf("Parse quality for table_index=%s\n", as.integer(table_index)))
+  cat(sprintf("table_id: %s\n", as.character(report$table_id %||% normalized$table_id %||% "")))
+  cat(sprintf("total_body_rows: %s\n", as.integer(summary$total_body_rows %||% 0L)))
+  cat(sprintf("unknown_row_count: %s\n", as.integer(summary$unknown_row_count %||% 0L)))
+  cat(sprintf("unknown_row_fraction: %.3f\n", as.numeric(summary$unknown_row_fraction %||% NA_real_)))
+  cat(sprintf("variable_block_count: %s\n", as.integer(summary$variable_block_count %||% 0L)))
+  cat(sprintf("recognized_value_pattern_fraction: %.3f\n", as.numeric(summary$recognized_value_pattern_fraction %||% NA_real_)))
+  cat(sprintf("row_warning_count: %s\n", as.integer(summary$row_warning_count %||% 0L)))
+  cat(sprintf("column_warning_count: %s\n\n", as.integer(summary$column_warning_count %||% 0L)))
+
+  sections <- list(
+    "Table Diagnostics" = diagnostic_items_df(report$table_diagnostics),
+    "Row Diagnostics" = diagnostic_items_df(report$row_diagnostics),
+    "Column Diagnostics" = diagnostic_items_df(report$column_diagnostics)
+  )
+  for (section_name in names(sections)) {
+    cat(sprintf("%s\n", section_name))
+    section_df <- sections[[section_name]]
+    if (nrow(section_df) == 0) {
+      cat("[No rows]\n\n")
+    } else {
+      print(section_df, row.names = FALSE, right = FALSE)
+      cat("\n")
+    }
+  }
+  invisible(report)
 }
 
 show_table_structure <- function(paper_dir, table_index = 0L, max_rows = NULL) {

@@ -313,6 +313,41 @@ def _write_sample_paper_outputs(
             "evidence": ["caption_mentions_baseline"],
         }
     ]
+    parse_quality_reports = [
+        {
+            "report_timestamp": "2026-03-24T10:15:00Z",
+            "source_identifier": "paper.pdf",
+            "table_id": "tbl-1",
+            "summary": {
+                "total_body_rows": 4,
+                "unknown_row_count": 0,
+                "unknown_row_fraction": 0.0,
+                "variable_block_count": 2,
+                "recognized_value_pattern_fraction": 0.85,
+                "row_warning_count": 0,
+                "column_warning_count": 1,
+            },
+            "table_diagnostics": [
+                {
+                    "severity": "warning",
+                    "code": "header_rule_content_disagreement",
+                    "message": "Strong horizontal-rule evidence overrode content-based header detection.",
+                    "row_idx": None,
+                    "col_idx": None,
+                }
+            ],
+            "row_diagnostics": [],
+            "column_diagnostics": [
+                {
+                    "severity": "warning",
+                    "code": "weak_p_value_column",
+                    "message": "Column is labeled as p_value but many entries do not resemble p-values.",
+                    "row_idx": None,
+                    "col_idx": 3,
+                }
+            ],
+        }
+    ]
     paper_sections = [
         {
             "section_id": "section_0",
@@ -395,6 +430,7 @@ def _write_sample_paper_outputs(
     _write_json(paper_dir / "table_definitions.json", table_definitions)
     _write_json(paper_dir / "parsed_tables.json", parsed_tables)
     _write_json(paper_dir / "table_profiles.json", table_profiles)
+    _write_json(paper_dir / "parse_quality_reports.json", parse_quality_reports)
     (paper_dir / "paper_markdown.md").write_text("# Methods\nExample study population.", encoding="utf-8")
     _write_json(paper_dir / "paper_sections.json", paper_sections)
     _write_json(paper_dir / "paper_variable_inventory.json", paper_variable_inventory)
@@ -564,6 +600,41 @@ def test_r_inspection_loads_processing_status_and_summarizes_tables(tmp_path) ->
     assert "tbl-1" in result.stdout
     assert "ok" in result.stdout
     assert "descriptive_characteristics" in result.stdout
+    assert "quality_column_warning_count" in result.stdout
+
+
+def test_r_inspection_loads_and_shows_parse_quality_reports(tmp_path) -> None:
+    """The R helper should summarize and print saved parse-quality diagnostics."""
+    if not _r_dependencies_available():
+        return
+
+    paper_dir = tmp_path / "parse_quality" / "papers" / "paper"
+    _write_sample_paper_outputs(paper_dir, include_variable_review=False, include_processing_status=True)
+
+    result = subprocess.run(
+        [
+            "Rscript",
+            "-e",
+            (
+                f'source("{R_SCRIPT}"); '
+                f'outputs <- load_paper_outputs("{paper_dir}"); '
+                f'print(length(outputs$parse_quality_reports)); '
+                f'show_parse_quality("{paper_dir}", table_index = 0L)'
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "[1] 1" in result.stdout
+    assert "Parse quality" in result.stdout
+    assert "Table Diagnostics" in result.stdout
+    assert "Column Diagnostics" in result.stdout
+    assert "header_rule_content_disagreement" in result.stdout
+    assert "weak_p_value_column" in result.stdout
 
 
 def test_r_inspection_summarizes_and_shows_merged_table1_artifacts(tmp_path) -> None:

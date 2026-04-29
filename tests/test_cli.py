@@ -141,6 +141,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     table_definition_path = tmp_path / "outputs" / "papers" / "paper" / "table_definitions.json"
     parsed_path = tmp_path / "outputs" / "papers" / "paper" / "parsed_tables.json"
     processing_status_path = tmp_path / "outputs" / "papers" / "paper" / "table_processing_status.json"
+    parse_quality_reports_path = tmp_path / "outputs" / "papers" / "paper" / "parse_quality_reports.json"
     paper_markdown_path = tmp_path / "outputs" / "papers" / "paper" / "paper_markdown.md"
     paper_sections_path = tmp_path / "outputs" / "papers" / "paper" / "paper_sections.json"
     paper_variable_inventory_path = tmp_path / "outputs" / "papers" / "paper" / "paper_variable_inventory.json"
@@ -156,6 +157,7 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert table_definition_path.exists()
     assert parsed_path.exists()
     assert processing_status_path.exists()
+    assert parse_quality_reports_path.exists()
     assert paper_markdown_path.exists()
     assert paper_sections_path.exists()
     assert paper_variable_inventory_path.exists()
@@ -168,6 +170,10 @@ def test_cli_parse_writes_available_stage_outputs_in_one_pass(tmp_path, monkeypa
     assert json.loads(table_definition_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(parsed_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
     assert json.loads(processing_status_path.read_text(encoding="utf-8"))[0]["table_id"] == "tbl-1"
+    parse_quality_payload = json.loads(parse_quality_reports_path.read_text(encoding="utf-8"))
+    assert parse_quality_payload[0]["table_id"] == "tbl-1"
+    assert parse_quality_payload[0]["summary"]["total_body_rows"] == 2
+    assert "column_diagnostics" in parse_quality_payload[0]
     assert paper_markdown_path.read_text(encoding="utf-8") == "# Methods\nExample study population."
     assert json.loads(paper_sections_path.read_text(encoding="utf-8"))[0]["section_id"] == "section_0"
     assert json.loads(paper_variable_inventory_path.read_text(encoding="utf-8"))["paper_id"] == "paper"
